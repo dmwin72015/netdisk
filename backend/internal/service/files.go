@@ -117,8 +117,74 @@ func (s *FilesService) ListFiles(ctx context.Context, userID int64, parentSlug s
 	return items, int(count), nil
 }
 
+func (s *FilesService) ListFilesByMime(ctx context.Context, userID int64, mimePrefix string, page, pageSize int) ([]FileItem, int, error) {
+	if mimePrefix == "" {
+		return nil, 0, model.ErrInvalidInput
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+
+	mimePattern := pgtype.Text{String: mimePrefix + "%", Valid: true}
+
+	count, err := s.queries.CountFilesByMimePrefix(ctx, sqlc.CountFilesByMimePrefixParams{
+		UserID:     userID,
+		MimePrefix: mimePattern,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("count files by mime: %w", err)
+	}
+
+	files, err := s.queries.ListFilesByMimePrefix(ctx, sqlc.ListFilesByMimePrefixParams{
+		UserID:     userID,
+		MimePrefix: mimePattern,
+		PageSize:   int32(pageSize),
+		PageOffset: int32((page - 1) * pageSize),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list files by mime: %w", err)
+	}
+
+	return fileItemsFromRows(files), int(count), nil
+}
+
+type BreadcrumbItem struct {
+	Slug     string `json:"slug"`
+	FileName string `json:"file_name"`
+}
+
+func (s *FilesService) GetBreadcrumb(ctx context.Context, userID int64, slug string) ([]BreadcrumbItem, error) {
+	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+		Slug:   slug,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrNotFound
+		}
+		return nil, fmt.Errorf("get file: %w", err)
+	}
+
+	ancestors, err := s.queries.GetAncestors(ctx, f.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get ancestors: %w", err)
+	}
+
+	result := make([]BreadcrumbItem, 0, len(ancestors))
+	for _, a := range ancestors {
+		result = append(result, BreadcrumbItem{
+			Slug:     a.Slug,
+			FileName: a.FileName,
+		})
+	}
+	return result, nil
+}
+
 func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentSlug string) (*FileItem, error) {
-	if dirName == "" {
+	if dirName == "" || len(dirName) > 100 {
 		return nil, model.ErrInvalidInput
 	}
 
@@ -444,7 +510,7 @@ func (s *FilesService) PermanentDelete(ctx context.Context, userID int64, fileSl
 }
 
 func (s *FilesService) RenameFile(ctx context.Context, userID int64, fileSlug, newName string) error {
-	if newName == "" {
+	if newName == "" || len(newName) > 100 {
 		return model.ErrInvalidInput
 	}
 

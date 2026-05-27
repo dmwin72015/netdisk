@@ -45,6 +45,22 @@ LIMIT $2 OFFSET $3;
 SELECT COUNT(*) FROM user_files
 WHERE user_id = $1 AND is_starred = TRUE AND is_trashed = FALSE;
 
+-- name: ListFilesByMimePrefix :many
+SELECT * FROM user_files
+WHERE user_id = sqlc.arg(user_id)
+  AND is_trashed = FALSE
+  AND is_dir = FALSE
+  AND mime_type LIKE sqlc.arg(mime_prefix)
+ORDER BY created_at DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- name: CountFilesByMimePrefix :one
+SELECT COUNT(*) FROM user_files
+WHERE user_id = sqlc.arg(user_id)
+  AND is_trashed = FALSE
+  AND is_dir = FALSE
+  AND mime_type LIKE sqlc.arg(mime_prefix);
+
 -- name: GetFileBySlug :one
 SELECT * FROM user_files WHERE slug = $1 LIMIT 1;
 

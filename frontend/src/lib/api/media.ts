@@ -10,8 +10,15 @@ export type MediaItem = {
 	created_at: string;
 };
 
+export type AddToLibraryResponse = {
+	media_slug: string;
+	transcode_slug: string;
+	transcode_status: string;
+	transcode_reused: boolean;
+};
+
 export async function addToLibrary(fileSlug: string) {
-	return api<{ media_slug: string }>('/api/v1/media/items', {
+	return api<AddToLibraryResponse>('/api/v1/media/items', {
 		method: 'POST',
 		body: JSON.stringify({ file_slug: fileSlug })
 	});

@@ -42,11 +42,13 @@ type AddToLibraryResponse struct {
 }
 
 type MediaItemResponse struct {
-	Slug            string  `json:"slug"`
-	Title           string  `json:"title"`
-	TranscodeStatus string  `json:"transcode_status"`
+	MediaSlug       string  `json:"media_slug"`
+	FileName        string  `json:"file_name"`
+	Status          string  `json:"status"`
 	TranscodeReused bool    `json:"transcode_reused"`
+	Progress        int32   `json:"progress"`
 	DurationSec     *int32  `json:"duration_sec"`
+	ErrorMsg        *string `json:"error_msg"`
 	PosterURL       *string `json:"poster_url"`
 	PlayURL         *string `json:"play_url"`
 	CreatedAt       string  `json:"created_at"`
@@ -197,15 +199,19 @@ func (s *MediaService) ListMediaItems(ctx context.Context, userID int64, page, p
 	resp := make([]MediaItemResponse, 0, len(items))
 	for _, item := range items {
 		r := MediaItemResponse{
-			Slug:      item.Slug,
-			Title:     item.Title,
+			MediaSlug: item.Slug,
+			FileName:  item.Title,
 			CreatedAt: item.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
 		}
 		if item.TranscodeStatus.Valid {
-			r.TranscodeStatus = item.TranscodeStatus.String
+			r.Status = item.TranscodeStatus.String
 		}
 		if item.DurationSec.Valid {
 			r.DurationSec = &item.DurationSec.Int32
+		}
+		if r.Status == "processing" && item.TranscodeSlug.Valid {
+			progress, _ := s.cache.MediaProgress.GetProgress(ctx, item.TranscodeSlug.String)
+			r.Progress = int32(progress)
 		}
 		resp = append(resp, r)
 	}
@@ -226,28 +232,26 @@ func (s *MediaService) GetMediaItem(ctx context.Context, userID int64, mediaSlug
 	}
 
 	resp := &MediaItemResponse{
-		Slug:      item.Slug,
-		Title:     item.Title,
+		MediaSlug: item.Slug,
+		FileName:  item.Title,
 		CreatedAt: item.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
 	}
 
 	if item.TranscodeStatus.Valid {
-		resp.TranscodeStatus = item.TranscodeStatus.String
+		resp.Status = item.TranscodeStatus.String
 	}
 	if item.DurationSec.Valid {
 		resp.DurationSec = &item.DurationSec.Int32
 	}
 
-	// Check Redis for progress if processing
-	if resp.TranscodeStatus == "processing" && item.TranscodeSlug.Valid {
+	// Return progress from Redis if processing
+	if resp.Status == "processing" && item.TranscodeSlug.Valid {
 		progress, _ := s.cache.MediaProgress.GetProgress(ctx, item.TranscodeSlug.String)
-		if progress > 0 {
-			_ = progress
-		}
+		resp.Progress = int32(progress)
 	}
 
 	// Set play URL if done
-	if resp.TranscodeStatus == "done" && item.TranscodeSlug.Valid {
+	if resp.Status == "done" && item.TranscodeSlug.Valid {
 		playURL := fmt.Sprintf("/api/v1/media/hls/%s/index.m3u8", item.Slug)
 		resp.PlayURL = &playURL
 	}

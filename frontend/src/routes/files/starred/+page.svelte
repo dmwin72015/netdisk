@@ -5,6 +5,8 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import { listStarred, setStarred, downloadUrl, type FileItem } from '$lib/api/files';
 	import { Star, Download, Eye, Loader2, FolderPlus } from '@lucide/svelte';
+	import * as m from '$lib/paraglide/messages';
+	import { fmtSize, fmtTime } from '$lib/utils/format';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import DrivePreview from '$lib/components/DrivePreview.svelte';
 
@@ -23,7 +25,7 @@
 			files = data.files;
 			total = data.total;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load starred files';
+			error = e instanceof Error ? e.message : m.load_failed();
 		} finally {
 			loading = false;
 		}
@@ -35,16 +37,8 @@
 			files = files.filter(f => f.slug !== slug);
 			total--;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to unstar';
+			error = e instanceof Error ? e.message : m.unstar_failed();
 		}
-	}
-
-	function fmtSize(bytes: number): string {
-		if (bytes === 0) return '0 B';
-		const k = 1024;
-		const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return (bytes / Math.pow(k, i)).toFixed(i > 0 ? 1 : 0) + ' ' + sizes[i];
 	}
 
 	onMount(() => {
@@ -58,8 +52,8 @@
 	<div class="space-y-4">
 		<div class="flex items-center gap-2">
 			<Star size={20} class="text-amber-400" fill="currentColor" />
-			<h1 class="text-lg font-semibold text-gray-900">Starred</h1>
-			<span class="text-sm text-gray-400">{total} item{total !== 1 ? 's' : ''}</span>
+			<h1 class="text-lg font-semibold text-gray-900">{m.starred_title()}</h1>
+			<span class="text-sm text-gray-400">{m.total_items({ total: String(total) })}</span>
 		</div>
 
 		{#if error}
@@ -73,18 +67,18 @@
 		{:else if files.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
 				<FolderPlus size={40} class="mb-3 text-gray-300" />
-				<p class="text-sm text-gray-400">No starred files</p>
+				<p class="text-sm text-gray-400">{m.starred_empty()}</p>
 			</div>
 		{:else}
 			<div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
 				<table class="w-full table-fixed text-sm">
 					<thead>
 						<tr class="border-b border-gray-100 text-left text-xs text-gray-400">
-							<th class="w-[45%] px-4 py-2.5 font-medium">Name</th>
-							<th class="w-[15%] px-4 py-2.5 font-medium">Type</th>
-							<th class="w-[10%] px-4 py-2.5 text-right font-medium">Size</th>
-							<th class="w-[15%] px-4 py-2.5 text-right font-medium">Modified</th>
-							<th class="w-[15%] px-4 py-2.5 text-right font-medium">Actions</th>
+							<th class="w-[45%] px-4 py-2.5 font-medium">{m.col_filename()}</th>
+							<th class="w-[15%] px-4 py-2.5 font-medium">{m.col_type()}</th>
+							<th class="w-[10%] px-4 py-2.5 text-right font-medium">{m.col_size()}</th>
+							<th class="w-[15%] px-4 py-2.5 text-right font-medium">{m.col_modified()}</th>
+							<th class="w-[15%] px-4 py-2.5 text-right font-medium">{m.col_actions()}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -96,14 +90,14 @@
 										<span class="truncate text-gray-700" title={f.file_name}>{f.file_name}</span>
 									</div>
 								</td>
-								<td class="truncate px-4 py-2.5 text-xs text-gray-400">{f.is_dir ? 'Folder' : f.mime_type}</td>
+								<td class="truncate px-4 py-2.5 text-xs text-gray-400">{f.is_dir ? m.directory() : f.mime_type}</td>
 								<td class="px-4 py-2.5 text-right text-gray-500">{f.is_dir ? '-' : fmtSize(f.file_size)}</td>
 								<td class="whitespace-nowrap px-4 py-2.5 text-right text-xs text-gray-400">
-									{new Date(f.updated_at).toLocaleDateString()}
+									{fmtTime(f.updated_at)}
 								</td>
 								<td class="px-4 py-2.5 text-right">
 									<div class="flex items-center justify-end">
-										<button type="button" onclick={() => unstar(f.slug)} class="rounded-md p-1.5 text-amber-400 transition-colors hover:bg-amber-50" title="Remove star">
+										<button type="button" onclick={() => unstar(f.slug)} class="rounded-md p-1.5 text-amber-400 transition-colors hover:bg-amber-50" title={m.remove_star()}>
 											<Star size={15} fill="currentColor" />
 										</button>
 										{#if !f.is_dir}
@@ -124,7 +118,7 @@
 		{/if}
 	</div>
 {:else}
-	<p class="text-gray-600">Please <a href="/login" class="text-blue-600 underline hover:text-blue-700">login</a> to continue.</p>
+	<p class="text-gray-600">{@html m.please_login({ link: `<a href="/login" class="text-blue-600 underline hover:text-blue-700">${m.login_link_text()}</a>` })}</p>
 {/if}
 
 {#if previewFile}

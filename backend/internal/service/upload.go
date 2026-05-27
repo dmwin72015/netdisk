@@ -192,25 +192,28 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 }
 
 func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest) (*InitResponse, error) {
-	if req.FileHash == "" || req.PreHash == "" || req.FileSize <= 0 || req.MimeType == "" {
+	if req.PreHash == "" || req.FileSize <= 0 || req.MimeType == "" {
 		return nil, model.ErrInvalidInput
 	}
 	if req.FileSize > s.cfg.Storage.MaxUploadSize {
 		return nil, model.ErrQuotaExceeded
 	}
 
-	existing, err := s.queries.GetUploadTaskByHashForUser(ctx, sqlc.GetUploadTaskByHashForUserParams{
-		OwnerUserID: userID,
-		FileHash:    req.FileHash,
-	})
-	if err == nil && existing.ID != 0 && existing.Status != "done" && existing.Status != "failed" {
-		chunks, _ := s.cache.Chunks.ListChunks(ctx, existing.Slug)
-		return &InitResponse{
-			UploadSlug:      existing.Slug,
-			TotalChunks:     existing.TotalChunks,
-			ChunkSize:       existing.ChunkSize,
-			CompletedChunks: chunks,
-		}, nil
+	// Resume check only when hash is known
+	if req.FileHash != "" {
+		existing, err := s.queries.GetUploadTaskByHashForUser(ctx, sqlc.GetUploadTaskByHashForUserParams{
+			OwnerUserID: userID,
+			FileHash:    req.FileHash,
+		})
+		if err == nil && existing.ID != 0 && existing.Status != "done" && existing.Status != "failed" {
+			chunks, _ := s.cache.Chunks.ListChunks(ctx, existing.Slug)
+			return &InitResponse{
+				UploadSlug:      existing.Slug,
+				TotalChunks:     existing.TotalChunks,
+				ChunkSize:       existing.ChunkSize,
+				CompletedChunks: chunks,
+			}, nil
+		}
 	}
 
 	totalChunks := int32(math.Ceil(float64(req.FileSize) / float64(chunkSize)))
@@ -285,6 +288,44 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 	return nil
 }
 
+type UpdateHashRequest struct {
+	UploadSlug string `json:"upload_slug"`
+	FileHash   string `json:"file_hash"`
+	PreHash    string `json:"pre_hash"`
+}
+
+func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req UpdateHashRequest) error {
+	if req.FileHash == "" || req.UploadSlug == "" {
+		return model.ErrInvalidInput
+	}
+	task, err := s.queries.GetUploadTaskBySlug(ctx, req.UploadSlug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get task: %w", err)
+	}
+	if task.OwnerUserID != userID {
+		return model.ErrUnauthorized
+	}
+	if task.FileHash != "" {
+		return nil // already set
+	}
+	if err := s.queries.UpdateUploadTaskFileHash(ctx, sqlc.UpdateUploadTaskFileHashParams{
+		ID:       task.ID,
+		FileHash: req.FileHash,
+	}); err != nil {
+		return fmt.Errorf("update hash: %w", err)
+	}
+	if req.PreHash != "" {
+		_ = s.queries.UpdateUploadTaskPreHash(ctx, sqlc.UpdateUploadTaskPreHashParams{
+			ID:      task.ID,
+			PreHash: req.PreHash,
+		})
+	}
+	return nil
+}
+
 func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug string) (*CompleteResponse, error) {
 	task, err := s.queries.GetUploadTaskBySlug(ctx, uploadSlug)
 	if err != nil {
@@ -308,29 +349,40 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 		return nil, fmt.Errorf("update status: %w", err)
 	}
 
-	acquired, err := s.cache.Lock.AcquireMergeLock(ctx, task.FileHash)
-	if err != nil {
-		return nil, fmt.Errorf("acquire lock: %w", err)
-	}
-	if !acquired {
-		return &CompleteResponse{Status: "MERGING"}, nil
-	}
-	defer s.cache.Lock.ReleaseMergeLock(ctx, task.FileHash)
+	fileHash := task.FileHash
+	var storagePath string
 
-	_, err = s.store.MergeChunks(uploadSlug, task.FileHash, int(task.TotalChunks))
-	if err != nil {
-		_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{
-			ID:     task.ID,
-			Status: "failed",
-		})
-		return nil, fmt.Errorf("merge chunks: %w", err)
-	}
+	if fileHash == "" {
+		// Hash not known yet — merge chunks and compute hash.
+		computedHash, sp, err := s.store.MergeChunksAndHash(uploadSlug, int(task.TotalChunks))
+		if err != nil {
+			_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{ID: task.ID, Status: "failed"})
+			return nil, fmt.Errorf("merge and hash: %w", err)
+		}
+		fileHash = computedHash
+		storagePath = sp
+		_ = s.queries.UpdateUploadTaskFileHash(ctx, sqlc.UpdateUploadTaskFileHashParams{ID: task.ID, FileHash: fileHash})
+	} else {
+		acquired, err := s.cache.Lock.AcquireMergeLock(ctx, fileHash)
+		if err != nil {
+			return nil, fmt.Errorf("acquire lock: %w", err)
+		}
+		if !acquired {
+			return &CompleteResponse{Status: "MERGING"}, nil
+		}
+		defer s.cache.Lock.ReleaseMergeLock(ctx, fileHash)
 
-	storagePath := storage.StoragePath(task.FileHash)
+		sp, err := s.store.MergeChunks(uploadSlug, fileHash, int(task.TotalChunks))
+		if err != nil {
+			_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{ID: task.ID, Status: "failed"})
+			return nil, fmt.Errorf("merge chunks: %w", err)
+		}
+		storagePath = sp
+	}
 	pf, err := s.queries.CreatePhysicalFile(ctx, sqlc.CreatePhysicalFileParams{
 		Slug:        task.Slug,
 		HashAlgo:    "sha256",
-		FileHash:    task.FileHash,
+		FileHash:    fileHash,
 		PreHash:     task.PreHash,
 		FileSize:    task.FileSize,
 		MimeType:    task.MimeType,
@@ -340,7 +392,7 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 	if err != nil {
 		pf, err = s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
 			HashAlgo: "sha256",
-			FileHash: task.FileHash,
+			FileHash: fileHash,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("get physical file: %w", err)

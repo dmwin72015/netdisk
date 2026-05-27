@@ -26,3 +26,4 @@ frontend/.env
 # .agents
 # .claude
 # .kiro
+backend/netdisk

@@ -21,6 +21,16 @@ UPDATE upload_tasks
 SET physical_file_id = $2, status = 'done', updated_at = NOW()
 WHERE id = $1;
 
+-- name: UpdateUploadTaskFileHash :exec
+UPDATE upload_tasks
+SET file_hash = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateUploadTaskPreHash :exec
+UPDATE upload_tasks
+SET pre_hash = $2, updated_at = NOW()
+WHERE id = $1;
+
 -- name: DeleteExpiredTasks :exec
 DELETE FROM upload_tasks
 WHERE expires_at < NOW() AND status IN ('created', 'uploading', 'merging');

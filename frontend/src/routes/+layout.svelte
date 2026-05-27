@@ -2,6 +2,7 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import AppDialog from '$lib/components/AppDialog.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
@@ -20,7 +21,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>Netdisk</title>
+	<title>{m.app_name()}</title>
 </svelte:head>
 
 <div class="flex min-h-screen flex-col">

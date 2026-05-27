@@ -150,6 +150,24 @@ func (h *UploadHandler) Complete(c echo.Context) error {
 	return OK(c, resp)
 }
 
+func (h *UploadHandler) UpdateHash(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input service.UpdateHashRequest
+	if err := c.Bind(&input); err != nil {
+		return echo.NewHTTPError(400, "invalid request body")
+	}
+
+	if err := h.svc.UpdateHash(c.Request().Context(), userID, input); err != nil {
+		return err
+	}
+
+	return OK(c, map[string]string{"message": "hash updated"})
+}
+
 func (h *UploadHandler) GetStatus(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

@@ -3,7 +3,7 @@
 	import { logout } from '$lib/api/auth';
 	import { goto } from '$app/navigation';
 	import { setUser } from '$lib/stores/auth';
-	import { HardDrive, Upload, Star, Trash2, Film, User, Globe, ChevronDown, LogOut, Settings } from '@lucide/svelte';
+	import { HardDrive, Folder, Upload, Star, Trash2, Film, User, Globe, ChevronDown, LogOut, Settings } from '@lucide/svelte';
 	import { DropdownMenu } from 'bits-ui';
 	import { page } from '$app/state';
 	import * as m from '$lib/paraglide/messages';
@@ -38,21 +38,9 @@
 				{#if $user}
 					<a
 						href="/files"
-						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files') && !isActive('/files/trash') && !isActive('/files/starred') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
+						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
 					>
-						<Upload size={15} /> {m.nav_files()}
-					</a>
-					<a
-						href="/files/starred"
-						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files/starred') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
-					>
-						<Star size={15} /> {m.nav_starred()}
-					</a>
-					<a
-						href="/files/trash"
-						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files/trash') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
-					>
-						<Trash2 size={15} /> {m.nav_trash()}
+						<Folder size={15} /> {m.nav_files()}
 					</a>
 					<a
 						href="/media"
@@ -72,7 +60,7 @@
 							{:else}
 								<User size={15} />
 							{/if}
-							<span class="hidden sm:inline">{$user?.profile?.display_name || $user?.username || 'Account'}</span>
+							<span class="hidden sm:inline">{$user?.profile?.display_name || $user?.username || m.nav_account()}</span>
 							<ChevronDown size={12} class="text-gray-400" />
 						</DropdownMenu.Trigger>
 						<DropdownMenu.Portal>
@@ -81,6 +69,21 @@
 								sideOffset={8}
 								align="end"
 							>
+								<DropdownMenu.Item
+									class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
+									onclick={() => goto('/files/starred')}
+								>
+									<Star size={14} class="text-gray-400" />
+									{m.nav_starred()}
+								</DropdownMenu.Item>
+								<DropdownMenu.Item
+									class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
+									onclick={() => goto('/files/trash')}
+								>
+									<Trash2 size={14} class="text-gray-400" />
+									{m.nav_trash()}
+								</DropdownMenu.Item>
+								<DropdownMenu.Separator class="my-1 h-px bg-gray-100" />
 								<DropdownMenu.Item
 									class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
 									onclick={() => goto('/account')}

@@ -7,6 +7,7 @@ type DialogOptions = {
 	cancelText: string;
 	inputPlaceholder?: string;
 	defaultValue?: string;
+	maxLength?: number;
 };
 
 type PendingDialog = {

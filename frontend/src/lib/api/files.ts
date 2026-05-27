@@ -28,9 +28,15 @@ export type ImportResponse = {
 	file_name: string;
 };
 
-export async function listFiles(parentSlug?: string, page = 1, pageSize = 50) {
+export type BreadcrumbItem = {
+	slug: string;
+	file_name: string;
+};
+
+export async function listFiles(parentSlug?: string, page = 1, pageSize = 50, mimeType?: string) {
 	const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
 	if (parentSlug) params.set('parent_slug', parentSlug);
+	if (mimeType) params.set('mime_type', mimeType);
 	return api<{ files: FileItem[]; total: number }>(`/api/v1/files?${params}`);
 }
 
@@ -105,4 +111,8 @@ export async function listStarred(page = 1, pageSize = 50) {
 
 export function downloadUrl(slug: string) {
 	return `/api/v1/files/${slug}/download`;
+}
+
+export async function getBreadcrumb(slug: string) {
+	return api<BreadcrumbItem[]>(`/api/v1/files/${slug}/breadcrumb`);
 }

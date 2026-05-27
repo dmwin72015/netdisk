@@ -136,6 +136,59 @@ func (s *Local) MergeChunks(uploadSlug string, fileHash string, totalChunks int)
 	return StoragePath(fileHash), nil
 }
 
+// MergeChunksAndHash merges chunks, computes SHA-256, and returns the hash.
+// Used when file hash is not known at init time (pre_hash fast path).
+func (s *Local) MergeChunksAndHash(uploadSlug string, totalChunks int) (string, string, error) {
+	if !ValidateSlug(uploadSlug) {
+		return "", "", fmt.Errorf("invalid upload slug")
+	}
+
+	chunkDir := filepath.Join(s.root, "tmp", uploadSlug)
+
+	// Merge to temp file and compute hash.
+	tmpPath := filepath.Join(s.root, "tmp", uploadSlug+".merged")
+	out, err := os.Create(tmpPath)
+	if err != nil {
+		return "", "", fmt.Errorf("create temp file: %w", err)
+	}
+
+	h := sha256.New()
+	writer := io.MultiWriter(out, h)
+
+	for i := 0; i < totalChunks; i++ {
+		chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%06d", i))
+		f, err := os.Open(chunkPath)
+		if err != nil {
+			out.Close()
+			os.Remove(tmpPath)
+			return "", "", fmt.Errorf("open chunk %d: %w", i, err)
+		}
+		if _, err := io.Copy(writer, f); err != nil {
+			f.Close()
+			out.Close()
+			os.Remove(tmpPath)
+			return "", "", fmt.Errorf("copy chunk %d: %w", i, err)
+		}
+		f.Close()
+	}
+	out.Close()
+
+	actual := hex.EncodeToString(h.Sum(nil))
+
+	// Move to final path based on computed hash.
+	finalDir := filepath.Join(s.root, StoragePath(actual))
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0o755); err != nil {
+		os.Remove(tmpPath)
+		return "", "", fmt.Errorf("mkdir final dir: %w", err)
+	}
+	if err := os.Rename(tmpPath, finalDir); err != nil {
+		os.Remove(tmpPath)
+		return "", "", fmt.Errorf("rename to final: %w", err)
+	}
+
+	return actual, StoragePath(actual), nil
+}
+
 // HashFile computes the SHA-256 of an existing file at the hash path.
 func (s *Local) HashFile(fileHash string) (string, error) {
 	if !ValidateHash(fileHash) {

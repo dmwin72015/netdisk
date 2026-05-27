@@ -2,6 +2,7 @@
 	import { X, Download } from '@lucide/svelte';
 	import { downloadUrl } from '$lib/api/files';
 	import { getAccessToken } from '$lib/api/client';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		id,
@@ -25,6 +26,10 @@
 	let textContent = $state<string | null>(null);
 	let textError = $state<string | null>(null);
 	let loadingText = $state(false);
+
+	let blobUrl = $state<string | null>(null);
+	let blobError = $state<string | null>(null);
+	let loadingBlob = $state(false);
 
 	let dlUrl = $derived(downloadUrl(id));
 	let canPreview = $derived(
@@ -54,6 +59,28 @@
 			.then((t) => (textContent = t))
 			.catch((e) => (textError = e.message))
 			.finally(() => (loadingText = false));
+	});
+
+	$effect(() => {
+		if (!open || !(isImage || isVideo || isAudio || isPdf)) return;
+		blobUrl = null;
+		blobError = null;
+		loadingBlob = true;
+		const token = getAccessToken() ?? '';
+		fetch(dlUrl, { headers: { Authorization: `Bearer ${token}` } })
+			.then((r) => {
+				if (!r.ok) throw new Error('Failed to load');
+				return r.blob();
+			})
+			.then((blob) => {
+				blobUrl = URL.createObjectURL(blob);
+			})
+			.catch((e) => (blobError = e.message))
+			.finally(() => (loadingBlob = false));
+
+		return () => {
+			if (blobUrl) URL.revokeObjectURL(blobUrl);
+		};
 	});
 
 	function closeWithAnimation() {
@@ -111,7 +138,7 @@
 						href={dlUrl}
 						download={name}
 						class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-						title="Download"
+						title={m.download()}
 					>
 						<Download size={18} />
 					</a>
@@ -119,7 +146,7 @@
 						type="button"
 						onclick={closeWithAnimation}
 						class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-						title="Close"
+						title={m.close()}
 					>
 						<X size={18} />
 					</button>
@@ -130,35 +157,75 @@
 			<div class="flex-1 overflow-auto">
 				{#if !canPreview}
 					<div class="flex flex-col items-center gap-3 py-20 text-sm text-gray-400">
-						<p>Preview not available for this file type</p>
+						<p>{m.unsupported_preview()}</p>
 						<a
 							href={dlUrl}
 							download={name}
 							class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 						>
-							Download file
+							{m.download_file()}
 						</a>
 					</div>
 				{:else if isImage}
-					<div class="flex items-center justify-center p-4">
-						<img src={dlUrl} alt={name} class="max-h-[75vh] rounded-lg object-contain" />
-					</div>
+					{#if loadingBlob}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-gray-400">{m.loading()}</p>
+						</div>
+					{:else if blobError}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-red-500">{blobError}</p>
+						</div>
+					{:else if blobUrl}
+						<div class="flex items-center justify-center p-4">
+							<img src={blobUrl} alt={name} class="max-h-[75vh] rounded-lg object-contain" />
+						</div>
+					{/if}
 				{:else if isVideo}
-					<div class="flex items-center justify-center bg-black">
-						<video controls autoplay class="max-h-[75vh] w-full">
-							<source src={dlUrl} type={mimeType} />
-						</video>
-					</div>
+					{#if loadingBlob}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-gray-400">{m.loading()}</p>
+						</div>
+					{:else if blobError}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-red-500">{blobError}</p>
+						</div>
+					{:else if blobUrl}
+						<div class="flex items-center justify-center bg-black">
+							<video controls autoplay class="max-h-[75vh] w-full">
+								<source src={blobUrl} type={mimeType} />
+							</video>
+						</div>
+					{/if}
 				{:else if isAudio}
-					<div class="flex items-center justify-center py-16">
-						<audio controls src={dlUrl} class="w-full max-w-md" />
-					</div>
+					{#if loadingBlob}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-gray-400">{m.loading()}</p>
+						</div>
+					{:else if blobError}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-red-500">{blobError}</p>
+						</div>
+					{:else if blobUrl}
+						<div class="flex items-center justify-center py-16">
+							<audio controls src={blobUrl} class="w-full max-w-md" />
+						</div>
+					{/if}
 				{:else if isPdf}
-					<iframe src={dlUrl} class="h-[80vh] w-full" title={name}></iframe>
+					{#if loadingBlob}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-gray-400">{m.loading()}</p>
+						</div>
+					{:else if blobError}
+						<div class="flex items-center justify-center py-16">
+							<p class="text-sm text-red-500">{blobError}</p>
+						</div>
+					{:else if blobUrl}
+						<iframe src={blobUrl} class="h-[80vh] w-full" title={name}></iframe>
+					{/if}
 				{:else if isText}
 					{#if loadingText}
 						<div class="flex items-center justify-center py-16">
-							<div class="text-sm text-gray-400">Loading...</div>
+							<div class="text-sm text-gray-400">{m.loading()}</div>
 						</div>
 					{:else if textError}
 						<div class="flex items-center justify-center py-16">

@@ -28,6 +28,18 @@ func (h *FilesHandler) ListFiles(c echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	pageSize, _ := strconv.Atoi(c.QueryParam("page_size"))
 	parentSlug := c.QueryParam("parent_slug")
+	mimeType := c.QueryParam("mime_type")
+
+	if mimeType != "" {
+		items, total, err := h.svc.ListFilesByMime(c.Request().Context(), userID, mimeType, page, pageSize)
+		if err != nil {
+			return err
+		}
+		return OK(c, map[string]any{
+			"files": items,
+			"total": total,
+		})
+	}
 
 	items, total, err := h.svc.ListFiles(c.Request().Context(), userID, parentSlug, page, pageSize)
 	if err != nil {
@@ -129,6 +141,21 @@ func (h *FilesHandler) ImportFile(c echo.Context) error {
 	}
 
 	return Created(c, resp)
+}
+
+func (h *FilesHandler) GetBreadcrumb(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	slug := c.Param("slug")
+	items, err := h.svc.GetBreadcrumb(c.Request().Context(), userID, slug)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, items)
 }
 
 func (h *FilesHandler) TrashFile(c echo.Context) error {

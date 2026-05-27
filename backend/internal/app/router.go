@@ -68,6 +68,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	files.POST("/import", h.Files.ImportFile)
 	files.GET("/trash", h.Files.ListTrashed)
 	files.GET("/starred", h.Files.ListStarred)
+	files.GET("/:slug/breadcrumb", h.Files.GetBreadcrumb)
 	files.DELETE("/:slug", h.Files.TrashFile)
 	files.POST("/:slug/restore", h.Files.RestoreFile)
 	files.DELETE("/:slug/permanent", h.Files.PermanentDelete)
@@ -84,6 +85,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	upload.POST("/init", h.Upload.Init)
 	upload.POST("/chunk", h.Upload.UploadChunk)
 	upload.POST("/complete", h.Upload.Complete)
+	upload.POST("/update-hash", h.Upload.UpdateHash)
 	upload.GET("/:upload_slug/status", h.Upload.GetStatus)
 
 	// Media routes

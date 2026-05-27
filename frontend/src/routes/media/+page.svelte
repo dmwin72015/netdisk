@@ -4,13 +4,16 @@
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
-	import { Film, Trash2, Loader2, Play, AlertCircle, Clock } from '@lucide/svelte';
+	import { Film, Trash2, Loader2, Play, AlertCircle, Clock, Plus } from '@lucide/svelte';
 	import { confirmDelete } from '$lib/dialog';
+	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let items = $state<MediaItem[]>([]);
 	let total = $state(0);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let showAddDialog = $state(false);
 
 	async function refresh() {
 		if (!$user) return;
@@ -21,20 +24,20 @@
 			items = data.items;
 			total = data.total;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load media library';
+			error = e instanceof Error ? e.message : m.media_load_failed();
 		} finally {
 			loading = false;
 		}
 	}
 
 	async function remove(slug: string, name: string) {
-		if (!(await confirmDelete(`Remove "${name}" from media library?`))) return;
+		if (!(await confirmDelete(m.confirm_remove_media({ name })))) return;
 		try {
 			await removeFromLibrary(slug);
 			items = items.filter(i => i.media_slug !== slug);
 			total--;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to remove';
+			error = e instanceof Error ? e.message : m.media_remove_failed();
 		}
 	}
 
@@ -78,10 +81,15 @@
 {#if !$authReady}
 {:else if $user}
 	<div class="space-y-4">
-		<div class="flex items-center gap-2">
-			<Film size={20} class="text-gray-500" />
-			<h1 class="text-lg font-semibold text-gray-900">Media Library</h1>
-			<span class="text-sm text-gray-400">{total} item{total !== 1 ? 's' : ''}</span>
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<Film size={20} class="text-gray-500" />
+				<h1 class="text-lg font-semibold text-gray-900">{m.media_title()}</h1>
+				<span class="text-sm text-gray-400">{m.total_items({ total })}</span>
+			</div>
+			<button type="button" onclick={() => (showAddDialog = true)} class="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800">
+				<Plus size={15} /> {m.add_to_media_library()}
+			</button>
 		</div>
 
 		{#if error}
@@ -98,8 +106,8 @@
 		{:else if items.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
 				<Film size={40} class="mb-3 text-gray-300" />
-				<p class="text-sm text-gray-400">No media items yet</p>
-				<p class="mt-1 text-xs text-gray-300">Add video files from your drive to start transcoding</p>
+				<p class="text-sm text-gray-400">{m.media_empty()}</p>
+				<p class="mt-1 text-xs text-gray-300">{m.media_help()}</p>
 			</div>
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -120,10 +128,10 @@
 										<span class="text-xs text-blue-500">{item.progress}%</span>
 									{:else if item.status === 'pending'}
 										<Clock size={24} class="text-gray-300" />
-										<span class="text-xs text-gray-400">Queued</span>
+										<span class="text-xs text-gray-400">{m.queued()}</span>
 									{:else if item.status === 'failed'}
 										<AlertCircle size={24} class="text-red-300" />
-										<span class="text-xs text-red-400">Failed</span>
+										<span class="text-xs text-red-400">{m.failed()}</span>
 									{/if}
 								</div>
 							{/if}
@@ -155,7 +163,7 @@
 										{new Date(item.created_at).toLocaleDateString()}
 									</p>
 								</div>
-								<button type="button" onclick={() => remove(item.media_slug, item.file_name)} class="shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100" title="Remove">
+								<button type="button" onclick={() => remove(item.media_slug, item.file_name)} class="shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100" title={m.remove()}>
 									<Trash2 size={14} />
 								</button>
 							</div>
@@ -168,6 +176,12 @@
 			</div>
 		{/if}
 	</div>
+
+	<AddMediaDialog
+		open={showAddDialog}
+		onClose={() => (showAddDialog = false)}
+		onDone={refresh}
+	/>
 {:else}
 	<p class="text-gray-600">Please <a href="/login" class="text-blue-600 underline hover:text-blue-700">login</a> to continue.</p>
 {/if}

@@ -4,7 +4,7 @@ VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: ListMediaItemsByUser :many
-SELECT mi.*, mt.status AS transcode_status, mt.duration_sec
+SELECT mi.*, mt.status AS transcode_status, mt.duration_sec, mt.slug AS transcode_slug
 FROM media_items mi
 LEFT JOIN media_transcodes mt ON mt.id = mi.transcode_id
 WHERE mi.user_id = $1

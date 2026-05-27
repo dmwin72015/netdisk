@@ -10,14 +10,15 @@ export async function confirmDelete(message: string): Promise<boolean> {
 	});
 }
 
-export async function promptInput(title: string, placeholder: string, defaultValue?: string): Promise<string | null> {
+export async function promptInput(title: string, placeholder: string, defaultValue?: string, maxLength?: number): Promise<string | null> {
 	return openPrompt({
 		title,
 		message: '',
 		confirmText: m.confirm(),
 		cancelText: m.cancel(),
 		inputPlaceholder: placeholder,
-		defaultValue
+		defaultValue,
+		maxLength
 	});
 }
 
