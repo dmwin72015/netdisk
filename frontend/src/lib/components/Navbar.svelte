@@ -40,25 +40,25 @@
 						href="/files"
 						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files') && !isActive('/files/trash') && !isActive('/files/starred') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
 					>
-						<Upload size={15} /> Files
+						<Upload size={15} /> {m.nav_files()}
 					</a>
 					<a
 						href="/files/starred"
 						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files/starred') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
 					>
-						<Star size={15} /> Starred
+						<Star size={15} /> {m.nav_starred()}
 					</a>
 					<a
 						href="/files/trash"
 						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/files/trash') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
 					>
-						<Trash2 size={15} /> Trash
+						<Trash2 size={15} /> {m.nav_trash()}
 					</a>
 					<a
 						href="/media"
 						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/media') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
 					>
-						<Film size={15} /> Media
+						<Film size={15} /> {m.nav_media()}
 					</a>
 					<div class="mx-1 h-5 w-px bg-gray-200"></div>
 
@@ -86,7 +86,7 @@
 									onclick={() => goto('/account')}
 								>
 									<Settings size={14} class="text-gray-400" />
-									Account
+									{m.nav_account()}
 								</DropdownMenu.Item>
 								<DropdownMenu.Separator class="my-1 h-px bg-gray-100" />
 								<DropdownMenu.Item
@@ -94,14 +94,14 @@
 									onclick={handleLogout}
 								>
 									<LogOut size={14} />
-									Logout
+									{m.logout()}
 								</DropdownMenu.Item>
 							</DropdownMenu.Content>
 						</DropdownMenu.Portal>
 					</DropdownMenu.Root>
 				{:else}
-					<a href="/login" class="rounded-lg px-3 py-1.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">Login</a>
-					<a href="/register" class="rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700">Register</a>
+					<a href="/login" class="rounded-lg px-3 py-1.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">{m.nav_login()}</a>
+					<a href="/register" class="rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700">{m.nav_register()}</a>
 				{/if}
 			{/if}
 

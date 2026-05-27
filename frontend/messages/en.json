@@ -11,6 +11,10 @@
   "copied": "Copied",
   "copy": "Copy",
 
+  "nav_files": "Files",
+  "nav_starred": "Starred",
+  "nav_trash": "Trash",
+  "nav_media": "Media",
   "nav_upload": "Upload",
   "nav_drive": "Drive",
   "nav_videos": "Videos",
