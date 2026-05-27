@@ -1,0 +1,218 @@
+package storage
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// Local implements the Storage interface using the local filesystem.
+type Local struct {
+	root string
+}
+
+// NewLocal creates a new Local storage with the given root directory.
+func NewLocal(root string) *Local {
+	return &Local{root: root}
+}
+
+// WriteChunk writes a single chunk to the temporary upload directory.
+func (s *Local) WriteChunk(uploadSlug string, chunkIndex int, data io.Reader) error {
+	if !ValidateSlug(uploadSlug) {
+		return fmt.Errorf("invalid upload slug")
+	}
+	dir := filepath.Join(s.root, "tmp", uploadSlug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("mkdir chunk dir: %w", err)
+	}
+	path := filepath.Join(dir, fmt.Sprintf("chunk_%06d", chunkIndex))
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create chunk: %w", err)
+	}
+	defer f.Close()
+	if _, err := io.Copy(f, data); err != nil {
+		return fmt.Errorf("write chunk: %w", err)
+	}
+	return nil
+}
+
+// ListChunks returns the list of chunk indices that have been uploaded.
+func (s *Local) ListChunks(uploadSlug string) ([]int, error) {
+	if !ValidateSlug(uploadSlug) {
+		return nil, fmt.Errorf("invalid upload slug")
+	}
+	dir := filepath.Join(s.root, "tmp", uploadSlug)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read chunk dir: %w", err)
+	}
+	var indices []int
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, "chunk_") {
+			continue
+		}
+		idx, err := strconv.Atoi(name[6:])
+		if err != nil {
+			continue
+		}
+		indices = append(indices, idx)
+	}
+	sort.Ints(indices)
+	return indices, nil
+}
+
+// MergeChunks combines all chunks into a single file, computes SHA-256,
+// verifies against the expected hash, and atomically renames to final path.
+// Returns the final storage path on success.
+func (s *Local) MergeChunks(uploadSlug string, fileHash string, totalChunks int) (string, error) {
+	if !ValidateSlug(uploadSlug) {
+		return "", fmt.Errorf("invalid upload slug")
+	}
+	if !ValidateHash(fileHash) {
+		return "", fmt.Errorf("invalid file hash")
+	}
+
+	finalDir := filepath.Join(s.root, StoragePath(fileHash))
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0o755); err != nil {
+		return "", fmt.Errorf("mkdir final dir: %w", err)
+	}
+
+	// Write to a temporary .merging file first.
+	mergingPath := finalDir + ".merging"
+	out, err := os.Create(mergingPath)
+	if err != nil {
+		return "", fmt.Errorf("create merging file: %w", err)
+	}
+
+	h := sha256.New()
+	writer := io.MultiWriter(out, h)
+
+	chunkDir := filepath.Join(s.root, "tmp", uploadSlug)
+	for i := 0; i < totalChunks; i++ {
+		chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%06d", i))
+		f, err := os.Open(chunkPath)
+		if err != nil {
+			out.Close()
+			os.Remove(mergingPath)
+			return "", fmt.Errorf("open chunk %d: %w", i, err)
+		}
+		if _, err := io.Copy(writer, f); err != nil {
+			f.Close()
+			out.Close()
+			os.Remove(mergingPath)
+			return "", fmt.Errorf("copy chunk %d: %w", i, err)
+		}
+		f.Close()
+	}
+	out.Close()
+
+	// Verify SHA-256.
+	actual := hex.EncodeToString(h.Sum(nil))
+	if actual != fileHash {
+		os.Remove(mergingPath)
+		return "", fmt.Errorf("hash mismatch: expected %s, got %s", fileHash, actual)
+	}
+
+	// Atomic rename to final path.
+	if err := os.Rename(mergingPath, finalDir); err != nil {
+		os.Remove(mergingPath)
+		return "", fmt.Errorf("rename to final: %w", err)
+	}
+
+	return StoragePath(fileHash), nil
+}
+
+// HashFile computes the SHA-256 of an existing file at the hash path.
+func (s *Local) HashFile(fileHash string) (string, error) {
+	if !ValidateHash(fileHash) {
+		return "", fmt.Errorf("invalid file hash")
+	}
+	f, err := os.Open(AbsPath(s.root, fileHash))
+	if err != nil {
+		return "", fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("hash file: %w", err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// Exists checks if the physical file exists on disk.
+func (s *Local) Exists(fileHash string) bool {
+	if !ValidateHash(fileHash) {
+		return false
+	}
+	_, err := os.Stat(AbsPath(s.root, fileHash))
+	return err == nil
+}
+
+// Open opens the physical file for reading.
+func (s *Local) Open(fileHash string) (*os.File, error) {
+	if !ValidateHash(fileHash) {
+		return nil, fmt.Errorf("invalid file hash")
+	}
+	return os.Open(AbsPath(s.root, fileHash))
+}
+
+// ReadAt reads length bytes from the file at the given offset.
+func (s *Local) ReadAt(fileHash string, offset, length int64) ([]byte, error) {
+	if !ValidateHash(fileHash) {
+		return nil, fmt.Errorf("invalid file hash")
+	}
+	f, err := os.Open(AbsPath(s.root, fileHash))
+	if err != nil {
+		return nil, fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+	buf := make([]byte, length)
+	n, err := f.ReadAt(buf, offset)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("read at: %w", err)
+	}
+	return buf[:n], nil
+}
+
+// Delete removes the physical file from disk.
+func (s *Local) Delete(fileHash string) error {
+	if !ValidateHash(fileHash) {
+		return fmt.Errorf("invalid file hash")
+	}
+	path := AbsPath(s.root, fileHash)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("delete file: %w", err)
+	}
+	return nil
+}
+
+// CleanupUpload removes the temporary upload directory.
+func (s *Local) CleanupUpload(uploadSlug string) error {
+	if !ValidateSlug(uploadSlug) {
+		return fmt.Errorf("invalid upload slug")
+	}
+	dir := filepath.Join(s.root, "tmp", uploadSlug)
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("cleanup upload: %w", err)
+	}
+	return nil
+}
+
+// AbsPath returns the full absolute path for a file hash.
+func (s *Local) AbsPath(fileHash string) string {
+	return AbsPath(s.root, fileHash)
+}

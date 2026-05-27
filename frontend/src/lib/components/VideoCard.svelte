@@ -1,0 +1,171 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { CheckCircle2, XCircle, Loader2, Trash2, Copy, FileVideo, Play } from '@lucide/svelte';
+	import type { Task } from '$lib/api/tasks';
+	import { deleteTask } from '$lib/api/tasks';
+	import { confirmDelete } from '$lib/dialog';
+	import * as m from '$lib/paraglide/messages';
+
+	let {
+		task,
+		onChanged
+	}: { task: Task; onChanged?: () => void } = $props();
+
+	let copied = $state(false);
+	let removing = $state(false);
+	let thumbFailed = $state(false);
+
+	function fmtSize(size: number): string {
+		if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+		if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+		return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+	}
+
+	function fmtDuration(sec?: number): string | null {
+		if (!sec || sec <= 0) return null;
+		const h = Math.floor(sec / 3600);
+		const m = Math.floor((sec % 3600) / 60);
+		const s = sec % 60;
+		if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+		return `${m}:${String(s).padStart(2, '0')}`;
+	}
+
+	function timeAgo(unix: number): string {
+		const diff = Math.max(0, Date.now() / 1000 - unix);
+		if (diff < 60) return m.just_now();
+		if (diff < 3600) return m.minutes_ago({ n: Math.floor(diff / 60) });
+		if (diff < 86400) return m.hours_ago({ n: Math.floor(diff / 3600) });
+		if (diff < 86400 * 30) return m.days_ago({ n: Math.floor(diff / 86400) });
+		if (diff < 86400 * 365) return m.months_ago({ n: Math.floor(diff / 86400 / 30) });
+		return m.years_ago({ n: Math.floor(diff / 86400 / 365) });
+	}
+
+	function authedThumb(url: string): string {
+		const token = localStorage.getItem('vf.access');
+		if (!token) return url;
+		const u = new URL(url, window.location.origin);
+		u.searchParams.set('access_token', token);
+		return u.pathname + '?' + u.searchParams.toString();
+	}
+
+	async function copyUrl(url: string) {
+		await navigator.clipboard.writeText(url);
+		copied = true;
+		setTimeout(() => (copied = false), 1500);
+	}
+
+	async function remove(e: Event) {
+		e.stopPropagation();
+		if (!(await confirmDelete(m.confirm_delete_task()))) return;
+		removing = true;
+		try {
+			await deleteTask(task.id);
+			onChanged?.();
+		} finally {
+			removing = false;
+		}
+	}
+
+	function open() {
+		if (task.status === 'completed') void goto(`/videos/${task.id}`);
+	}
+
+	const duration = $derived(fmtDuration(task.duration_sec));
+	const thumbnailSrc = $derived(task.thumbnail_url ? authedThumb(task.thumbnail_url) : null);
+</script>
+
+<article
+	class="group overflow-hidden rounded-xl bg-white transition hover:shadow-lg {task.status ===
+		'completed'
+		? 'cursor-pointer'
+		: ''}"
+>
+	<div
+		role="button"
+		tabindex="0"
+		onclick={open}
+		onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && open()}
+		class="relative aspect-video w-full overflow-hidden bg-slate-900"
+	>
+		{#if task.status === 'completed' && thumbnailSrc && !thumbFailed}
+			<img
+				src={thumbnailSrc}
+				alt={task.original_name}
+				loading="lazy"
+				onerror={() => (thumbFailed = true)}
+				class="h-full w-full object-cover transition group-hover:scale-105"
+			/>
+			<div
+				class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30"
+			>
+				<Play size={48} class="text-white opacity-0 transition group-hover:opacity-100" />
+			</div>
+			{#if duration}
+				<span class="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">
+					{duration}
+				</span>
+			{/if}
+		{:else if task.status === 'failed'}
+			<div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-red-50 text-red-700">
+				<XCircle size={32} />
+				<span class="text-xs">{m.conversion_failed()}</span>
+			</div>
+		{:else if task.status === 'processing' || task.status === 'pending'}
+			<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-100 text-slate-600">
+				<Loader2 size={32} class="animate-spin" />
+				<span class="text-xs">{task.status === 'pending' ? m.queued() : m.converting_progress({ progress: task.progress })}</span>
+			</div>
+		{:else}
+			<div class="flex h-full w-full items-center justify-center bg-slate-200 text-slate-400">
+				<FileVideo size={36} />
+			</div>
+		{/if}
+	</div>
+
+	<div class="p-3">
+		<header class="flex items-start gap-2">
+			<h3 class="min-w-0 flex-1 truncate text-sm font-medium text-slate-900" title={task.original_name}>
+				{task.original_name}
+			</h3>
+			<button
+				type="button"
+				onclick={remove}
+				disabled={removing}
+				class="shrink-0 text-slate-400 transition hover:text-red-600"
+				aria-label={m.delete_label()}
+				title={m.delete_label()}
+			>
+				<Trash2 size={14} />
+			</button>
+		</header>
+
+		<div class="mt-1 flex items-center justify-between gap-2 text-xs text-slate-500">
+			<span>{fmtSize(task.file_size)}</span>
+			<span>{timeAgo(task.created_at)}</span>
+		</div>
+
+		{#if task.status === 'processing' || task.status === 'pending'}
+			<div class="mt-2 h-1 w-full overflow-hidden rounded bg-slate-200">
+				<div class="h-full bg-slate-900 transition-all" style="width:{task.progress}%"></div>
+			</div>
+		{:else if task.status === 'failed' && task.error_message}
+			<p class="mt-2 break-all text-xs text-red-600">{task.error_message}</p>
+		{:else if task.status === 'completed' && task.m3u8_url}
+			<div class="mt-2 flex items-center gap-3 text-xs">
+				<a href="/videos/{task.id}" class="flex items-center gap-1 text-slate-700 hover:text-slate-900">
+					<CheckCircle2 size={12} /> {m.play_label()}
+				</a>
+				<button
+					type="button"
+					onclick={(e) => {
+						e.stopPropagation();
+						copyUrl(task.m3u8_url!);
+					}}
+					class="flex items-center gap-1 text-slate-500 hover:text-slate-900"
+				>
+					<Copy size={12} /> {copied ? m.copied() : m.copy_url()}
+				</button>
+			</div>
+		{/if}
+	</div>
+</article>

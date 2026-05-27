@@ -1,0 +1,1 @@
+- [Infrastructure](project_infra.md) -- Backend (Go, port 8080) and Frontend (Vite/pnpm, port 5173/5174) service ports and build commands

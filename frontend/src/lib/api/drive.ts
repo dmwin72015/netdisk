@@ -1,0 +1,324 @@
+import { api } from './client';
+import { computeSHA256 } from './uploads';
+import * as m from '$lib/paraglide/messages';
+
+export type DriveFile = {
+	id: string;
+	name: string;
+	mime_type: string;
+	size: number;
+	created_at: number;
+	is_dir: boolean;
+	parent_id?: string;
+};
+
+export type DriveList = {
+	items: DriveFile[];
+	total: number;
+	limit: number;
+	offset: number;
+};
+
+export type DriveSession = {
+	id: string;
+	name: string;
+	total_size: number;
+	received_bytes: number;
+	created_at: number;
+	updated_at: number;
+};
+
+export type DriveChunkResult = { id: string; received_bytes: number };
+
+export type DriveCheckHashResult = {
+	exists: boolean;
+	file_id?: string;
+};
+
+export type DriveClaimResult = {
+	file_id: string;
+};
+
+export { computeSHA256 };
+
+const DRIVE_CHUNK_SIZE = 8 * 1024 * 1024;
+
+/** Files larger than this skip client-side SHA-256 to avoid OOM in the browser.
+ *  The server computes the hash during Complete() for all files regardless. */
+const MAX_HASH_SIZE = 200 * 1024 * 1024;
+
+export async function driveStats(): Promise<{ used_bytes: number; base_bytes: number; member_bonus_bytes: number; pack_bytes: number; total_bytes: number }> {
+	return api<{ used_bytes: number; base_bytes: number; member_bonus_bytes: number; pack_bytes: number; total_bytes: number }>('/api/v1/drive/stats');
+}
+
+export async function createDriveDir(name: string, parentId?: string): Promise<DriveFile> {
+	return api<DriveFile>('/api/v1/drive/dir', {
+		method: 'POST',
+		body: JSON.stringify({ name, parent_id: parentId }),
+	});
+}
+
+export async function listDrive(limit = 50, offset = 0, q?: string, parentId?: string): Promise<DriveList> {
+	const params = `limit=${limit}&offset=${offset}${q ? `&q=${encodeURIComponent(q)}` : ''}${parentId ? `&parent_id=${encodeURIComponent(parentId)}` : ''}`;
+	return api<DriveList>(`/api/v1/drive?${params}`);
+}
+
+export async function getDriveFile(id: string): Promise<DriveFile> {
+	return api<DriveFile>(`/api/v1/drive/${id}`);
+}
+
+export async function getDriveAncestors(id: string): Promise<DriveFile[]> {
+	return api<DriveFile[]>(`/api/v1/drive/${id}/ancestors`);
+}
+
+// ---- Dedup ----
+
+export async function driveCheckHash(sha256: string): Promise<DriveCheckHashResult> {
+	return api<DriveCheckHashResult>('/api/v1/drive/check-sha256', {
+		method: 'POST',
+		body: JSON.stringify({ sha256 }),
+	});
+}
+
+export async function driveClaimHash(
+	sha256: string,
+	originalName: string,
+	mimeType: string,
+	fileSize: number,
+	parentId?: string | null,
+): Promise<DriveClaimResult> {
+	return api<DriveClaimResult>('/api/v1/drive/claim', {
+		method: 'POST',
+		body: JSON.stringify({ sha256, original_name: originalName, mime_type: mimeType, file_size: fileSize, parent_id: parentId || undefined }),
+	});
+}
+
+// ---- Unified pre-upload check ----
+
+export type DriveCheckUploadResult = {
+	status: 'full' | 'partial' | 'none';
+	file_id?: string;
+	own_file?: boolean;
+	session_id?: string;
+	received_bytes?: number;
+};
+
+export async function driveCheckUpload(
+	sha256: string,
+	fileSize: number,
+	fileName: string,
+	mimeType: string,
+	parentId?: string | null,
+): Promise<DriveCheckUploadResult> {
+	return api<DriveCheckUploadResult>('/api/v1/drive/check-upload', {
+		method: 'POST',
+		body: JSON.stringify({ sha256, file_size: fileSize, file_name: fileName, mime_type: mimeType, parent_id: parentId || undefined }),
+	});
+}
+
+// ---- Session management ----
+
+export async function listDriveSessions(): Promise<DriveSession[]> {
+	const data = await api<{ items: DriveSession[] }>('/api/v1/drive/uploads');
+	return data.items;
+}
+
+export async function initDriveUpload(filename: string, mimeType: string, totalSize: number, parentId?: string | null, sha256?: string): Promise<DriveSession & { status?: string; file_id?: string }> {
+	return api<DriveSession & { status?: string; file_id?: string }>('/api/v1/drive/uploads', {
+		method: 'POST',
+		body: JSON.stringify({ filename, mime_type: mimeType, total_size: totalSize, parent_id: parentId || undefined, sha256: sha256 || undefined }),
+	});
+}
+
+export async function getDriveSession(id: string): Promise<DriveSession> {
+	return api<DriveSession>(`/api/v1/drive/uploads/${id}`);
+}
+
+export async function uploadDriveChunk(
+	id: string,
+	offset: number,
+	chunk: Blob,
+): Promise<DriveChunkResult> {
+	return api<DriveChunkResult>(`/api/v1/drive/uploads/${id}?offset=${offset}`, {
+		method: 'PATCH',
+		body: chunk,
+		headers: { 'Content-Type': 'application/octet-stream' },
+	});
+}
+
+export async function completeDriveUpload(id: string): Promise<{ file_id: string }> {
+	return api<{ file_id: string }>(`/api/v1/drive/uploads/${id}/complete`, { method: 'POST' });
+}
+
+export async function cancelDriveUpload(id: string): Promise<void> {
+	await api<void>(`/api/v1/drive/uploads/${id}`, { method: 'DELETE' });
+}
+
+// ---- Legacy multipart upload (kept for backward compatibility) ----
+
+export async function uploadDriveFile(file: File): Promise<{ id: string; name: string }> {
+	const fd = new FormData();
+	fd.append('file', file);
+	return api<{ id: string; name: string }>('/api/v1/drive/upload', {
+		method: 'POST',
+		body: fd,
+	});
+}
+
+export function uploadDriveFileWithProgress(
+	file: File,
+	onProgress: (pct: number) => void,
+	signal?: AbortSignal,
+): Promise<{ id: string; name: string }> {
+	return new Promise((resolve, reject) => {
+		const fd = new FormData();
+		fd.append('file', file);
+		const xhr = new XMLHttpRequest();
+		xhr.upload.onprogress = (e) => {
+			if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+		};
+		xhr.onload = () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				try {
+					const body = JSON.parse(xhr.responseText);
+					resolve((body?.data ?? body) as { id: string; name: string });
+				} catch {
+					reject(new Error(m.parse_failed()));
+				}
+			} else {
+				let msg = m.upload_failed_status({ status: xhr.status });
+				try {
+					const body = JSON.parse(xhr.responseText);
+					if (body?.error) msg = body.error;
+				} catch { /* ignore */ }
+				reject(new Error(msg));
+			}
+		};
+		xhr.onerror = () => reject(new Error(m.network_error()));
+		xhr.onabort = () => reject(new DOMException('Aborted', 'AbortError'));
+		const token = localStorage.getItem('vf.access') ?? '';
+		xhr.open('POST', '/api/v1/drive/upload');
+		if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+		if (signal) signal.addEventListener('abort', () => xhr.abort());
+		xhr.send(fd);
+	});
+}
+
+// ---- Chunked upload driver ----
+
+export type DriveChunkProgress = {
+	uploaded: number;
+	total: number;
+};
+
+export type DriveUploadOptions = {
+	onProgress?: (p: DriveChunkProgress) => void;
+	signal?: AbortSignal;
+};
+
+/**
+ * Upload a file using the chunked upload protocol:
+ * 1. If file ≤ 200 MB: compute SHA-256 client-side → check dedup
+ *    - If deduped → claim existing file, return immediately
+ * 2. Otherwise: skip client-side hash (server computes it)
+ * 3. Init session → upload chunks → complete
+ */
+export async function driveChunkedUpload(
+	file: File,
+	mimeType: string,
+	opts: DriveUploadOptions = {},
+	parentId?: string | null,
+): Promise<{ file_id: string }> {
+	if (file.size <= MAX_HASH_SIZE) {
+		const hash = await computeSHA256(file);
+		const check = await driveCheckHash(hash);
+		if (check.exists && check.file_id) {
+			const result = await driveClaimHash(hash, file.name, mimeType, file.size, parentId);
+			return result;
+		}
+	}
+
+	const session = await initDriveUpload(file.name, mimeType, file.size, parentId);
+	return uploadChunks(file, session.id, 0, opts);
+}
+
+/** Resume a previously paused upload from the server's last known offset. */
+export async function resumeDriveUpload(
+	file: File,
+	sessionId: string,
+	opts: DriveUploadOptions = {},
+): Promise<{ file_id: string }> {
+	const session = await getDriveSession(sessionId);
+	return uploadChunks(file, sessionId, session.received_bytes, opts);
+}
+
+export async function uploadChunks(
+	file: File,
+	sessionId: string,
+	startOffset: number,
+	opts: DriveUploadOptions = {},
+): Promise<{ file_id: string }> {
+	const chunkSize = DRIVE_CHUNK_SIZE;
+	let offset = startOffset;
+
+	opts.onProgress?.({ uploaded: offset, total: file.size });
+
+	while (offset < file.size) {
+		if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+		const end = Math.min(offset + chunkSize, file.size);
+		const chunk = file.slice(offset, end);
+
+		let lastErr: unknown;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				const result = await uploadDriveChunk(sessionId, offset, chunk);
+				offset = result.received_bytes;
+				lastErr = null;
+				break;
+			} catch (e) {
+				lastErr = e;
+				if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+				if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+			}
+		}
+		if (lastErr) throw lastErr;
+
+		opts.onProgress?.({ uploaded: offset, total: file.size });
+	}
+
+	return completeDriveUpload(sessionId);
+}
+
+// ---- Helper functions ----
+
+export async function renameDriveFile(id: string, newName: string): Promise<DriveFile> {
+	return api<DriveFile>(`/api/v1/drive/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ name: newName }),
+	});
+}
+
+export async function deleteDriveFile(id: string): Promise<void> {
+	await api<void>(`/api/v1/drive/${id}`, { method: 'DELETE' });
+}
+
+function authedUrl(path: string): string {
+	const token = typeof localStorage !== 'undefined' ? localStorage.getItem('vf.access') ?? '' : '';
+	return `${path}?access_token=${encodeURIComponent(token)}`;
+}
+
+export function getDownloadUrl(id: string): string {
+	return authedUrl(`/api/v1/drive/${id}/download`);
+}
+
+export function getPreviewUrl(id: string): string {
+	return authedUrl(`/api/v1/drive/${id}/preview`);
+}
+
+export function fmtSize(size: number): string {
+	if (size < 1024) return `${size} B`;
+	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+	if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+	return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+

@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS media_jobs;
+DROP TABLE IF EXISTS media_items;
+DROP TABLE IF EXISTS media_transcodes;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS upload_tasks;
+DROP TABLE IF EXISTS user_files;
+DROP TABLE IF EXISTS physical_files;
+DROP TABLE IF EXISTS user_transactions;
+DROP TABLE IF EXISTS user_levels;
+DROP TABLE IF EXISTS user_storage_stats;
+DROP TABLE IF EXISTS user_profiles;
+DROP TABLE IF EXISTS users;

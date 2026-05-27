@@ -1,0 +1,28 @@
+# Build artifacts
+backend/bin/
+backend/tmp/
+backend/data
+backend/data/*
+
+# Frontend
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.env
+
+# Env / secrets
+.env
+*.local
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+
+# Other
+# .agents
+# .claude
+# .kiro

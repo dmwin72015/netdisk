@@ -1,0 +1,6 @@
+# 2026/05/22 16:47:19.733788 [TestDedupService_Property4_DedupTaskInheritsCompletedStatus] [rapid] draw hash: 0x1
+# 2026/05/22 16:47:19.741055 [TestDedupService_Property4_DedupTaskInheritsCompletedStatus] first task status="completed" want pending
+# 
+v0.4.8#15467816186253325285
+0x0
+0x1
