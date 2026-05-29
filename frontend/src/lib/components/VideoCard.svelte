@@ -5,6 +5,7 @@
 	import { deleteTask } from '$lib/api/tasks';
 	import { confirmDelete } from '$lib/dialog';
 	import * as m from '$lib/paraglide/messages';
+	import { getAccessToken } from '$lib/api/client';
 
 	let {
 		task,
@@ -41,7 +42,7 @@
 	}
 
 	function authedThumb(url: string): string {
-		const token = localStorage.getItem('vf.access');
+		const token = getAccessToken();
 		if (!token) return url;
 		const u = new URL(url, window.location.origin);
 		u.searchParams.set('access_token', token);
@@ -70,8 +71,8 @@
 		if (task.status === 'completed') void goto(`/videos/${task.id}`);
 	}
 
-	const duration = $derived(fmtDuration(task.duration_sec));
-	const thumbnailSrc = $derived(task.thumbnail_url ? authedThumb(task.thumbnail_url) : null);
+	const duration = $derived(fmtDuration(task.durationSec));
+	const thumbnailSrc = $derived(task.thumbnailUrl ? authedThumb(task.thumbnailUrl) : null);
 </script>
 
 <article
@@ -90,7 +91,7 @@
 		{#if task.status === 'completed' && thumbnailSrc && !thumbFailed}
 			<img
 				src={thumbnailSrc}
-				alt={task.original_name}
+				alt={task.originalName}
 				loading="lazy"
 				onerror={() => (thumbFailed = true)}
 				class="h-full w-full object-cover transition group-hover:scale-105"
@@ -124,8 +125,8 @@
 
 	<div class="p-3">
 		<header class="flex items-start gap-2">
-			<h3 class="min-w-0 flex-1 truncate text-sm font-medium text-slate-900" title={task.original_name}>
-				{task.original_name}
+			<h3 class="min-w-0 flex-1 truncate text-sm font-medium text-slate-900" title={task.originalName}>
+				{task.originalName}
 			</h3>
 			<button
 				type="button"
@@ -140,17 +141,17 @@
 		</header>
 
 		<div class="mt-1 flex items-center justify-between gap-2 text-xs text-slate-500">
-			<span>{fmtSize(task.file_size)}</span>
-			<span>{timeAgo(task.created_at)}</span>
+			<span>{fmtSize(task.fileSize)}</span>
+			<span>{timeAgo(task.createdAt)}</span>
 		</div>
 
 		{#if task.status === 'processing' || task.status === 'pending'}
 			<div class="mt-2 h-1 w-full overflow-hidden rounded bg-slate-200">
 				<div class="h-full bg-slate-900 transition-all" style="width:{task.progress}%"></div>
 			</div>
-		{:else if task.status === 'failed' && task.error_message}
-			<p class="mt-2 break-all text-xs text-red-600">{task.error_message}</p>
-		{:else if task.status === 'completed' && task.m3u8_url}
+		{:else if task.status === 'failed' && task.errorMessage}
+			<p class="mt-2 break-all text-xs text-red-600">{task.errorMessage}</p>
+		{:else if task.status === 'completed' && task.m3u8Url}
 			<div class="mt-2 flex items-center gap-3 text-xs">
 				<a href="/videos/{task.id}" class="flex items-center gap-1 text-slate-700 hover:text-slate-900">
 					<CheckCircle2 size={12} /> {m.play_label()}
@@ -159,7 +160,7 @@
 					type="button"
 					onclick={(e) => {
 						e.stopPropagation();
-						copyUrl(task.m3u8_url!);
+						copyUrl(task.m3u8Url!);
 					}}
 					class="flex items-center gap-1 text-slate-500 hover:text-slate-900"
 				>

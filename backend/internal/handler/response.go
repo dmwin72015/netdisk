@@ -65,6 +65,8 @@ func MapError(err error) (int, string) {
 		return http.StatusNotFound, "challenge expired"
 	case errors.Is(err, model.ErrChallengeMismatch):
 		return http.StatusForbidden, "challenge mismatch"
+	case errors.Is(err, model.ErrDirNotEmpty):
+		return http.StatusConflict, "directory is not empty"
 	default:
 		return http.StatusInternalServerError, "internal error"
 	}

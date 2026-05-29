@@ -1,63 +1,81 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
+	import { getAccessToken } from '$lib/api/client';
 	import { Film, Trash2, Loader2, Play, AlertCircle, Clock, Plus } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 	import { confirmDelete } from '$lib/dialog';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let items = $state<MediaItem[]>([]);
 	let total = $state(0);
-	let loading = $state(false);
-	let error = $state<string | null>(null);
+	let loading = $state(true);
 	let showAddDialog = $state(false);
+	let pollTimer: ReturnType<typeof setInterval> | undefined;
+
+	function authedPoster(url: string): string {
+		const token = getAccessToken();
+		if (!token) return url;
+		const u = new URL(url, window.location.origin);
+		u.searchParams.set('access_token', token);
+		return u.pathname + '?' + u.searchParams.toString();
+	}
+
+	function startPolling() {
+		stopPolling();
+		pollTimer = setInterval(async () => {
+			if (!$user) return;
+			try {
+				const data = await listMedia();
+				items = data.items;
+				total = data.total;
+				if (!items.some(i => i.status === 'processing' || i.status === 'pending')) {
+					stopPolling();
+				}
+			} catch {
+				// ignore poll errors
+			}
+		}, 3000);
+	}
+
+	function stopPolling() {
+		if (pollTimer) {
+			clearInterval(pollTimer);
+			pollTimer = undefined;
+		}
+	}
 
 	async function refresh() {
 		if (!$user) return;
 		loading = true;
-		error = null;
 		try {
 			const data = await listMedia();
 			items = data.items;
 			total = data.total;
+			if (items.some(i => i.status === 'processing' || i.status === 'pending')) {
+				startPolling();
+			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : m.media_load_failed();
+			toast.error(e instanceof Error ? e.message : m.media_load_failed());
 		} finally {
 			loading = false;
 		}
 	}
 
+	onDestroy(stopPolling);
+
 	async function remove(slug: string, name: string) {
 		if (!(await confirmDelete(m.confirm_remove_media({ name })))) return;
 		try {
 			await removeFromLibrary(slug);
-			items = items.filter(i => i.media_slug !== slug);
+			items = items.filter(i => i.mediaSlug !== slug);
 			total--;
 		} catch (e) {
-			error = e instanceof Error ? e.message : m.media_remove_failed();
-		}
-	}
-
-	function statusColor(status: string): string {
-		switch (status) {
-			case 'done': return 'text-green-600 bg-green-50';
-			case 'processing': return 'text-blue-600 bg-blue-50';
-			case 'pending': return 'text-gray-500 bg-gray-50';
-			case 'failed': return 'text-red-600 bg-red-50';
-			default: return 'text-gray-500 bg-gray-50';
-		}
-	}
-
-	function statusIcon(status: string) {
-		switch (status) {
-			case 'done': return Play;
-			case 'processing': return Loader2;
-			case 'pending': return Clock;
-			case 'failed': return AlertCircle;
-			default: return Clock;
+			toast.error(e instanceof Error ? e.message : m.media_remove_failed());
 		}
 	}
 
@@ -92,13 +110,6 @@
 			</button>
 		</div>
 
-		{#if error}
-			<div class="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
-				<AlertCircle size={16} class="mt-0.5 shrink-0" />
-				<span>{error}</span>
-			</div>
-		{/if}
-
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
 				<Loader2 size={24} class="animate-spin text-gray-300" />
@@ -111,15 +122,24 @@
 			</div>
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each items as item (item.media_slug)}
-					<div class="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md">
+				{#each items as item (item.mediaSlug)}
+					<div class="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md {item.status === 'done' ? '' : 'cursor-default'}">
 						<!-- Thumbnail / status area -->
 						<div class="relative aspect-video bg-gray-100">
 							{#if item.status === 'done'}
-								<a href="/media/{item.media_slug}" class="flex h-full items-center justify-center">
-									<div class="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-transform group-hover:scale-110">
-										<Play size={20} fill="currentColor" />
-									</div>
+								<a href="/media/{item.mediaSlug}" class="block h-full">
+									{#if item.posterUrl}
+										<img src={authedPoster(item.posterUrl)} alt={item.fileName} class="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+										<div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
+											<Play size={40} class="text-white opacity-0 transition group-hover:opacity-100" fill="currentColor" />
+										</div>
+									{:else}
+										<div class="flex h-full items-center justify-center">
+											<div class="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-transform group-hover:scale-110">
+												<Play size={20} fill="currentColor" />
+											</div>
+										</div>
+									{/if}
 								</a>
 							{:else}
 								<div class="flex h-full flex-col items-center justify-center gap-2">
@@ -136,20 +156,10 @@
 								</div>
 							{/if}
 
-							<!-- Status badge -->
-							<div class="absolute left-2 top-2">
-								<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {statusColor(item.status)}">
-									{#if item.status === 'processing'}
-										<Loader2 size={10} class="animate-spin" />
-									{/if}
-									{item.status}
-								</span>
-							</div>
-
 							<!-- Duration -->
-							{#if item.duration_sec}
+							{#if item.durationSec}
 								<div class="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
-									{fmtDuration(item.duration_sec)}
+									{fmtDuration(item.durationSec)}
 								</div>
 							{/if}
 						</div>
@@ -158,17 +168,17 @@
 						<div class="px-3 py-2.5">
 							<div class="flex items-start justify-between gap-2">
 								<div class="min-w-0 flex-1">
-									<p class="truncate text-sm font-medium text-gray-700" title={item.file_name}>{item.file_name}</p>
+									<p class="truncate text-sm font-medium text-gray-700" title={item.fileName}>{item.fileName}</p>
 									<p class="mt-0.5 text-xs text-gray-400">
-										{new Date(item.created_at).toLocaleDateString()}
+										{new Date(item.createdAt).toLocaleDateString()}
 									</p>
 								</div>
-								<button type="button" onclick={() => remove(item.media_slug, item.file_name)} class="shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100" title={m.remove()}>
+								<button type="button" onclick={() => remove(item.mediaSlug, item.fileName)} class="shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100" title={m.remove()}>
 									<Trash2 size={14} />
 								</button>
 							</div>
-							{#if item.status === 'failed' && item.error_msg}
-								<p class="mt-1 truncate text-xs text-red-500" title={item.error_msg}>{item.error_msg}</p>
+							{#if item.status === 'failed' && item.errorMsg}
+								<p class="mt-1 truncate text-xs text-red-500" title={item.errorMsg}>{item.errorMsg}</p>
 							{/if}
 						</div>
 					</div>

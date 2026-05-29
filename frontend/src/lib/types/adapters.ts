@@ -1,0 +1,29 @@
+import type { FileItem } from '$lib/api/files';
+import type { DriveFile } from '$lib/api/drive';
+import type { NormalizedFile } from './file';
+
+export function normalizeFileItem(f: FileItem): NormalizedFile {
+	return {
+		id: f.slug,
+		name: f.fileName,
+		isDir: f.isDir,
+		size: f.fileSize,
+		mimeType: f.mimeType,
+		fileCategory: f.fileCategory,
+		isStarred: f.isStarred,
+		updatedAt: f.updatedAt,
+	};
+}
+
+export function normalizeDriveFile(f: DriveFile): NormalizedFile {
+	return {
+		id: f.id,
+		name: f.name,
+		isDir: f.isDir,
+		size: f.size,
+		mimeType: f.mimeType || null,
+		fileCategory: f.fileCategory,
+		isStarred: false,
+		updatedAt: new Date(f.createdAt * 1000).toISOString(),
+	};
+}

@@ -99,14 +99,14 @@ func (h *UploadHandler) UploadChunk(c echo.Context) error {
 		return err
 	}
 
-	uploadSlug := c.FormValue("upload_slug")
-	chunkIndexStr := c.FormValue("chunk_index")
+	uploadSlug := c.FormValue("uploadSlug")
+	chunkIndexStr := c.FormValue("chunkIndex")
 	chunkIndex, err := strconv.Atoi(chunkIndexStr)
 	if err != nil {
 		return echo.NewHTTPError(400, "invalid chunk_index")
 	}
 
-	file, err := c.FormFile("chunk_data")
+	file, err := c.FormFile("chunkData")
 	if err != nil {
 		return echo.NewHTTPError(400, "chunk_data is required")
 	}
@@ -136,7 +136,7 @@ func (h *UploadHandler) Complete(c echo.Context) error {
 	}
 
 	var input struct {
-		UploadSlug string `json:"upload_slug"`
+		UploadSlug string `json:"uploadSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")

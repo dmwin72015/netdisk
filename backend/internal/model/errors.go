@@ -17,4 +17,5 @@ var (
 	ErrSameFileConflict   = errors.New("same file conflict")
 	ErrChallengeExpired   = errors.New("challenge expired")
 	ErrChallengeMismatch  = errors.New("challenge mismatch")
+	ErrDirNotEmpty        = errors.New("directory is not empty")
 )

@@ -40,8 +40,8 @@ func NewUploadService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Confi
 }
 
 type PreCheckRequest struct {
-	PreHash  string `json:"pre_hash"`
-	FileSize int64  `json:"file_size"`
+	PreHash  string `json:"preHash"`
+	FileSize int64  `json:"fileSize"`
 }
 
 type PreCheckResponse struct {
@@ -49,47 +49,47 @@ type PreCheckResponse struct {
 }
 
 type RequestChallengeRequest struct {
-	FileHash string `json:"file_hash"`
+	FileHash string `json:"fileHash"`
 }
 
 type RequestChallengeResponse struct {
 	Status          string `json:"status"`
-	ChallengeOffset int64  `json:"challenge_offset,omitempty"`
-	ChallengeToken  string `json:"challenge_token,omitempty"`
+	ChallengeOffset int64  `json:"challengeOffset,omitempty"`
+	ChallengeToken  string `json:"challengeToken,omitempty"`
 }
 
 type VerifyRequest struct {
-	FileHash  string `json:"file_hash"`
-	ProofCode string `json:"proof_code"`
+	FileHash  string `json:"fileHash"`
+	ProofCode string `json:"proofCode"`
 }
 
 type VerifyResponse struct {
 	Status           string `json:"status"`
-	PhysicalFileSlug string `json:"physical_file_slug,omitempty"`
+	PhysicalFileSlug string `json:"physicalFileSlug,omitempty"`
 }
 
 type InitRequest struct {
-	FileHash string `json:"file_hash"`
-	PreHash  string `json:"pre_hash"`
-	FileSize int64  `json:"file_size"`
-	MimeType string `json:"mime_type"`
+	FileHash string `json:"fileHash"`
+	PreHash  string `json:"preHash"`
+	FileSize int64  `json:"fileSize"`
+	MimeType string `json:"mimeType"`
 }
 
 type InitResponse struct {
-	UploadSlug      string `json:"upload_slug"`
-	TotalChunks     int32  `json:"total_chunks"`
-	ChunkSize       int32  `json:"chunk_size"`
-	CompletedChunks []int  `json:"completed_chunks"`
+	UploadSlug      string `json:"uploadSlug"`
+	TotalChunks     int32  `json:"totalChunks"`
+	ChunkSize       int32  `json:"chunkSize"`
+	CompletedChunks []int  `json:"completedChunks"`
 }
 
 type CompleteResponse struct {
 	Status           string `json:"status"`
-	PhysicalFileSlug string `json:"physical_file_slug,omitempty"`
+	PhysicalFileSlug string `json:"physicalFileSlug,omitempty"`
 }
 
 type StatusResponse struct {
 	Status           string  `json:"status"`
-	PhysicalFileSlug string  `json:"physical_file_slug,omitempty"`
+	PhysicalFileSlug string  `json:"physicalFileSlug,omitempty"`
 	Error            *string `json:"error,omitempty"`
 }
 
@@ -289,9 +289,9 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 }
 
 type UpdateHashRequest struct {
-	UploadSlug string `json:"upload_slug"`
-	FileHash   string `json:"file_hash"`
-	PreHash    string `json:"pre_hash"`
+	UploadSlug string `json:"uploadSlug"`
+	FileHash   string `json:"fileHash"`
+	PreHash    string `json:"preHash"`
 }
 
 func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req UpdateHashRequest) error {

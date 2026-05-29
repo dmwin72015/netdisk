@@ -4,6 +4,7 @@
 	import Navbar from '$lib/components/Navbar.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import AppDialog from '$lib/components/AppDialog.svelte';
+	import { Toast } from '$lib/ui/toast';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { getStoredUser } from '$lib/api/client';
@@ -32,3 +33,4 @@
 </div>
 
 <AppDialog />
+<Toast />

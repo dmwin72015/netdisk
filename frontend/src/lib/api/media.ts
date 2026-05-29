@@ -1,31 +1,32 @@
 import { api } from './client';
 
 export type MediaItem = {
-	media_slug: string;
-	file_name: string;
+	mediaSlug: string;
+	fileName: string;
 	status: 'pending' | 'processing' | 'done' | 'failed';
 	progress: number;
-	duration_sec: number | null;
-	error_msg: string | null;
-	created_at: string;
+	durationSec: number | null;
+	errorMsg: string | null;
+	posterUrl: string | null;
+	createdAt: string;
 };
 
 export type AddToLibraryResponse = {
-	media_slug: string;
-	transcode_slug: string;
-	transcode_status: string;
-	transcode_reused: boolean;
+	mediaSlug: string;
+	transcodeSlug: string;
+	transcodeStatus: string;
+	transcodeReused: boolean;
 };
 
 export async function addToLibrary(fileSlug: string) {
 	return api<AddToLibraryResponse>('/api/v1/media/items', {
 		method: 'POST',
-		body: JSON.stringify({ file_slug: fileSlug })
+		body: JSON.stringify({ fileSlug })
 	});
 }
 
 export async function listMedia(page = 1, pageSize = 50) {
-	return api<{ items: MediaItem[]; total: number }>(`/api/v1/media/items?page=${page}&page_size=${pageSize}`);
+	return api<{ items: MediaItem[]; total: number }>(`/api/v1/media/items?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getMediaItem(mediaSlug: string) {

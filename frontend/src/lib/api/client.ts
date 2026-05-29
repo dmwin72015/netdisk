@@ -13,26 +13,26 @@ export type UserInfo = {
 	email: string;
 	status: number;
 	profile: {
-		display_name: string;
-		avatar_url: string;
+		displayName: string;
+		avatarUrl: string;
 		bio: string;
 	};
 	storage: {
-		storage_used: number;
-		storage_quota: number;
+		storageUsed: number;
+		storageQuota: number;
 	};
 	level: {
-		level_code: string;
-		level_name: string;
-		expires_at: string | null;
+		levelCode: string;
+		levelName: string;
+		expiresAt: string | null;
 	};
-	created_at: string;
+	createdAt: string;
 };
 
 export type Tokens = {
-	access_token: string;
-	refresh_token: string;
-	expires_in: number;
+	accessToken: string;
+	refreshToken: string;
+	expiresIn: number;
 };
 
 export class ApiError extends Error {
@@ -77,8 +77,8 @@ export function getStoredUser(): UserInfo | null {
 export function setSession(user: UserInfo | null, tokens: Tokens | null) {
 	if (user && tokens) {
 		writeStorage(USER_KEY, JSON.stringify(user));
-		writeStorage(ACCESS_KEY, tokens.access_token);
-		writeStorage(REFRESH_KEY, tokens.refresh_token);
+		writeStorage(ACCESS_KEY, tokens.accessToken);
+		writeStorage(REFRESH_KEY, tokens.refreshToken);
 	} else {
 		writeStorage(USER_KEY, null);
 		writeStorage(ACCESS_KEY, null);
@@ -87,8 +87,8 @@ export function setSession(user: UserInfo | null, tokens: Tokens | null) {
 }
 
 export function updateTokens(tokens: Tokens) {
-	writeStorage(ACCESS_KEY, tokens.access_token);
-	writeStorage(REFRESH_KEY, tokens.refresh_token);
+	writeStorage(ACCESS_KEY, tokens.accessToken);
+	writeStorage(REFRESH_KEY, tokens.refreshToken);
 }
 
 async function rawRequest(
@@ -115,7 +115,7 @@ async function tryRefresh(): Promise<string | null> {
 			const res = await fetch('/api/v1/auth/refresh', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ refresh_token: refresh })
+				body: JSON.stringify({ refreshToken: refresh })
 			});
 			if (!res.ok) {
 				setSession(null, null);
@@ -124,7 +124,7 @@ async function tryRefresh(): Promise<string | null> {
 			const json = await res.json();
 			const tokens = json.data as Tokens;
 			updateTokens(tokens);
-			return tokens.access_token;
+			return tokens.accessToken;
 		} catch {
 			setSession(null, null);
 			return null;

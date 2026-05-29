@@ -25,7 +25,7 @@
 		try {
 			item = await getMediaItem(page.params.slug!);
 			if (item.status === 'done') {
-				const masterUrl = getHLSUrl(item.media_slug, 'master.m3u8');
+				const masterUrl = getHLSUrl(item.mediaSlug, 'master.m3u8');
 				attachHLS(authedHLS(masterUrl));
 			}
 		} catch (err) {
@@ -65,11 +65,11 @@
 					item = updated;
 					if (updated.status === 'done') {
 						if (pollTimer) clearInterval(pollTimer);
-						const masterUrl = getHLSUrl(updated.media_slug, 'master.m3u8');
+						const masterUrl = getHLSUrl(updated.mediaSlug, 'master.m3u8');
 						attachHLS(authedHLS(masterUrl));
 					} else if (updated.status === 'failed') {
 						if (pollTimer) clearInterval(pollTimer);
-						error = updated.error_msg || m.conversion_failed();
+						error = updated.errorMsg || m.conversion_failed();
 					}
 				} catch {
 					// ignore poll errors
@@ -114,7 +114,7 @@
 			<Loader2 size={24} class="animate-spin text-gray-300" />
 		</div>
 	{:else}
-		<h1 class="text-xl font-semibold text-gray-900">{item.file_name}</h1>
+		<h1 class="text-xl font-semibold text-gray-900">{item.fileName}</h1>
 
 		{#if item.status === 'done'}
 			<div class="overflow-hidden rounded-xl bg-black">
@@ -136,7 +136,7 @@
 		{:else if item.status === 'failed'}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-red-200 bg-red-50 py-20">
 				<AlertCircle size={32} class="text-red-300" />
-				<p class="mt-3 text-sm text-red-600">{item.error_msg || m.conversion_failed()}</p>
+				<p class="mt-3 text-sm text-red-600">{item.errorMsg || m.conversion_failed()}</p>
 			</div>
 		{/if}
 
@@ -145,19 +145,19 @@
 				<dt class="text-gray-400">{m.status()}</dt>
 				<dd class="mt-0.5 font-medium capitalize">{item.status}</dd>
 			</div>
-			{#if item.duration_sec}
+			{#if item.durationSec}
 				<div>
 					<dt class="text-gray-400">{m.duration()}</dt>
-					<dd class="mt-0.5 font-medium">{fmtDuration(item.duration_sec)}</dd>
+					<dd class="mt-0.5 font-medium">{fmtDuration(item.durationSec)}</dd>
 				</div>
 			{/if}
 			<div>
 				<dt class="text-gray-400">{m.created()}</dt>
-				<dd class="mt-0.5">{new Date(item.created_at).toLocaleString()}</dd>
+				<dd class="mt-0.5">{new Date(item.createdAt).toLocaleString()}</dd>
 			</div>
 			<div>
 				<dt class="text-gray-400">{m.media_id()}</dt>
-				<dd class="mt-0.5 font-mono text-xs">{item.media_slug}</dd>
+				<dd class="mt-0.5 font-mono text-xs">{item.mediaSlug}</dd>
 			</div>
 		</dl>
 	{/if}

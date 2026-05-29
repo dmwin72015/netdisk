@@ -44,7 +44,7 @@ func (h *MediaHandler) ListMediaItems(c echo.Context) error {
 	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("page_size"))
+	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
 	items, total, err := h.svc.ListMediaItems(c.Request().Context(), userID, page, pageSize)
 	if err != nil {
@@ -84,6 +84,23 @@ func (h *MediaHandler) RemoveFromLibrary(c echo.Context) error {
 	}
 
 	return OK(c, map[string]string{"message": "removed from library"})
+}
+
+func (h *MediaHandler) ServePoster(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	mediaSlug := c.Param("media_slug")
+	filePath, err := h.svc.GetPosterPath(c.Request().Context(), userID, mediaSlug)
+	if err != nil {
+		return err
+	}
+
+	c.Response().Header().Set(echo.HeaderContentType, "image/jpeg")
+	c.Response().Header().Set("Cache-Control", "public, max-age=86400")
+	return c.File(filePath)
 }
 
 func (h *MediaHandler) ServeHLS(c echo.Context) error {

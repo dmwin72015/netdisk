@@ -29,7 +29,7 @@ export async function logout(): Promise<void> {
 		if (refresh) {
 			await api('/api/v1/auth/logout', {
 				method: 'POST',
-				body: JSON.stringify({ refresh_token: refresh })
+				body: JSON.stringify({ refreshToken: refresh })
 			});
 		}
 	} catch {

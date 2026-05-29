@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/db"
 	"github.com/netdisk/server/internal/service"
 )
 
@@ -26,22 +27,66 @@ func (h *FilesHandler) ListFiles(c echo.Context) error {
 	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("page_size"))
-	parentSlug := c.QueryParam("parent_slug")
-	mimeType := c.QueryParam("mime_type")
+	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
-	if mimeType != "" {
-		items, total, err := h.svc.ListFilesByMime(c.Request().Context(), userID, mimeType, page, pageSize)
-		if err != nil {
-			return err
-		}
-		return OK(c, map[string]any{
-			"files": items,
-			"total": total,
-		})
+	params := db.ListFilesParams{
+		UserID:      userID,
+		Page:        page,
+		PageSize:    pageSize,
+		IncludeDirs: true,
+		// SortBy/SortDir left empty → normalize() defaults to created_at DESC
 	}
 
-	items, total, err := h.svc.ListFiles(c.Request().Context(), userID, parentSlug, page, pageSize)
+	if v := c.QueryParam("sortBy"); v != "" {
+		params.SortBy = v
+	}
+	if v := c.QueryParam("sortDir"); v != "" {
+		params.SortDir = v
+	}
+
+	if parentSlug := c.QueryParam("parentSlug"); parentSlug != "" {
+		parent, pErr := h.svc.ResolveParent(c.Request().Context(), userID, parentSlug)
+		if pErr != nil {
+			return pErr
+		}
+		params.ParentID = &parent.ID
+	}
+
+	if v := c.QueryParam("mimeType"); v != "" {
+		params.MimePrefix = &v
+		params.IncludeDirs = false
+		params.IgnoreParentID = true
+	}
+
+	if v := c.QueryParam("fileCategory"); v != "" {
+		params.Category = &v
+		params.IncludeDirs = false
+		params.IgnoreParentID = true
+	}
+
+	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, map[string]any{
+		"files": items,
+		"total": total,
+	})
+}
+
+func (h *FilesHandler) ListRecentFiles(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 10
+	}
+
+	items, total, err := h.svc.ListRecentFiles(c.Request().Context(), userID, limit)
 	if err != nil {
 		return err
 	}
@@ -59,8 +104,8 @@ func (h *FilesHandler) Mkdir(c echo.Context) error {
 	}
 
 	var input struct {
-		DirName    string `json:"dir_name"`
-		ParentSlug string `json:"parent_slug"`
+		DirName    string `json:"dirName"`
+		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -81,10 +126,10 @@ func (h *FilesHandler) CheckConflict(c echo.Context) error {
 	}
 
 	var input struct {
-		FileName   string `json:"file_name"`
-		FileSize   int64  `json:"file_size"`
-		PreHash    string `json:"pre_hash"`
-		ParentSlug string `json:"parent_slug"`
+		FileName   string `json:"fileName"`
+		FileSize   int64  `json:"fileSize"`
+		PreHash    string `json:"preHash"`
+		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -105,8 +150,8 @@ func (h *FilesHandler) CheckDuplicate(c echo.Context) error {
 	}
 
 	var input struct {
-		FileHash   string `json:"file_hash"`
-		ParentSlug string `json:"parent_slug"`
+		FileHash   string `json:"fileHash"`
+		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -127,9 +172,9 @@ func (h *FilesHandler) ImportFile(c echo.Context) error {
 	}
 
 	var input struct {
-		PhysicalFileSlug string `json:"physical_file_slug"`
-		FileName         string `json:"file_name"`
-		ParentSlug       string `json:"parent_slug"`
+		PhysicalFileSlug string `json:"physicalFileSlug"`
+		FileName         string `json:"fileName"`
+		ParentSlug       string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -208,7 +253,7 @@ func (h *FilesHandler) RenameFile(c echo.Context) error {
 
 	slug := c.Param("slug")
 	var input struct {
-		NewName string `json:"new_name"`
+		NewName string `json:"newName"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -229,7 +274,7 @@ func (h *FilesHandler) MoveFile(c echo.Context) error {
 
 	slug := c.Param("slug")
 	var input struct {
-		TargetParentSlug string `json:"target_parent_slug"`
+		TargetParentSlug string `json:"targetParentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -290,9 +335,19 @@ func (h *FilesHandler) ListTrashed(c echo.Context) error {
 	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("page_size"))
+	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
-	items, total, err := h.svc.ListTrashed(c.Request().Context(), userID, page, pageSize)
+	params := db.ListFilesParams{
+		UserID:      userID,
+		IsTrashed:   true,
+		IncludeDirs: true,
+		SortBy:      "trashed_at",
+		SortDir:     "DESC",
+		Page:        page,
+		PageSize:    pageSize,
+	}
+
+	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params)
 	if err != nil {
 		return err
 	}
@@ -303,6 +358,38 @@ func (h *FilesHandler) ListTrashed(c echo.Context) error {
 	})
 }
 
+func (h *FilesHandler) EmptyTrash(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	count, err := h.svc.EmptyTrash(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, map[string]any{
+		"deleted": count,
+	})
+}
+
+func (h *FilesHandler) RestoreAll(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	count, err := h.svc.RestoreAll(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, map[string]any{
+		"restored": count,
+	})
+}
+
 func (h *FilesHandler) ListStarred(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {
@@ -310,9 +397,20 @@ func (h *FilesHandler) ListStarred(c echo.Context) error {
 	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("page_size"))
+	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
-	items, total, err := h.svc.ListStarred(c.Request().Context(), userID, page, pageSize)
+	starred := true
+	params := db.ListFilesParams{
+		UserID:      userID,
+		IsStarred:   &starred,
+		IncludeDirs: true,
+		SortBy:      "updated_at",
+		SortDir:     "DESC",
+		Page:        page,
+		PageSize:    pageSize,
+	}
+
+	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params)
 	if err != nil {
 		return err
 	}

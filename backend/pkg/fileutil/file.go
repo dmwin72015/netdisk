@@ -248,6 +248,50 @@ func DetectImage(head []byte) ImageFormat {
 
 var pngMagic = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
 
+// FileCategory represents a broad file type classification.
+type FileCategory string
+
+const (
+	CategoryFolder   FileCategory = "folder"
+	CategoryVideo    FileCategory = "video"
+	CategoryAudio    FileCategory = "audio"
+	CategoryImage    FileCategory = "image"
+	CategoryDocument FileCategory = "document"
+	CategoryArchive  FileCategory = "archive"
+	CategoryOther    FileCategory = "other"
+)
+
+// CategorizeMime maps a MIME type string to a broad file category.
+func CategorizeMime(mimeType string, isDir bool) FileCategory {
+	if isDir {
+		return CategoryFolder
+	}
+	switch {
+	case strings.HasPrefix(mimeType, "video/"):
+		return CategoryVideo
+	case strings.HasPrefix(mimeType, "audio/"):
+		return CategoryAudio
+	case strings.HasPrefix(mimeType, "image/"):
+		return CategoryImage
+	case strings.HasPrefix(mimeType, "text/"),
+		mimeType == "application/pdf",
+		strings.HasPrefix(mimeType, "application/msword"),
+		strings.HasPrefix(mimeType, "application/vnd.openxmlformats-officedocument."),
+		strings.HasPrefix(mimeType, "application/vnd.oasis.opendocument."),
+		strings.HasPrefix(mimeType, "application/vnd.ms-"):
+		return CategoryDocument
+	case mimeType == "application/zip",
+		strings.HasPrefix(mimeType, "application/x-rar"),
+		strings.HasPrefix(mimeType, "application/x-tar"),
+		mimeType == "application/gzip",
+		strings.HasPrefix(mimeType, "application/x-7z"),
+		strings.HasPrefix(mimeType, "application/x-bzip"):
+		return CategoryArchive
+	default:
+		return CategoryOther
+	}
+}
+
 // ValidateImageUpload checks an image upload's size and magic bytes, then
 // returns the opened reader (positioned at offset 0) and the detected format.
 // Caller takes ownership of the returned file and MUST close it.

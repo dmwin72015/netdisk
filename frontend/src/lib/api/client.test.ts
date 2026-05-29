@@ -42,15 +42,15 @@ const mockUser: UserInfo = {
 	username: 'alice',
 	email: 'a@b.com',
 	status: 1,
-	profile: { display_name: 'Alice', avatar_url: '', bio: '' },
-	storage: { storage_used: 0, storage_quota: 1024 },
-	level: { level_code: 'free', level_name: 'Free', expires_at: null },
-	created_at: '2025-01-01T00:00:00Z',
+	profile: { displayName: 'Alice', avatarUrl: '', bio: '' },
+	storage: { storageUsed: 0, storageQuota: 1024 },
+	level: { levelCode: 'free', levelName: 'Free', expiresAt: null },
+	createdAt: '2025-01-01T00:00:00Z',
 };
 const mockTokens: Tokens = {
-	access_token: 'acc',
-	refresh_token: 'ref',
-	expires_in: 9999,
+	accessToken: 'acc',
+	refreshToken: 'ref',
+	expiresIn: 9999,
 };
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -98,7 +98,7 @@ describe('session storage', () => {
 	});
 
 	it('getStoredUser returns null for corrupt JSON', () => {
-		store['vf.user'] = '{broken';
+		store['nd.user'] = '{broken';
 		expect(getStoredUser()).toBeNull();
 	});
 
@@ -108,7 +108,7 @@ describe('session storage', () => {
 
 	it('updateTokens refreshes tokens without touching user', () => {
 		setSession(mockUser, mockTokens);
-		updateTokens({ ...mockTokens, access_token: 'new_acc', refresh_token: 'new_ref' });
+		updateTokens({ ...mockTokens, accessToken: 'new_acc', refreshToken: 'new_ref' });
 		expect(getAccessToken()).toBe('new_acc');
 		expect(getRefreshToken()).toBe('new_ref');
 		expect(getStoredUser()).toEqual(mockUser);
@@ -188,9 +188,9 @@ describe('api', () => {
 		setSession(mockUser, mockTokens);
 
 		const refreshRes = jsonResponse({
-			access_token: 'fresh',
-			refresh_token: 'fresh_ref',
-			expires_in: 99999,
+			accessToken: 'fresh',
+			refreshToken: 'fresh_ref',
+			expiresIn: 99999,
 		});
 
 		const fetchSpy = vi.fn()

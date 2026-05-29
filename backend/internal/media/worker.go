@@ -152,6 +152,24 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 		return
 	}
 
+	// Extract poster image
+	posterPath := filepath.Join(outputDir, "poster.jpg")
+	if err := ExtractPoster(inputPath, posterPath, duration); err != nil {
+		log.Warn().Err(err).Msg("extract poster failed, continuing without poster")
+		posterPath = ""
+	}
+
+	// Update media item poster path
+	if posterPath != "" {
+		mediaItem, err := w.queries.GetMediaItemByTranscodeID(ctx, pgtype.Int8{Int64: tc.ID, Valid: true})
+		if err == nil {
+			_ = w.queries.UpdateMediaItemPoster(ctx, sqlc.UpdateMediaItemPosterParams{
+				ID:         mediaItem.ID,
+				PosterPath: pgtype.Text{String: posterPath, Valid: true},
+			})
+		}
+	}
+
 	// Success
 	if err := w.queries.UpdateTranscodeHLS(ctx, sqlc.UpdateTranscodeHLSParams{
 		ID:          tc.ID,

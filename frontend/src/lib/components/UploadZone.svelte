@@ -12,7 +12,7 @@
 		ExternalLink
 	} from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError, getAccessToken } from '$lib/api/client';
 	import {
 		initUpload,
 		driveUpload,
@@ -121,24 +121,24 @@
 						const claimRes = await claimHash(fullSHA256, file.name, file.size);
 						items[idx].uploadPct = 100;
 						items[idx].convertPct = 100;
-						items[idx].taskId = claimRes.task_id;
+						items[idx].taskId = claimRes.taskId;
 						items[idx].phase = 'completed';
-						onCompleted?.(claimRes.task_id);
+						onCompleted?.(claimRes.taskId);
 					} else {
 						items[idx].errorMsg = m.file_in_use();
 						items[idx].phase = 'failed';
 					}
 				} else {
 					items[idx].uploadPct = 100;
-					items[idx].taskId = checkRes.task_id!;
+					items[idx].taskId = checkRes.taskId!;
 					if (checkRes.status === 'completed') {
 						items[idx].convertPct = 100;
 						items[idx].phase = 'completed';
-						onCompleted?.(checkRes.task_id!);
+						onCompleted?.(checkRes.taskId!);
 					} else {
 						items[idx].phase = checkRes.status === 'processing' ? 'processing' : 'queued';
 						items[idx].passive = true;
-						onCompleted?.(checkRes.task_id!);
+						onCompleted?.(checkRes.taskId!);
 					}
 				}
 				return;
@@ -161,29 +161,29 @@
 			onProgress: (p) => (items[idx].uploadPct = Math.round((p.uploaded / p.total) * 100))
 		});
 		items[idx].uploadPct = 100;
-		items[idx].taskId = result.task_id;
+		items[idx].taskId = result.taskId;
 		items[idx].phase = 'queued';
-		connectSSE(items[idx], result.task_id);
+		connectSSE(items[idx], result.taskId);
 	}
 
 	async function resumeUpload(idx: number, file: File, session: UploadSession) {
-		items[idx].uploadPct = Math.round((session.received_bytes / file.size) * 100);
+		items[idx].uploadPct = Math.round((session.receivedBytes / file.size) * 100);
 
 		try {
 			items[idx].abortCtl = new AbortController();
 			let result;
-			if (session.received_bytes >= file.size) {
+			if (session.receivedBytes >= file.size) {
 				result = await completeUpload(session.id);
 			} else {
-				result = await driveUpload(session.id, file, session.received_bytes, {
+				result = await driveUpload(session.id, file, session.receivedBytes, {
 					signal: items[idx].abortCtl!.signal,
 					onProgress: (p) => (items[idx].uploadPct = Math.round((p.uploaded / p.total) * 100))
 				});
 			}
 			items[idx].uploadPct = 100;
-			items[idx].taskId = result.task_id;
+			items[idx].taskId = result.taskId;
 			items[idx].phase = 'queued';
-			connectSSE(items[idx], result.task_id);
+			connectSSE(items[idx], result.taskId);
 		} catch (e) {
 			handleError(idx, e);
 		}
@@ -199,16 +199,16 @@
 	}
 
 	type Frame = {
-		task_id: string;
+		taskId: string;
 		status: 'pending' | 'processing' | 'completed' | 'failed';
 		progress: number;
-		m3u8_url?: string;
+		m3u8Url?: string;
 		error?: string;
 	};
 
 	function connectSSE(item: UploadItem, id: string) {
 		item.es?.close();
-		const token = localStorage.getItem('vf.access') ?? '';
+		const token = getAccessToken() ?? '';
 		const url = `/api/v1/tasks/${id}/progress${token ? `?access_token=${encodeURIComponent(token)}` : ''}`;
 		item.es = new EventSource(url);
 
@@ -220,7 +220,7 @@
 				else if (frame.status === 'pending') item.phase = 'queued';
 				else if (frame.status === 'completed') {
 					item.phase = 'completed';
-					item.m3u8Url = frame.m3u8_url ?? null;
+					item.m3u8Url = frame.m3u8Url ?? null;
 				} else if (frame.status === 'failed') {
 					item.phase = 'failed';
 					item.errorMsg = frame.error ?? m.conversion_failed();
@@ -280,7 +280,7 @@
 				items = [...items, item];
 				return;
 			}
-			if (file.size !== resumeSession.total_size) {
+			if (file.size !== resumeSession.totalSize) {
 				const item: UploadItem = {
 					id: crypto.randomUUID(),
 					fileName: file.name,
@@ -290,7 +290,7 @@
 					convertPct: 0,
 					taskId: null,
 					m3u8Url: null,
-					errorMsg: m.file_size_mismatch({ fileSize: file.size, sessionSize: resumeSession.total_size }),
+					errorMsg: m.file_size_mismatch({ fileSize: file.size, sessionSize: resumeSession.totalSize }),
 					abortCtl: null,
 					es: null,
 					copied: false,
@@ -318,7 +318,7 @@
 				items = [...items, item];
 				return;
 			}
-			const item = createItem(file, 'uploading', Math.round((resumeSession.received_bytes / file.size) * 100));
+			const item = createItem(file, 'uploading', Math.round((resumeSession.receivedBytes / file.size) * 100));
 			items = [...items, item];
 			void resumeUpload(items.length - 1, file, resumeSession);
 			return;
@@ -404,7 +404,7 @@
 			{#if resumeSession}
 				<p class="text-sm">{m.resume_select({ filename: resumeSession.filename })}</p>
 				<p class="text-xs text-slate-400">
-					{m.transfer_progress({ received: fmtSize(resumeSession.received_bytes), total: fmtSize(resumeSession.total_size), pct: Math.round((resumeSession.received_bytes / resumeSession.total_size) * 100) })}
+					{m.transfer_progress({ received: fmtSize(resumeSession.receivedBytes), total: fmtSize(resumeSession.totalSize), pct: Math.round((resumeSession.receivedBytes / resumeSession.totalSize) * 100) })}
 				</p>
 			{:else}
 				<p class="text-sm">{m.drag_here()}</p>

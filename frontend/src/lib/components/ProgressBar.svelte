@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { CheckCircle2, XCircle, Loader2, Copy } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { getAccessToken } from '$lib/api/client';
 
 	let {
 		taskId,
@@ -9,10 +10,10 @@
 	}: { taskId: string; onDone?: (m3u8?: string) => void } = $props();
 
 	type Frame = {
-		task_id: string;
+		taskId: string;
 		status: 'pending' | 'processing' | 'completed' | 'failed';
 		progress: number;
-		m3u8_url?: string;
+		m3u8Url?: string;
 		error?: string;
 	};
 
@@ -26,7 +27,7 @@
 		// the stream and rely on cookies/proxy auth in production. In the dev
 		// environment we tunnel through Vite which forwards Authorization-bearing
 		// cookies it does not, so we send the token via query param fallback:
-		const token = localStorage.getItem('vf.access') ?? '';
+		const token = getAccessToken() ?? '';
 		const url = `/api/v1/tasks/${taskId}/progress${token ? `?access_token=${encodeURIComponent(token)}` : ''}`;
 		es = new EventSource(url);
 		const handler = (e: MessageEvent) => {
@@ -40,7 +41,7 @@
 		es.addEventListener('done', (e) => {
 			handler(e as MessageEvent);
 			es?.close();
-			onDone?.(frame?.m3u8_url);
+			onDone?.(frame?.m3u8Url);
 		});
 		es.onerror = () => {
 			// EventSource auto-reconnects when readyState is CONNECTING. Only
@@ -63,8 +64,8 @@
 	onDestroy(() => es?.close());
 
 	async function copyUrl() {
-		if (!frame?.m3u8_url) return;
-		await navigator.clipboard.writeText(frame.m3u8_url);
+		if (!frame?.m3u8Url) return;
+		await navigator.clipboard.writeText(frame.m3u8Url);
 		copied = true;
 		setTimeout(() => (copied = false), 1500);
 	}
@@ -80,9 +81,9 @@
 		<div class="flex items-center gap-2 text-sm text-emerald-700">
 			<CheckCircle2 size={16} /> <span>{m.conversion_done()}</span>
 		</div>
-		{#if frame.m3u8_url}
+		{#if frame.m3u8Url}
 			<div class="mt-3 flex items-center gap-2">
-				<code class="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs">{frame.m3u8_url}</code>
+				<code class="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs">{frame.m3u8Url}</code>
 				<button
 					type="button"
 					onclick={copyUrl}

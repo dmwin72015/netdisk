@@ -4,7 +4,7 @@
 	import Hls from 'hls.js';
 	import { Copy, Image as ImageIcon, Crosshair, Upload, X } from '@lucide/svelte';
 	import { getVideo, uploadThumbnail, captureFrameThumbnail } from '$lib/api/videos';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError, getAccessToken } from '$lib/api/client';
 	import type { Task } from '$lib/api/tasks';
 	import * as m from '$lib/paraglide/messages';
 
@@ -19,7 +19,7 @@
 
 	function authedHLS(url: string): string {
 		// Backend /hls routes require an access token; reuse the EventSource trick.
-		const token = localStorage.getItem('vf.access');
+		const token = getAccessToken();
 		if (!token) return url;
 		const u = new URL(url, window.location.origin);
 		u.searchParams.set('access_token', token);
@@ -27,7 +27,7 @@
 	}
 
 	function authedThumb(url: string): string {
-		const token = localStorage.getItem('vf.access');
+		const token = getAccessToken();
 		if (!token) return url;
 		const u = new URL(url, window.location.origin);
 		u.searchParams.set('access_token', token);
@@ -63,8 +63,8 @@
 	}
 
 	$effect(() => {
-		if (!task?.m3u8_url || !video || hls) return;
-		attach(authedHLS(task.m3u8_url));
+		if (!task?.m3u8Url || !video || hls) return;
+		attach(authedHLS(task.m3u8Url));
 	});
 
 	function attach(src: string) {
@@ -72,7 +72,7 @@
 		if (Hls.isSupported()) {
 			hls = new Hls({
 				xhrSetup: (xhr) => {
-					const token = localStorage.getItem('vf.access');
+					const token = getAccessToken();
 					if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 				}
 			});
@@ -90,8 +90,8 @@
 	}
 
 	async function copyUrl() {
-		if (!task?.m3u8_url) return;
-		await navigator.clipboard.writeText(task.m3u8_url);
+		if (!task?.m3u8Url) return;
+		await navigator.clipboard.writeText(task.m3u8Url);
 		copied = true;
 		setTimeout(() => (copied = false), 1500);
 	}
@@ -142,23 +142,23 @@
 {:else if !task}
 	<p class="text-sm text-slate-500">{m.loading()}</p>
 {:else}
-	<h1 class="text-xl font-semibold">{task.original_name}</h1>
+	<h1 class="text-xl font-semibold">{task.originalName}</h1>
 	<div class="mt-4 overflow-hidden rounded-lg bg-black">
 		<video bind:this={video} controls class="w-full aspect-video"></video>
 	</div>
 
 	<dl class="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-		<div><dt class="text-slate-500">{m.detail_size()}</dt><dd>{(task.file_size / 1024 / 1024).toFixed(1)} MB</dd></div>
-		{#if task.duration_sec}
-			<div><dt class="text-slate-500">{m.duration()}</dt><dd>{fmtDuration(task.duration_sec)}</dd></div>
+		<div><dt class="text-slate-500">{m.detail_size()}</dt><dd>{(task.fileSize / 1024 / 1024).toFixed(1)} MB</dd></div>
+		{#if task.durationSec}
+			<div><dt class="text-slate-500">{m.duration()}</dt><dd>{fmtDuration(task.durationSec)}</dd></div>
 		{/if}
 		<div><dt class="text-slate-500">{m.status()}</dt><dd>{task.status}</dd></div>
-		<div><dt class="text-slate-500">{m.created()}</dt><dd>{new Date(task.created_at * 1000).toLocaleString()}</dd></div>
+		<div><dt class="text-slate-500">{m.created()}</dt><dd>{new Date(task.createdAt * 1000).toLocaleString()}</dd></div>
 	</dl>
 
-	{#if task.m3u8_url}
+	{#if task.m3u8Url}
 		<div class="mt-4 flex items-center gap-2">
-			<code class="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs">{task.m3u8_url}</code>
+			<code class="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs">{task.m3u8Url}</code>
 			<button
 				type="button"
 				onclick={copyUrl}
@@ -177,9 +177,9 @@
 		</header>
 		<div class="mt-3 flex flex-col gap-4 sm:flex-row">
 			<div class="aspect-video w-full max-w-xs overflow-hidden rounded bg-slate-200 sm:w-64">
-				{#if task.thumbnail_url}
+				{#if task.thumbnailUrl}
 					<img
-						src={authedThumb(task.thumbnail_url)}
+						src={authedThumb(task.thumbnailUrl)}
 						alt={m.cover_preview()}
 						class="h-full w-full object-cover"
 					/>

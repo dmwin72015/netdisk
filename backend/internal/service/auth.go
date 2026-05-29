@@ -43,25 +43,28 @@ type LoginInput struct {
 }
 
 type RefreshInput struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type LogoutInput struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
 }
 
 type UserResponse struct {
-	Slug      string `json:"slug"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Status    int16  `json:"status"`
-	CreatedAt string `json:"created_at"`
+	Slug      string      `json:"slug"`
+	Username  string      `json:"username"`
+	Email     string      `json:"email"`
+	Status    int16       `json:"status"`
+	Profile   ProfileData `json:"profile"`
+	Storage   StorageData `json:"storage"`
+	Level     LevelData   `json:"level"`
+	CreatedAt string      `json:"createdAt"`
 }
 
 func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserResponse, error) {
@@ -114,7 +117,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 
 	_, err = qtx.CreateStorageStats(ctx, sqlc.CreateStorageStatsParams{
 		UserID:       user.ID,
-		StorageQuota: 10737418240, // 10 GB
+		StorageQuota: 536870912000, // 500 GB (500 * 1024 * 1024 * 1024)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create storage stats: %w", err)
@@ -122,8 +125,8 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 
 	_, err = qtx.CreateLevel(ctx, sqlc.CreateLevelParams{
 		UserID:    user.ID,
-		LevelCode: "free",
-		LevelName: "免费用户",
+		LevelCode: "vip1",
+		LevelName: "VIP1",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create level: %w", err)
@@ -138,6 +141,17 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 		Username:  user.Username,
 		Email:     user.Email,
 		Status:    user.Status,
+		Profile: ProfileData{
+			DisplayName: user.Username,
+			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
+		},
+		Storage: StorageData{
+			StorageQuota: 536870912000,
+		},
+		Level: LevelData{
+			LevelCode: "vip1",
+			LevelName: "VIP1",
+		},
 		CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
 	}, nil
 }
@@ -164,13 +178,62 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*UserRespons
 		return nil, nil, err
 	}
 
-	return &UserResponse{
+	resp := &UserResponse{
 		Slug:      user.Slug,
 		Username:  user.Username,
 		Email:     user.Email,
 		Status:    user.Status,
 		CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
-	}, tokens, nil
+	}
+
+	// Fetch profile
+	profile, err := s.queries.GetProfileByUserID(ctx, user.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, fmt.Errorf("get profile: %w", err)
+	}
+	if profile.ID != 0 {
+		resp.Profile = ProfileData{
+			DisplayName: profile.DisplayName.String,
+			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
+			Bio:         profile.Bio.String,
+		}
+	} else {
+		resp.Profile = ProfileData{
+			DisplayName: user.Username,
+			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
+		}
+	}
+
+	// Fetch storage stats
+	stats, err := s.queries.GetStorageStats(ctx, user.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, fmt.Errorf("get storage stats: %w", err)
+	}
+	if stats.ID != 0 {
+		resp.Storage = StorageData{
+			StorageUsed:  stats.StorageUsed,
+			StorageQuota: stats.StorageQuota,
+		}
+	}
+
+	// Fetch level
+	level, err := s.queries.GetLevelByUserID(ctx, user.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, fmt.Errorf("get level: %w", err)
+	}
+	if level.ID != 0 {
+		ld := LevelData{
+			LevelCode: level.LevelCode,
+			LevelName: level.LevelName,
+		}
+		if level.ExpiresAt.Valid {
+			s := level.ExpiresAt.Time.Format("2006-01-02T15:04:05Z")
+			ld.ExpiresAt = &s
+		}
+		resp.Level = ld
+	}
+
+	return resp, tokens, nil
 }
 
 func (s *AuthService) Refresh(ctx context.Context, input RefreshInput) (*TokenPair, error) {

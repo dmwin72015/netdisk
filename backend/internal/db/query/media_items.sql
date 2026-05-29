@@ -26,5 +26,12 @@ SELECT * FROM media_items
 WHERE user_id = $1 AND user_file_id = $2
 LIMIT 1;
 
+-- name: GetMediaItemByTranscodeID :one
+SELECT * FROM media_items WHERE transcode_id = $1 LIMIT 1;
+
+-- name: UpdateMediaItemPoster :exec
+UPDATE media_items SET poster_path = $2, updated_at = NOW()
+WHERE id = $1;
+
 -- name: DeleteMediaItem :exec
 DELETE FROM media_items WHERE id = $1;

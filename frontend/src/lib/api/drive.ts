@@ -1,15 +1,16 @@
-import { api } from './client';
+import { api, getAccessToken } from './client';
 import { computeSHA256 } from './uploads';
 import * as m from '$lib/paraglide/messages';
 
 export type DriveFile = {
 	id: string;
 	name: string;
-	mime_type: string;
+	mimeType: string;
+	fileCategory: string;
 	size: number;
-	created_at: number;
-	is_dir: boolean;
-	parent_id?: string;
+	createdAt: number;
+	isDir: boolean;
+	parentId?: string;
 };
 
 export type DriveList = {
@@ -22,21 +23,21 @@ export type DriveList = {
 export type DriveSession = {
 	id: string;
 	name: string;
-	total_size: number;
-	received_bytes: number;
-	created_at: number;
-	updated_at: number;
+	totalSize: number;
+	receivedBytes: number;
+	createdAt: number;
+	updatedAt: number;
 };
 
-export type DriveChunkResult = { id: string; received_bytes: number };
+export type DriveChunkResult = { id: string; receivedBytes: number };
 
 export type DriveCheckHashResult = {
 	exists: boolean;
-	file_id?: string;
+	fileId?: string;
 };
 
 export type DriveClaimResult = {
-	file_id: string;
+	fileId: string;
 };
 
 export { computeSHA256 };
@@ -47,19 +48,19 @@ const DRIVE_CHUNK_SIZE = 8 * 1024 * 1024;
  *  The server computes the hash during Complete() for all files regardless. */
 const MAX_HASH_SIZE = 200 * 1024 * 1024;
 
-export async function driveStats(): Promise<{ used_bytes: number; base_bytes: number; member_bonus_bytes: number; pack_bytes: number; total_bytes: number }> {
-	return api<{ used_bytes: number; base_bytes: number; member_bonus_bytes: number; pack_bytes: number; total_bytes: number }>('/api/v1/drive/stats');
+export async function driveStats(): Promise<{ usedBytes: number; baseBytes: number; memberBonusBytes: number; packBytes: number; totalBytes: number }> {
+	return api<{ usedBytes: number; baseBytes: number; memberBonusBytes: number; packBytes: number; totalBytes: number }>('/api/v1/drive/stats');
 }
 
 export async function createDriveDir(name: string, parentId?: string): Promise<DriveFile> {
 	return api<DriveFile>('/api/v1/drive/dir', {
 		method: 'POST',
-		body: JSON.stringify({ name, parent_id: parentId }),
+		body: JSON.stringify({ name, parentId }),
 	});
 }
 
-export async function listDrive(limit = 50, offset = 0, q?: string, parentId?: string): Promise<DriveList> {
-	const params = `limit=${limit}&offset=${offset}${q ? `&q=${encodeURIComponent(q)}` : ''}${parentId ? `&parent_id=${encodeURIComponent(parentId)}` : ''}`;
+export async function listDrive(limit = 50, offset = 0, q?: string, parentId?: string, category?: string | null): Promise<DriveList> {
+	const params = `limit=${limit}&offset=${offset}${q ? `&q=${encodeURIComponent(q)}` : ''}${parentId ? `&parentId=${encodeURIComponent(parentId)}` : ''}${category ? `&fileCategory=${encodeURIComponent(category)}` : ''}`;
 	return api<DriveList>(`/api/v1/drive?${params}`);
 }
 
@@ -89,7 +90,7 @@ export async function driveClaimHash(
 ): Promise<DriveClaimResult> {
 	return api<DriveClaimResult>('/api/v1/drive/claim', {
 		method: 'POST',
-		body: JSON.stringify({ sha256, original_name: originalName, mime_type: mimeType, file_size: fileSize, parent_id: parentId || undefined }),
+		body: JSON.stringify({ sha256, originalName, mimeType, fileSize, parentId: parentId || undefined }),
 	});
 }
 
@@ -97,10 +98,10 @@ export async function driveClaimHash(
 
 export type DriveCheckUploadResult = {
 	status: 'full' | 'partial' | 'none';
-	file_id?: string;
-	own_file?: boolean;
-	session_id?: string;
-	received_bytes?: number;
+	fileId?: string;
+	ownFile?: boolean;
+	sessionId?: string;
+	receivedBytes?: number;
 };
 
 export async function driveCheckUpload(
@@ -112,7 +113,7 @@ export async function driveCheckUpload(
 ): Promise<DriveCheckUploadResult> {
 	return api<DriveCheckUploadResult>('/api/v1/drive/check-upload', {
 		method: 'POST',
-		body: JSON.stringify({ sha256, file_size: fileSize, file_name: fileName, mime_type: mimeType, parent_id: parentId || undefined }),
+		body: JSON.stringify({ sha256, fileSize, fileName, mimeType, parentId: parentId || undefined }),
 	});
 }
 
@@ -123,10 +124,10 @@ export async function listDriveSessions(): Promise<DriveSession[]> {
 	return data.items;
 }
 
-export async function initDriveUpload(filename: string, mimeType: string, totalSize: number, parentId?: string | null, sha256?: string): Promise<DriveSession & { status?: string; file_id?: string }> {
-	return api<DriveSession & { status?: string; file_id?: string }>('/api/v1/drive/uploads', {
+export async function initDriveUpload(filename: string, mimeType: string, totalSize: number, parentId?: string | null, sha256?: string): Promise<DriveSession & { status?: string; fileId?: string }> {
+	return api<DriveSession & { status?: string; fileId?: string }>('/api/v1/drive/uploads', {
 		method: 'POST',
-		body: JSON.stringify({ filename, mime_type: mimeType, total_size: totalSize, parent_id: parentId || undefined, sha256: sha256 || undefined }),
+		body: JSON.stringify({ filename, mimeType, totalSize, parentId: parentId || undefined, sha256: sha256 || undefined }),
 	});
 }
 
@@ -146,8 +147,8 @@ export async function uploadDriveChunk(
 	});
 }
 
-export async function completeDriveUpload(id: string): Promise<{ file_id: string }> {
-	return api<{ file_id: string }>(`/api/v1/drive/uploads/${id}/complete`, { method: 'POST' });
+export async function completeDriveUpload(id: string): Promise<{ fileId: string }> {
+	return api<{ fileId: string }>(`/api/v1/drive/uploads/${id}/complete`, { method: 'POST' });
 }
 
 export async function cancelDriveUpload(id: string): Promise<void> {
@@ -196,7 +197,7 @@ export function uploadDriveFileWithProgress(
 		};
 		xhr.onerror = () => reject(new Error(m.network_error()));
 		xhr.onabort = () => reject(new DOMException('Aborted', 'AbortError'));
-		const token = localStorage.getItem('vf.access') ?? '';
+		const token = getAccessToken() ?? '';
 		xhr.open('POST', '/api/v1/drive/upload');
 		if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 		if (signal) signal.addEventListener('abort', () => xhr.abort());
@@ -228,11 +229,11 @@ export async function driveChunkedUpload(
 	mimeType: string,
 	opts: DriveUploadOptions = {},
 	parentId?: string | null,
-): Promise<{ file_id: string }> {
+): Promise<{ fileId: string }> {
 	if (file.size <= MAX_HASH_SIZE) {
 		const hash = await computeSHA256(file);
 		const check = await driveCheckHash(hash);
-		if (check.exists && check.file_id) {
+		if (check.exists && check.fileId) {
 			const result = await driveClaimHash(hash, file.name, mimeType, file.size, parentId);
 			return result;
 		}
@@ -247,9 +248,9 @@ export async function resumeDriveUpload(
 	file: File,
 	sessionId: string,
 	opts: DriveUploadOptions = {},
-): Promise<{ file_id: string }> {
+): Promise<{ fileId: string }> {
 	const session = await getDriveSession(sessionId);
-	return uploadChunks(file, sessionId, session.received_bytes, opts);
+	return uploadChunks(file, sessionId, session.receivedBytes, opts);
 }
 
 export async function uploadChunks(
@@ -257,7 +258,7 @@ export async function uploadChunks(
 	sessionId: string,
 	startOffset: number,
 	opts: DriveUploadOptions = {},
-): Promise<{ file_id: string }> {
+): Promise<{ fileId: string }> {
 	const chunkSize = DRIVE_CHUNK_SIZE;
 	let offset = startOffset;
 
@@ -272,7 +273,7 @@ export async function uploadChunks(
 		for (let attempt = 0; attempt < 3; attempt++) {
 			try {
 				const result = await uploadDriveChunk(sessionId, offset, chunk);
-				offset = result.received_bytes;
+				offset = result.receivedBytes;
 				lastErr = null;
 				break;
 			} catch (e) {
@@ -303,7 +304,7 @@ export async function deleteDriveFile(id: string): Promise<void> {
 }
 
 function authedUrl(path: string): string {
-	const token = typeof localStorage !== 'undefined' ? localStorage.getItem('vf.access') ?? '' : '';
+	const token = getAccessToken() ?? '';
 	return `${path}?access_token=${encodeURIComponent(token)}`;
 }
 
@@ -315,10 +316,5 @@ export function getPreviewUrl(id: string): string {
 	return authedUrl(`/api/v1/drive/${id}/preview`);
 }
 
-export function fmtSize(size: number): string {
-	if (size < 1024) return `${size} B`;
-	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-	if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
-	return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
+
 

@@ -15,9 +15,11 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
 	"github.com/netdisk/server/internal/config"
+	"github.com/netdisk/server/internal/db"
 	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/storage"
+	"github.com/netdisk/server/pkg/fileutil"
 )
 
 type FilesService struct {
@@ -32,128 +34,92 @@ func NewFilesService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config
 }
 
 type FileItem struct {
-	Slug      string  `json:"slug"`
-	FileName  string  `json:"file_name"`
-	IsDir     bool    `json:"is_dir"`
-	FileSize  int64   `json:"file_size"`
-	MimeType  *string `json:"mime_type"`
-	IsStarred bool    `json:"is_starred"`
-	CreatedAt string  `json:"created_at"`
-	UpdatedAt string  `json:"updated_at"`
+	Slug         string  `json:"slug"`
+	FileName     string  `json:"fileName"`
+	IsDir        bool    `json:"isDir"`
+	FileSize     int64   `json:"fileSize"`
+	MimeType     *string `json:"mimeType"`
+	FileCategory string  `json:"fileCategory"`
+	IsStarred    bool    `json:"isStarred"`
+	ParentSlug   *string `json:"parentSlug,omitempty"`
+	ParentName   *string `json:"parentName,omitempty"`
+	CreatedAt    string  `json:"createdAt"`
+	UpdatedAt    string  `json:"updatedAt"`
 }
 
 type ConflictResponse struct {
-	Status   string     `json:"status"`
-	Message  string     `json:"message,omitempty"`
-	Existing *FileItem  `json:"existing,omitempty"`
+	Status   string    `json:"status"`
+	Message  string    `json:"message,omitempty"`
+	Existing *FileItem `json:"existing,omitempty"`
 }
 
 type ImportResponse struct {
-	FileSlug string `json:"file_slug"`
-	FileName string `json:"file_name"`
+	FileSlug string `json:"fileSlug"`
+	FileName string `json:"fileName"`
 }
 
-func (s *FilesService) ListFiles(ctx context.Context, userID int64, parentSlug string, page, pageSize int) ([]FileItem, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 50
-	}
-
-	var parentID pgtype.Int8
-	if parentSlug != "" {
-		parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
-			Slug:   parentSlug,
-			UserID: userID,
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, 0, model.ErrNotFound
-			}
-			return nil, 0, fmt.Errorf("get parent: %w", err)
-		}
-		if parent.IsTrashed {
-			return nil, 0, model.ErrNotFound
-		}
-		parentID = pgtype.Int8{Int64: parent.ID, Valid: true}
-	}
-
-	count, err := s.queries.CountFilesByParent(ctx, sqlc.CountFilesByParentParams{
-		UserID:   userID,
-		ParentID: parentID,
+// ResolveParent looks up a parent directory by slug, verifying it exists and is not trashed.
+func (s *FilesService) ResolveParent(ctx context.Context, userID int64, parentSlug string) (sqlc.UserFile, error) {
+	parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+		Slug:   parentSlug,
+		UserID: userID,
 	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlc.UserFile{}, model.ErrNotFound
+		}
+		return sqlc.UserFile{}, fmt.Errorf("get parent: %w", err)
+	}
+	if parent.IsTrashed {
+		return sqlc.UserFile{}, model.ErrNotFound
+	}
+	return parent, nil
+}
+
+// ListUserFiles is the unified file listing method powered by Squirrel.
+func (s *FilesService) ListUserFiles(ctx context.Context, params db.ListFilesParams) ([]FileItem, int, error) {
+	sql, args, countSql, countArgs, err := db.BuildListFilesQuery(params)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var total int
+	err = s.pg.QueryRow(ctx, countSql, countArgs...).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("count files: %w", err)
 	}
 
-	files, err := s.queries.ListFilesByParent(ctx, sqlc.ListFilesByParentParams{
-		UserID:     userID,
-		ParentID:   parentID,
-		PageSize:   int32(pageSize),
-		PageOffset: int32((page - 1) * pageSize),
-	})
+	rows, err := s.pg.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list files: %w", err)
 	}
+	defer rows.Close()
 
-	items := make([]FileItem, 0, len(files))
-	for _, f := range files {
-		item := FileItem{
-			Slug:      f.Slug,
-			FileName:  f.FileName,
-			IsDir:     f.IsDir,
-			FileSize:  f.FileSize,
-			IsStarred: f.IsStarred,
-			CreatedAt: f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt: f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
-		}
-		if f.MimeType.Valid {
-			item.MimeType = &f.MimeType.String
-		}
-		items = append(items, item)
+	fileRows, err := db.ScanFileRows(rows)
+	if err != nil {
+		return nil, 0, fmt.Errorf("scan files: %w", err)
 	}
 
-	return items, int(count), nil
+	return fileRowsToItems(fileRows), total, nil
 }
 
-func (s *FilesService) ListFilesByMime(ctx context.Context, userID int64, mimePrefix string, page, pageSize int) ([]FileItem, int, error) {
-	if mimePrefix == "" {
-		return nil, 0, model.ErrInvalidInput
-	}
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 50
-	}
-
-	mimePattern := pgtype.Text{String: mimePrefix + "%", Valid: true}
-
-	count, err := s.queries.CountFilesByMimePrefix(ctx, sqlc.CountFilesByMimePrefixParams{
-		UserID:     userID,
-		MimePrefix: mimePattern,
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("count files by mime: %w", err)
+func (s *FilesService) ListRecentFiles(ctx context.Context, userID int64, limit int) ([]FileItem, int, error) {
+	params := db.ListFilesParams{
+		UserID:         userID,
+		IncludeDirs:    false,
+		IgnoreParentID: true, // show files from all directories
+		SortBy:         "created_at",
+		SortDir:        "DESC",
+		Page:           1,
+		PageSize:       limit,
 	}
 
-	files, err := s.queries.ListFilesByMimePrefix(ctx, sqlc.ListFilesByMimePrefixParams{
-		UserID:     userID,
-		MimePrefix: mimePattern,
-		PageSize:   int32(pageSize),
-		PageOffset: int32((page - 1) * pageSize),
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("list files by mime: %w", err)
-	}
-
-	return fileItemsFromRows(files), int(count), nil
+	return s.ListUserFiles(ctx, params)
 }
 
 type BreadcrumbItem struct {
 	Slug     string `json:"slug"`
-	FileName string `json:"file_name"`
+	FileName string `json:"fileName"`
 }
 
 func (s *FilesService) GetBreadcrumb(ctx context.Context, userID int64, slug string) ([]BreadcrumbItem, error) {
@@ -221,12 +187,14 @@ func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentS
 	}
 
 	f, err := s.queries.CreateFile(ctx, sqlc.CreateFileParams{
-		Slug:     slug,
-		UserID:   userID,
-		ParentID: parentID,
-		FileName: dirName,
-		IsDir:    true,
-		FileSize: 0,
+		Slug:         slug,
+		UserID:       userID,
+		ParentID:     parentID,
+		ParentSlug:   pgtype.Text{String: parentSlug, Valid: parentSlug != ""},
+		FileName:     dirName,
+		IsDir:        true,
+		FileSize:     0,
+		FileCategory: string(fileutil.CategoryFolder),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -236,12 +204,13 @@ func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentS
 	}
 
 	return &FileItem{
-		Slug:      f.Slug,
-		FileName:  f.FileName,
-		IsDir:     true,
-		FileSize:  0,
-		CreatedAt: f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
+		Slug:         f.Slug,
+		FileName:     f.FileName,
+		IsDir:        true,
+		FileSize:     0,
+		FileCategory: string(fileutil.CategoryFolder),
+		CreatedAt:    f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:    f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
 	}, nil
 }
 
@@ -403,15 +372,19 @@ func (s *FilesService) ImportFile(ctx context.Context, userID int64, physicalFil
 		mimeType = pgtype.Text{String: pf.MimeType, Valid: true}
 	}
 
+	category := fileutil.CategorizeMime(pf.MimeType, false)
+
 	f, err := s.queries.CreateFile(ctx, sqlc.CreateFileParams{
 		Slug:           slug,
 		UserID:         userID,
 		PhysicalFileID: pgtype.Int8{Int64: pf.ID, Valid: true},
 		ParentID:       parentID,
+		ParentSlug:     pgtype.Text{String: parentSlug, Valid: parentSlug != ""},
 		FileName:       fileName,
 		IsDir:          false,
 		FileSize:       pf.FileSize,
 		MimeType:       mimeType,
+		FileCategory:   string(category),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create file: %w", err)
@@ -436,6 +409,21 @@ func (s *FilesService) TrashFile(ctx context.Context, userID int64, fileSlug str
 	}
 	if f.IsTrashed {
 		return nil
+	}
+
+	// Check if directory is empty before trashing
+	if f.IsDir {
+		var count int64
+		err = s.pg.QueryRow(ctx,
+			"SELECT COUNT(*) FROM user_files WHERE user_id = $1 AND parent_id = $2 AND is_trashed = FALSE",
+			userID, f.ID,
+		).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("count children: %w", err)
+		}
+		if count > 0 {
+			return model.ErrDirNotEmpty
+		}
 	}
 
 	return s.queries.SetTrashed(ctx, sqlc.SetTrashedParams{
@@ -507,6 +495,94 @@ func (s *FilesService) PermanentDelete(ctx context.Context, userID int64, fileSl
 	}
 
 	return nil
+}
+
+func (s *FilesService) EmptyTrash(ctx context.Context, userID int64) (int, error) {
+	// Get all trashed files
+	rows, err := s.pg.Query(ctx,
+		"SELECT id, is_dir, physical_file_id, file_size FROM user_files WHERE user_id = $1 AND is_trashed = TRUE",
+		userID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("list trashed files: %w", err)
+	}
+	defer rows.Close()
+
+	type trashedFile struct {
+		ID             int64
+		IsDir          bool
+		PhysicalFileID pgtype.Int8
+		FileSize       int64
+	}
+
+	var files []trashedFile
+	for rows.Next() {
+		var f trashedFile
+		if err := rows.Scan(&f.ID, &f.IsDir, &f.PhysicalFileID, &f.FileSize); err != nil {
+			return 0, fmt.Errorf("scan trashed file: %w", err)
+		}
+		files = append(files, f)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	if len(files) == 0 {
+		return 0, nil
+	}
+
+	// Calculate total size to reclaim
+	var reclaimSize int64
+	var physicalIDs []int64
+	for _, f := range files {
+		if !f.IsDir && f.PhysicalFileID.Valid {
+			reclaimSize += f.FileSize
+			physicalIDs = append(physicalIDs, f.PhysicalFileID.Int64)
+		}
+	}
+
+	// Delete all trashed files
+	_, err = s.pg.Exec(ctx, "DELETE FROM user_files WHERE user_id = $1 AND is_trashed = TRUE", userID)
+	if err != nil {
+		return 0, fmt.Errorf("delete trashed files: %w", err)
+	}
+
+	// Decrement storage
+	if reclaimSize > 0 {
+		_, _ = s.queries.AtomicIncrementStorage(ctx, sqlc.AtomicIncrementStorageParams{
+			UserID:      userID,
+			StorageUsed: -reclaimSize,
+		})
+	}
+
+	// Clean up unreferenced physical files
+	for _, pfID := range physicalIDs {
+		refCount, err := s.queries.CountReferencesByFileID(ctx, pgtype.Int8{Int64: pfID, Valid: true})
+		if err != nil {
+			continue
+		}
+		if refCount == 0 {
+			pf, err := s.queries.GetPhysicalFileByID(ctx, pfID)
+			if err == nil {
+				_ = s.store.Delete(pf.FileHash)
+				_ = s.queries.DeletePhysicalFile(ctx, pf.ID)
+			}
+		}
+	}
+
+	return len(files), nil
+}
+
+func (s *FilesService) RestoreAll(ctx context.Context, userID int64) (int, error) {
+	result, err := s.pg.Exec(ctx,
+		"UPDATE user_files SET is_trashed = FALSE, trashed_at = NULL, updated_at = NOW() WHERE user_id = $1 AND is_trashed = TRUE",
+		userID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("restore all files: %w", err)
+	}
+
+	return int(result.RowsAffected()), nil
 }
 
 func (s *FilesService) RenameFile(ctx context.Context, userID int64, fileSlug, newName string) error {
@@ -586,8 +662,9 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 	}
 
 	return s.queries.MoveFile(ctx, sqlc.MoveFileParams{
-		ID:       f.ID,
-		ParentID: targetParentID,
+		ID:         f.ID,
+		ParentID:   targetParentID,
+		ParentSlug: pgtype.Text{String: targetParentSlug, Valid: targetParentSlug != ""},
 	})
 }
 
@@ -609,55 +686,6 @@ func (s *FilesService) SetStarred(ctx context.Context, userID int64, fileSlug st
 	})
 }
 
-func (s *FilesService) ListTrashed(ctx context.Context, userID int64, page, pageSize int) ([]FileItem, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 50
-	}
-
-	total, err := s.queries.CountTrashedFiles(ctx, userID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("count trashed: %w", err)
-	}
-
-	files, err := s.queries.ListTrashedFiles(ctx, sqlc.ListTrashedFilesParams{
-		UserID: userID,
-		Limit:  int32(pageSize),
-		Offset: int32((page - 1) * pageSize),
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("list trashed: %w", err)
-	}
-
-	return fileItemsFromRows(files), int(total), nil
-}
-
-func (s *FilesService) ListStarred(ctx context.Context, userID int64, page, pageSize int) ([]FileItem, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 50
-	}
-
-	total, err := s.queries.CountStarredFiles(ctx, userID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("count starred: %w", err)
-	}
-
-	files, err := s.queries.ListStarredFiles(ctx, sqlc.ListStarredFilesParams{
-		UserID: userID,
-		Limit:  int32(pageSize),
-		Offset: int32((page - 1) * pageSize),
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("list starred: %w", err)
-	}
-
-	return fileItemsFromRows(files), int(total), nil
-}
 
 func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug string) (io.ReadSeeker, string, string, error) {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
@@ -693,20 +721,27 @@ func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug 
 	return file, safeName, mimeType, nil
 }
 
-func fileItemsFromRows(files []sqlc.UserFile) []FileItem {
+func fileRowsToItems(files []db.FileRow) []FileItem {
 	items := make([]FileItem, 0, len(files))
 	for _, f := range files {
 		item := FileItem{
-			Slug:      f.Slug,
-			FileName:  f.FileName,
-			IsDir:     f.IsDir,
-			FileSize:  f.FileSize,
-			IsStarred: f.IsStarred,
-			CreatedAt: f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt: f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
+			Slug:         f.Slug,
+			FileName:     f.FileName,
+			IsDir:        f.IsDir,
+			FileSize:     f.FileSize,
+			FileCategory: f.FileCategory,
+			IsStarred:    f.IsStarred,
+			CreatedAt:    f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:    f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
 		}
 		if f.MimeType.Valid {
 			item.MimeType = &f.MimeType.String
+		}
+		if f.ParentSlug.Valid {
+			item.ParentSlug = &f.ParentSlug.String
+		}
+		if f.ParentName.Valid {
+			item.ParentName = &f.ParentName.String
 		}
 		items = append(items, item)
 	}

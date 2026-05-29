@@ -8,13 +8,13 @@ import * as m from '$lib/paraglide/messages';
 export type UploadSession = {
 	id: string;
 	filename: string;
-	total_size: number;
-	received_bytes: number;
-	created_at: number;
-	updated_at: number;
+	totalSize: number;
+	receivedBytes: number;
+	createdAt: number;
+	updatedAt: number;
 };
 
-export type ChunkResult = { id: string; received_bytes: number };
+export type ChunkResult = { id: string; receivedBytes: number };
 
 /** Default chunk size — large enough to amortize round-trips, small enough
  *  that one chunk failing isn't catastrophic. */
@@ -25,12 +25,12 @@ export async function listUploadSessions(): Promise<UploadSession[]> {
 	return data.items;
 }
 
-export async function initUpload(filename: string, totalSize: number, sha256?: string): Promise<UploadSession & { task_id?: string; status?: string }> {
+export async function initUpload(filename: string, totalSize: number, sha256?: string): Promise<UploadSession & { taskId?: string; status?: string }> {
 	const headers: Record<string, string> = {};
 	if (sha256) headers['X-File-SHA256'] = sha256;
-	return api<UploadSession & { task_id?: string; status?: string }>('/api/v1/uploads', {
+	return api<UploadSession & { taskId?: string; status?: string }>('/api/v1/uploads', {
 		method: 'POST',
-		body: JSON.stringify({ filename, total_size: totalSize }),
+		body: JSON.stringify({ filename, totalSize }),
 		headers
 	});
 }
@@ -39,12 +39,12 @@ export type CheckHashResult = {
 	exists: boolean;
 	deduped?: boolean;
 	transcoded?: boolean;
-	task_id?: string;
+	taskId?: string;
 	status?: string;
 };
 
 export type ClaimResult = {
-	task_id: string;
+	taskId: string;
 	status: string;
 };
 
@@ -72,7 +72,7 @@ export async function claimHash(
 ): Promise<ClaimResult> {
 	return api<ClaimResult>('/api/v1/claim', {
 		method: 'POST',
-		body: JSON.stringify({ sha256, original_name: originalName, file_size: fileSize }),
+		body: JSON.stringify({ sha256, originalName, fileSize }),
 	});
 }
 
@@ -139,7 +139,7 @@ export type QuickCheckResult = {
 export async function quickCheck(fileSize: number, featureHash: string): Promise<QuickCheckResult> {
 	return api<QuickCheckResult>('/api/v1/quick-check', {
 		method: 'POST',
-		body: JSON.stringify({ file_size: fileSize, feature_hash: featureHash }),
+		body: JSON.stringify({ fileSize, featureHash }),
 	});
 }
 
@@ -162,8 +162,8 @@ export async function uploadChunk(
 	});
 }
 
-export async function completeUpload(id: string): Promise<{ task_id: string }> {
-	return api<{ task_id: string }>(`/api/v1/uploads/${id}/complete`, { method: 'POST' });
+export async function completeUpload(id: string): Promise<{ taskId: string }> {
+	return api<{ taskId: string }>(`/api/v1/uploads/${id}/complete`, { method: 'POST' });
 }
 
 export async function cancelUpload(id: string): Promise<void> {
@@ -191,7 +191,7 @@ export async function driveUpload(
 	file: File,
 	startOffset: number,
 	opts: DriverOptions = {}
-): Promise<{ task_id: string }> {
+): Promise<{ taskId: string }> {
 	const chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_BYTES;
 	let offset = startOffset;
 	opts.onProgress?.({ uploaded: offset, total: file.size });
@@ -201,7 +201,7 @@ export async function driveUpload(
 		const end = Math.min(offset + chunkSize, file.size);
 		const chunk = file.slice(offset, end);
 		const result = await uploadChunk(sessionId, offset, chunk);
-		offset = result.received_bytes;
+		offset = result.receivedBytes;
 		opts.onProgress?.({ uploaded: offset, total: file.size });
 	}
 	return completeUpload(sessionId);
@@ -210,9 +210,9 @@ export async function driveUpload(
 /** Throws when the picked file doesn't match the in-progress session by name
  *  or size. The user must pick the same file they were uploading before. */
 export function assertFileMatchesSession(file: File, session: UploadSession): void {
-	if (file.size !== session.total_size) {
+	if (file.size !== session.totalSize) {
 		throw new ApiError(
-			m.file_size_mismatch({ fileSize: file.size, sessionSize: session.total_size }),
+			m.file_size_mismatch({ fileSize: file.size, sessionSize: session.totalSize }),
 			400
 		);
 	}

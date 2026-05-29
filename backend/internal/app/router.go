@@ -51,6 +51,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// User routes
 	authed.GET("/user/me", h.User.GetMe)
+	authed.GET("/user/storage-breakdown", h.User.GetStorageBreakdown)
 	authed.PATCH("/user/profile", h.User.UpdateProfile)
 	authed.POST("/user/me/password", h.User.ChangePassword)
 	authed.POST("/user/me/avatar", h.User.UploadAvatar)
@@ -62,11 +63,14 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	// File routes
 	files := authed.Group("/files")
 	files.GET("", h.Files.ListFiles)
+	files.GET("/recent", h.Files.ListRecentFiles)
 	files.POST("/mkdir", h.Files.Mkdir)
 	files.POST("/check-conflict", h.Files.CheckConflict)
 	files.POST("/check-duplicate", h.Files.CheckDuplicate)
 	files.POST("/import", h.Files.ImportFile)
 	files.GET("/trash", h.Files.ListTrashed)
+	files.POST("/trash/empty", h.Files.EmptyTrash)
+	files.POST("/trash/restore-all", h.Files.RestoreAll)
 	files.GET("/starred", h.Files.ListStarred)
 	files.GET("/:slug/breadcrumb", h.Files.GetBreadcrumb)
 	files.DELETE("/:slug", h.Files.TrashFile)
@@ -94,6 +98,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	media.GET("/items", h.Media.ListMediaItems)
 	media.GET("/items/:media_slug", h.Media.GetMediaItem)
 	media.DELETE("/items/:media_slug", h.Media.RemoveFromLibrary)
+	media.GET("/poster/:media_slug", h.Media.ServePoster)
 	media.GET("/hls/:media_slug/*", h.Media.ServeHLS)
 }
 

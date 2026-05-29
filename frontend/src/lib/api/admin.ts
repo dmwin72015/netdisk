@@ -5,12 +5,12 @@ export type AdminUser = {
 	username: string;
 	email: string;
 	role: string;
-	used_bytes: number;
-	base_bytes: number;
-	member_bonus_bytes: number;
-	pack_bytes: number;
-	total_bytes: number;
-	created_at: number;
+	usedBytes: number;
+	baseBytes: number;
+	memberBonusBytes: number;
+	packBytes: number;
+	totalBytes: number;
+	createdAt: number;
 };
 
 export type AdminUserList = {
@@ -38,7 +38,7 @@ export async function adminUpdateRole(id: string, role: string): Promise<AdminUs
 export async function adminUpdateStorageBase(id: string, baseBytes: number): Promise<AdminUser> {
 	return api<AdminUser>(`/api/v1/admin/users/${id}/storage-base`, {
 		method: 'PATCH',
-		body: JSON.stringify({ base_bytes: baseBytes }),
+		body: JSON.stringify({ baseBytes }),
 	});
 }
 

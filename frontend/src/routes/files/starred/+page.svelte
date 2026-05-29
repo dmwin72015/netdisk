@@ -5,6 +5,7 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import { listStarred, setStarred, downloadUrl, type FileItem } from '$lib/api/files';
 	import { Star, Download, Eye, Loader2, FolderPlus } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
@@ -12,20 +13,18 @@
 
 	let files = $state<FileItem[]>([]);
 	let total = $state(0);
-	let loading = $state(false);
-	let error = $state<string | null>(null);
+	let loading = $state(true);
 	let previewFile = $state<{ slug: string; name: string; mimeType: string; size: number } | null>(null);
 
 	async function refresh() {
 		if (!$user) return;
 		loading = true;
-		error = null;
 		try {
 			const data = await listStarred();
 			files = data.files;
 			total = data.total;
 		} catch (e) {
-			error = e instanceof Error ? e.message : m.load_failed();
+			toast.error(e instanceof Error ? e.message : m.load_failed());
 		} finally {
 			loading = false;
 		}
@@ -37,7 +36,7 @@
 			files = files.filter(f => f.slug !== slug);
 			total--;
 		} catch (e) {
-			error = e instanceof Error ? e.message : m.unstar_failed();
+			toast.error(e instanceof Error ? e.message : m.unstar_failed());
 		}
 	}
 
@@ -55,10 +54,6 @@
 			<h1 class="text-lg font-semibold text-gray-900">{m.starred_title()}</h1>
 			<span class="text-sm text-gray-400">{m.total_items({ total: String(total) })}</span>
 		</div>
-
-		{#if error}
-			<div class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
-		{/if}
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
@@ -86,25 +81,25 @@
 							<tr class="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80">
 								<td class="px-4 py-2.5">
 									<div class="flex items-center gap-2.5">
-										<span class="shrink-0"><MimeIcon mimeType={f.mime_type} isDir={f.is_dir} size={18} /></span>
-										<span class="truncate text-gray-700" title={f.file_name}>{f.file_name}</span>
+										<span class="shrink-0"><MimeIcon mimeType={f.mimeType} isDir={f.isDir} size={18} /></span>
+										<span class="truncate text-gray-700" title={f.fileName}>{f.fileName}</span>
 									</div>
 								</td>
-								<td class="truncate px-4 py-2.5 text-xs text-gray-400">{f.is_dir ? m.directory() : f.mime_type}</td>
-								<td class="px-4 py-2.5 text-right text-gray-500">{f.is_dir ? '-' : fmtSize(f.file_size)}</td>
+								<td class="truncate px-4 py-2.5 text-xs text-gray-400">{f.isDir ? m.directory() : f.mimeType}</td>
+								<td class="px-4 py-2.5 text-right text-gray-500">{f.isDir ? '-' : fmtSize(f.fileSize)}</td>
 								<td class="whitespace-nowrap px-4 py-2.5 text-right text-xs text-gray-400">
-									{fmtTime(f.updated_at)}
+									{fmtTime(f.updatedAt)}
 								</td>
 								<td class="px-4 py-2.5 text-right">
 									<div class="flex items-center justify-end">
 										<button type="button" onclick={() => unstar(f.slug)} class="rounded-md p-1.5 text-amber-400 transition-colors hover:bg-amber-50" title={m.remove_star()}>
 											<Star size={15} fill="currentColor" />
 										</button>
-										{#if !f.is_dir}
-											<button type="button" onclick={() => (previewFile = { slug: f.slug, name: f.file_name, mimeType: f.mime_type || '', size: f.file_size })} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+										{#if !f.isDir}
+											<button type="button" onclick={() => (previewFile = { slug: f.slug, name: f.fileName, mimeType: f.mimeType || '', size: f.fileSize })} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
 												<Eye size={15} />
 											</button>
-											<a href={downloadUrl(f.slug)} download={f.file_name} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+											<a href={downloadUrl(f.slug)} download={f.fileName} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
 												<Download size={15} />
 											</a>
 										{/if}

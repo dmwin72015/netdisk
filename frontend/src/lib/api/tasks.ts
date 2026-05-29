@@ -2,17 +2,17 @@ import { api } from './client';
 
 export type Task = {
 	id: string;
-	original_name: string;
-	file_size: number;
+	originalName: string;
+	fileSize: number;
 	status: 'pending' | 'processing' | 'completed' | 'failed';
 	progress: number;
-	error_message?: string;
-	m3u8_url?: string;
-	thumbnail_url?: string;
-	duration_sec?: number;
-	created_at: number;
-	started_at?: number;
-	completed_at?: number;
+	errorMessage?: string;
+	m3u8Url?: string;
+	thumbnailUrl?: string;
+	durationSec?: number;
+	createdAt: number;
+	startedAt?: number;
+	completedAt?: number;
 };
 
 export type TaskList = {
@@ -60,12 +60,12 @@ export async function computeFileSHA256(file: File): Promise<string> {
 		.join('');
 }
 
-export async function uploadFile(file: File, sha256?: string): Promise<{ task_id: string }> {
+export async function uploadFile(file: File, sha256?: string): Promise<{ taskId: string }> {
 	const headers: Record<string, string> = {};
 	if (sha256) headers['X-File-SHA256'] = sha256;
 	const fd = new FormData();
 	fd.append('file', file);
-	return api<{ task_id: string }>('/api/v1/upload', {
+	return api<{ taskId: string }>('/api/v1/upload', {
 		method: 'POST',
 		body: fd,
 		headers

@@ -1,24 +1,8 @@
 <script lang="ts">
 	import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Pause, Play, X, XCircle } from '@lucide/svelte';
 	import { fmtSize, fmtSpeed } from '$lib/utils/format';
+	import type { UploadItem } from '$lib/types/upload';
 	import * as m from '$lib/paraglide/messages';
-
-	export type UploadItem = {
-		uid: string;
-		file: File;
-		fileName: string;
-		fileSize: number;
-		fileHash: string;
-		preHash: string;
-		phase: 'hashing' | 'pending' | 'verifying' | 'uploading' | 'paused' | 'importing' | 'completed' | 'failed';
-		progress: number;
-		hashProgress: number;
-		uploadedBytes: number;
-		speed: number;
-		uploadSlug: string | null;
-		abortCtrl: AbortController | null;
-		errorMsg: string | null;
-	};
 
 	let {
 		items,

@@ -4,7 +4,8 @@
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import { Trash2, Users, ChevronLeft, ChevronRight, Loader2 } from '@lucide/svelte';
-	import { fmtSize } from '$lib/api/drive';
+	import { toast } from 'svelte-sonner';
+	import { fmtSize } from '$lib/utils/format';
 	import {
 		adminListUsers,
 		adminUpdateRole,
@@ -21,7 +22,6 @@
 	let total = $state(0);
 	let offset = $state(0);
 	let loading = $state(true);
-	let error = $state<string | null>(null);
 
 	let currentPage = $derived(Math.floor(offset / PAGE_SIZE) + 1);
 	let totalPages = $derived(Math.ceil(total / PAGE_SIZE));
@@ -37,13 +37,12 @@
 
 	async function loadUsers() {
 		loading = true;
-		error = null;
 		try {
 			const res = await adminListUsers(PAGE_SIZE, offset);
 			users = res.items;
 			total = res.total;
 		} catch {
-			error = m.load_failed();
+			toast.error(m.load_failed());
 		} finally {
 			loading = false;
 		}
@@ -60,21 +59,21 @@
 			await adminUpdateRole(u.id, newRole);
 			u.role = newRole;
 		} catch {
-			error = m.load_failed();
+			toast.error(m.load_failed());
 		}
 	}
 
 	async function handleSetBaseStorage(u: AdminUser) {
-		const val = await promptInput(m.set_base_storage(), m.enter_storage_bytes(), String(u.base_bytes));
+		const val = await promptInput(m.set_base_storage(), m.enter_storage_bytes(), String(u.baseBytes));
 		if (val === null) return;
 		const bytes = parseInt(val, 10);
 		if (isNaN(bytes) || bytes < 0) return;
 		try {
 			const updated = await adminUpdateStorageBase(u.id, bytes);
-			u.base_bytes = updated.base_bytes;
-			u.total_bytes = updated.total_bytes;
+			u.baseBytes = updated.baseBytes;
+			u.totalBytes = updated.totalBytes;
 		} catch {
-			error = m.load_failed();
+			toast.error(m.load_failed());
 		}
 	}
 
@@ -86,7 +85,7 @@
 			users = users.filter((x) => x.id !== u.id);
 			total--;
 		} catch {
-			error = m.delete_failed();
+			toast.error(m.delete_failed());
 		}
 	}
 
@@ -101,10 +100,6 @@
 		<h1 class="text-xl font-semibold">{m.user_management()}</h1>
 		<span class="ml-auto text-sm text-slate-400">{m.total_items({ total: String(total) })}</span>
 	</div>
-
-	{#if error}
-		<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
-	{/if}
 
 	<div class="overflow-hidden rounded-lg border bg-white">
 		<table class="w-full text-left text-sm">
@@ -150,11 +145,11 @@
 									onclick={() => handleSetBaseStorage(u)}
 									title={m.set_base_storage()}
 								>
-									<div class="text-xs text-slate-500">{fmtSize(u.used_bytes)} / {fmtSize(u.total_bytes)}</div>
-									<div class="text-xs text-slate-400">{m.storage_base()}: {fmtSize(u.base_bytes)}</div>
+									<div class="text-xs text-slate-500">{fmtSize(u.usedBytes)} / {fmtSize(u.totalBytes)}</div>
+									<div class="text-xs text-slate-400">{m.storage_base()}: {fmtSize(u.baseBytes)}</div>
 								</button>
 							</td>
-							<td class="px-4 py-3 text-slate-500">{fmtDate(u.created_at)}</td>
+							<td class="px-4 py-3 text-slate-500">{fmtDate(u.createdAt)}</td>
 							<td class="px-4 py-3">
 								<button
 									class="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"

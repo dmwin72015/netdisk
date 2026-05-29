@@ -37,24 +37,24 @@ type UserMeResponse struct {
 	Profile   ProfileData    `json:"profile"`
 	Storage   StorageData    `json:"storage"`
 	Level     LevelData      `json:"level"`
-	CreatedAt string         `json:"created_at"`
+	CreatedAt string         `json:"createdAt"`
 }
 
 type ProfileData struct {
-	DisplayName string `json:"display_name"`
-	AvatarURL   string `json:"avatar_url"`
+	DisplayName string `json:"displayName"`
+	AvatarURL   string `json:"avatarUrl"`
 	Bio         string `json:"bio"`
 }
 
 type StorageData struct {
-	StorageUsed  int64 `json:"storage_used"`
-	StorageQuota int64 `json:"storage_quota"`
+	StorageUsed  int64 `json:"storageUsed"`
+	StorageQuota int64 `json:"storageQuota"`
 }
 
 type LevelData struct {
-	LevelCode string  `json:"level_code"`
-	LevelName string  `json:"level_name"`
-	ExpiresAt *string `json:"expires_at"`
+	LevelCode string  `json:"levelCode"`
+	LevelName string  `json:"levelName"`
+	ExpiresAt *string `json:"expiresAt"`
 }
 
 func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse, error) {
@@ -124,6 +124,41 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 	return resp, nil
 }
 
+type CategoryStat struct {
+	Category string `json:"category"`
+	Bytes    int64  `json:"bytes"`
+	Count    int64  `json:"count"`
+}
+
+func (s *UserService) GetStorageBreakdown(ctx context.Context, userID int64) ([]CategoryStat, error) {
+	rows, err := s.pg.Query(ctx,
+		`SELECT file_category, COALESCE(SUM(file_size), 0) AS total_bytes, COUNT(*) AS file_count
+		 FROM user_files
+		 WHERE user_id = $1 AND is_dir = FALSE AND is_trashed = FALSE
+		 GROUP BY file_category
+		 ORDER BY total_bytes DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query storage breakdown: %w", err)
+	}
+	defer rows.Close()
+
+	var stats []CategoryStat
+	for rows.Next() {
+		var cs CategoryStat
+		if err := rows.Scan(&cs.Category, &cs.Bytes, &cs.Count); err != nil {
+			return nil, fmt.Errorf("scan category stat: %w", err)
+		}
+		stats = append(stats, cs)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}
+
 func (s *UserService) UpdateProfile(ctx context.Context, userID int64, displayName, bio string) error {
 	return s.queries.UpdateProfile(ctx, sqlc.UpdateProfileParams{
 		UserID:      userID,
@@ -163,7 +198,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userID int64, oldPassw
 }
 
 func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.Reader, mimeType string) (string, error) {
-	if mimeType != "image/jpeg" && mimeType != "image/png" {
+	if mimeType != "image/jpeg" && mimeType != "image/png" && mimeType != "image/webp" {
 		return "", model.ErrUnsupportedType
 	}
 
@@ -173,8 +208,11 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 	}
 
 	ext := ".jpg"
-	if mimeType == "image/png" {
+	switch mimeType {
+	case "image/png":
 		ext = ".png"
+	case "image/webp":
+		ext = ".webp"
 	}
 
 	avatarDir := filepath.Join(s.cfg.Storage.Root, "avatars")

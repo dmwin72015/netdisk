@@ -39,6 +39,18 @@ func (h *UserHandler) GetMe(c echo.Context) error {
 	return OK(c, me)
 }
 
+func (h *UserHandler) GetStorageBreakdown(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	stats, err := h.svc.GetStorageBreakdown(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	return OK(c, map[string]any{"categories": stats})
+}
+
 func (h *UserHandler) UpdateProfile(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {
@@ -46,7 +58,7 @@ func (h *UserHandler) UpdateProfile(c echo.Context) error {
 	}
 
 	var input struct {
-		DisplayName string `json:"display_name"`
+		DisplayName string `json:"displayName"`
 		Bio         string `json:"bio"`
 	}
 	if err := c.Bind(&input); err != nil {
@@ -66,8 +78,8 @@ func (h *UserHandler) ChangePassword(c echo.Context) error {
 	}
 
 	var input struct {
-		OldPassword string `json:"old_password"`
-		NewPassword string `json:"new_password"`
+		OldPassword string `json:"oldPassword"`
+		NewPassword string `json:"newPassword"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return echo.NewHTTPError(400, "invalid request body")
@@ -104,8 +116,8 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 	}
 
 	contentType := http.DetectContentType(buf[:n])
-	if contentType != "image/jpeg" && contentType != "image/png" {
-		return echo.NewHTTPError(400, "only JPEG and PNG are supported")
+	if contentType != "image/jpeg" && contentType != "image/png" && contentType != "image/webp" {
+		return echo.NewHTTPError(400, "only JPEG, PNG and WebP are supported")
 	}
 
 	// Seek back to start
@@ -142,7 +154,7 @@ func (h *UserHandler) ListTransactions(c echo.Context) error {
 	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("page_size"))
+	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
 	txs, total, err := h.svc.ListTransactions(c.Request().Context(), userID, page, pageSize)
 	if err != nil {

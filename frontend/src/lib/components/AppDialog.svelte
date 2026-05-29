@@ -77,7 +77,7 @@
 
 {#if pending}
 	{#if isPrompt}
-		<Dialog.Root {open} onOpenChange={onOpenChange}>
+		<Dialog.Root {open} {onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Overlay forceMount>
 					{#snippet child({ props })}
@@ -135,7 +135,7 @@
 			</Dialog.Portal>
 		</Dialog.Root>
 	{:else}
-		<AlertDialog.Root {open} onOpenChange={onOpenChange}>
+		<AlertDialog.Root {open} {onOpenChange}>
 			<AlertDialog.Portal>
 				<AlertDialog.Overlay forceMount>
 					{#snippet child({ props })}

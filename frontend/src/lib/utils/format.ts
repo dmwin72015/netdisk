@@ -3,7 +3,8 @@ export function fmtSize(bytes: number): string {
 	const k = 1024;
 	const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return (bytes / Math.pow(k, i)).toFixed(i > 0 ? 1 : 0) + ' ' + sizes[i];
+	const decimals = i >= 3 ? 2 : i > 0 ? 1 : 0;
+	return (bytes / Math.pow(k, i)).toFixed(decimals) + ' ' + sizes[i];
 }
 
 export function fmtTime(iso: string): string {

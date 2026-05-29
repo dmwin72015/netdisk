@@ -30,28 +30,28 @@ func NewMediaService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config
 }
 
 type AddToLibraryRequest struct {
-	FileSlug string `json:"file_slug"`
+	FileSlug string `json:"fileSlug"`
 	Title    string `json:"title"`
 }
 
 type AddToLibraryResponse struct {
-	MediaSlug       string `json:"media_slug"`
-	TranscodeSlug   string `json:"transcode_slug"`
-	TranscodeStatus string `json:"transcode_status"`
-	TranscodeReused bool   `json:"transcode_reused"`
+	MediaSlug       string `json:"mediaSlug"`
+	TranscodeSlug   string `json:"transcodeSlug"`
+	TranscodeStatus string `json:"transcodeStatus"`
+	TranscodeReused bool   `json:"transcodeReused"`
 }
 
 type MediaItemResponse struct {
-	MediaSlug       string  `json:"media_slug"`
-	FileName        string  `json:"file_name"`
+	MediaSlug       string  `json:"mediaSlug"`
+	FileName        string  `json:"fileName"`
 	Status          string  `json:"status"`
-	TranscodeReused bool    `json:"transcode_reused"`
+	TranscodeReused bool    `json:"transcodeReused"`
 	Progress        int32   `json:"progress"`
-	DurationSec     *int32  `json:"duration_sec"`
-	ErrorMsg        *string `json:"error_msg"`
-	PosterURL       *string `json:"poster_url"`
-	PlayURL         *string `json:"play_url"`
-	CreatedAt       string  `json:"created_at"`
+	DurationSec     *int32  `json:"durationSec"`
+	ErrorMsg        *string `json:"errorMsg"`
+	PosterURL       *string `json:"posterUrl"`
+	PlayURL         *string `json:"playUrl"`
+	CreatedAt       string  `json:"createdAt"`
 }
 
 func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddToLibraryRequest) (*AddToLibraryResponse, error) {
@@ -213,6 +213,10 @@ func (s *MediaService) ListMediaItems(ctx context.Context, userID int64, page, p
 			progress, _ := s.cache.MediaProgress.GetProgress(ctx, item.TranscodeSlug.String)
 			r.Progress = int32(progress)
 		}
+		if item.PosterPath.Valid && item.PosterPath.String != "" {
+			posterURL := fmt.Sprintf("/api/v1/media/poster/%s", item.Slug)
+			r.PosterURL = &posterURL
+		}
 		resp = append(resp, r)
 	}
 
@@ -256,6 +260,12 @@ func (s *MediaService) GetMediaItem(ctx context.Context, userID int64, mediaSlug
 		resp.PlayURL = &playURL
 	}
 
+	// Set poster URL
+	if item.PosterPath.Valid && item.PosterPath.String != "" {
+		posterURL := fmt.Sprintf("/api/v1/media/poster/%s", item.Slug)
+		resp.PosterURL = &posterURL
+	}
+
 	return resp, nil
 }
 
@@ -272,6 +282,23 @@ func (s *MediaService) RemoveFromLibrary(ctx context.Context, userID int64, medi
 	}
 
 	return s.queries.DeleteMediaItem(ctx, item.ID)
+}
+
+func (s *MediaService) GetPosterPath(ctx context.Context, userID int64, mediaSlug string) (string, error) {
+	item, err := s.queries.GetMediaItemBySlug(ctx, mediaSlug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", model.ErrNotFound
+		}
+		return "", fmt.Errorf("get media item: %w", err)
+	}
+	if item.UserID != userID {
+		return "", model.ErrNotFound
+	}
+	if !item.PosterPath.Valid || item.PosterPath.String == "" {
+		return "", model.ErrNotFound
+	}
+	return item.PosterPath.String, nil
 }
 
 func (s *MediaService) GetHLSPath(ctx context.Context, userID int64, mediaSlug, subPath string) (string, error) {

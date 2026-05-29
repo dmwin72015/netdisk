@@ -29,7 +29,7 @@
 		return m.days_ago({ n: Math.floor(diff / 86400) });
 	}
 
-	const pct = $derived(Math.round((session.received_bytes / session.total_size) * 100));
+	const pct = $derived(Math.round((session.receivedBytes / session.totalSize) * 100));
 </script>
 
 <article class="rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -50,8 +50,8 @@
 		</button>
 	</header>
 	<div class="mt-2 flex items-center justify-between text-xs text-slate-600">
-		<span>{fmtSize(session.received_bytes)} / {fmtSize(session.total_size)}</span>
-		<span>{timeAgo(session.updated_at)}</span>
+		<span>{fmtSize(session.receivedBytes)} / {fmtSize(session.totalSize)}</span>
+		<span>{timeAgo(session.updatedAt)}</span>
 	</div>
 	<div class="mt-2 h-1.5 w-full overflow-hidden rounded bg-amber-200">
 		<div class="h-full bg-amber-600 transition-all" style="width:{pct}%"></div>

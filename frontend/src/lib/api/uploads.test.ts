@@ -47,10 +47,10 @@ describe('assertFileMatchesSession', () => {
 	const session: UploadSession = {
 		id: 's1',
 		filename: 'video.mp4',
-		total_size: 1024,
-		received_bytes: 0,
-		created_at: 0,
-		updated_at: 0,
+		totalSize: 1024,
+		receivedBytes: 0,
+		createdAt: 0,
+		updatedAt: 0,
 	};
 
 	it('passes when file matches session', () => {
