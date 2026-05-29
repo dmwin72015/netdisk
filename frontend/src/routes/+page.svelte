@@ -4,13 +4,17 @@
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listRecentFiles, type FileItem } from '$lib/api/files';
+	import { listUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
-	import { Folder, Film, Star, Trash2, Loader2, File } from '@lucide/svelte';
+	import { Folder, Film, Star, Trash2, Loader2, File, AlertCircle, RefreshCw, Upload } from '@lucide/svelte';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let recentFiles = $state<FileItem[]>([]);
 	let loading = $state(true);
+	let incompleteTasks = $state<UploadTaskItem[]>([]);
+
+	const activeStatus = new Set(['created', 'uploading', 'merging', 'failed']);
 
 	onMount(() => {
 		if (!browser) return;
@@ -19,6 +23,7 @@
 			return;
 		}
 		loadRecentFiles();
+		loadIncompleteTasks();
 	});
 
 	async function loadRecentFiles() {
@@ -32,6 +37,22 @@
 			loading = false;
 		}
 	}
+
+	async function loadIncompleteTasks() {
+		try {
+			const data = await listUploadTasks(20, 0);
+			incompleteTasks = data.items.filter(t => t.status !== 'done' && activeStatus.has(t.status));
+		} catch {
+			incompleteTasks = [];
+		}
+	}
+
+	const statusConfig: Record<string, { label: string; icon: any; class: string }> = {
+		created:   { label: 'Pending',     icon: Upload,     class: 'text-blue-500 bg-blue-50' },
+		uploading: { label: 'Uploading',   icon: Upload,     class: 'text-blue-500 bg-blue-50' },
+		merging:   { label: 'Merging',     icon: RefreshCw,  class: 'text-amber-500 bg-amber-50' },
+		failed:    { label: 'Failed',      icon: AlertCircle,class: 'text-red-500 bg-red-50' },
+	};
 
 	function getFileUrl(file: FileItem): string {
 		if (file.parentSlug) {
@@ -79,6 +100,36 @@
 				</a>
 			</div>
 		</div>
+
+		<!-- Incomplete upload tasks -->
+		{#if incompleteTasks.length > 0}
+			<div>
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="text-sm font-medium text-gray-500">{m.upload_title()}</h2>
+					<a href="/tasks" class="text-xs text-blue-600 hover:text-blue-700">{m.all_files()} →</a>
+				</div>
+				<div class="space-y-2">
+					{#each incompleteTasks as task (task.slug)}
+						{@const cfg = statusConfig[task.status] || statusConfig.failed}
+						<div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+							<div class="flex h-9 w-9 items-center justify-center rounded-lg {cfg.class}">
+								<svelte:component this={cfg.icon} size={16} />
+							</div>
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-sm font-medium text-gray-900">{task.fileName || 'Unknown'}</p>
+								<p class="text-xs text-gray-400">{fmtSize(task.fileSize)} &middot; {cfg.label}</p>
+							</div>
+							{#if task.status === 'failed'}
+								<a
+									href="/tasks"
+									class="shrink-0 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+								>{m.upload_retry()}</a>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Recent files -->
 		<div>
