@@ -5,16 +5,12 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import { listRecentFiles, type FileItem } from '$lib/api/files';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
-	import { Folder, Film, Star, Trash2, Loader2, File, Clock } from '@lucide/svelte';
+	import { Folder, Film, Star, Trash2, Loader2, File } from '@lucide/svelte';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let recentFiles = $state<FileItem[]>([]);
 	let loading = $state(true);
-
-	let usedBytes = $derived($user?.storage?.storageUsed ?? 0);
-	let quotaBytes = $derived($user?.storage?.storageQuota ?? 0);
-	let usagePercent = $derived(quotaBytes > 0 ? Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) : 0);
 
 	onMount(() => {
 		if (!browser) return;
@@ -51,20 +47,6 @@
 		<!-- Welcome -->
 		<div>
 			<h1 class="text-2xl font-semibold text-gray-900">{m.home_welcome({ name: $user.username })}</h1>
-		</div>
-
-		<!-- Storage overview -->
-		<div class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-			<div class="flex items-center justify-between mb-3">
-				<span class="text-sm font-medium text-gray-700">{m.drive_storage()}</span>
-				<span class="text-xs text-gray-400">{fmtSize(usedBytes)} / {fmtSize(quotaBytes)}</span>
-			</div>
-			<div class="h-2 w-full rounded-full bg-gray-100">
-				<div
-					class="h-full rounded-full transition-all duration-500 {usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-amber-500' : 'bg-blue-500'}"
-					style="width: {usagePercent}%"
-				></div>
-			</div>
 		</div>
 
 		<!-- Quick links -->
