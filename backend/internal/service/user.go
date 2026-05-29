@@ -132,11 +132,11 @@ type CategoryStat struct {
 
 func (s *UserService) GetStorageBreakdown(ctx context.Context, userID int64) ([]CategoryStat, error) {
 	rows, err := s.pg.Query(ctx,
-		`SELECT file_category, COALESCE(SUM(file_size), 0) AS total_bytes, COUNT(*) AS file_count
+		`SELECT COALESCE(NULLIF(file_category, ''), 'other'), COALESCE(SUM(file_size), 0), COUNT(*)
 		 FROM user_files
 		 WHERE user_id = $1 AND is_dir = FALSE AND is_trashed = FALSE
-		 GROUP BY file_category
-		 ORDER BY total_bytes DESC`,
+		 GROUP BY COALESCE(NULLIF(file_category, ''), 'other')
+		 ORDER BY SUM(file_size) DESC`,
 		userID,
 	)
 	if err != nil {
@@ -144,16 +144,26 @@ func (s *UserService) GetStorageBreakdown(ctx context.Context, userID int64) ([]
 	}
 	defer rows.Close()
 
-	var stats []CategoryStat
+	statMap := make(map[string]CategoryStat, 8)
 	for rows.Next() {
 		var cs CategoryStat
 		if err := rows.Scan(&cs.Category, &cs.Bytes, &cs.Count); err != nil {
 			return nil, fmt.Errorf("scan category stat: %w", err)
 		}
-		stats = append(stats, cs)
+		statMap[cs.Category] = cs
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	allCategories := []string{"video", "audio", "image", "document", "archive", "other"}
+	stats := make([]CategoryStat, 0, len(allCategories))
+	for _, cat := range allCategories {
+		cs, ok := statMap[cat]
+		if !ok {
+			cs = CategoryStat{Category: cat}
+		}
+		stats = append(stats, cs)
 	}
 
 	return stats, nil

@@ -372,7 +372,7 @@
 					item.phase = 'uploading';
 					log(item.uid, 'phase → uploading, init session...');
 					const mimeType = item.file.type || 'application/octet-stream';
-					const task = await initUpload(item.fileHash, item.preHash, item.fileSize, mimeType);
+					const task = await initUpload(item.fileHash, item.preHash, item.fileSize, mimeType, item.file.name);
 					item.uploadSlug = task.uploadSlug;
 					log(item.uid, `session created: ${task.uploadSlug}, resume from chunk ${task.completedChunks?.length || 0}`);
 

@@ -16,6 +16,7 @@ type Querier interface {
 	CountMediaItemsByUser(ctx context.Context, userID int64) (int64, error)
 	CountReferencesByFileID(ctx context.Context, physicalFileID pgtype.Int8) (int64, error)
 	CountTransactionsByUser(ctx context.Context, userID int64) (int64, error)
+	CountUploadTasksByUser(ctx context.Context, ownerUserID int64) (int64, error)
 	CreateFile(ctx context.Context, arg CreateFileParams) (UserFile, error)
 	CreateLevel(ctx context.Context, arg CreateLevelParams) (UserLevel, error)
 	CreateMediaItem(ctx context.Context, arg CreateMediaItemParams) (MediaItem, error)
@@ -59,6 +60,7 @@ type Querier interface {
 	GetUserBySlug(ctx context.Context, slug string) (User, error)
 	ListMediaItemsByUser(ctx context.Context, arg ListMediaItemsByUserParams) ([]ListMediaItemsByUserRow, error)
 	ListTransactionsByUser(ctx context.Context, arg ListTransactionsByUserParams) ([]UserTransaction, error)
+	ListUploadTasksByUser(ctx context.Context, arg ListUploadTasksByUserParams) ([]UploadTask, error)
 	MoveFile(ctx context.Context, arg MoveFileParams) error
 	RenameFile(ctx context.Context, arg RenameFileParams) error
 	RestoreFile(ctx context.Context, id int64) error

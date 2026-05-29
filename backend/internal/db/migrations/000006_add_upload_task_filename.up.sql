@@ -1,0 +1,1 @@
+ALTER TABLE upload_tasks ADD COLUMN original_name VARCHAR(512) NOT NULL DEFAULT '';

@@ -30,7 +30,7 @@
 </script>
 
 <TooltipBase.Root bind:open {onOpenChange} {delayDuration} {disableHoverableContent} {disabled}>
-	<TooltipBase.Trigger class={triggerClass}>
+		<TooltipBase.Trigger class={triggerClass}>
 		{@render children()}
 	</TooltipBase.Trigger>
 

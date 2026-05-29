@@ -11,24 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUploadTasksByUser = `-- name: CountUploadTasksByUser :one
+SELECT COUNT(*) FROM upload_tasks
+WHERE owner_user_id = $1
+`
+
+func (q *Queries) CountUploadTasksByUser(ctx context.Context, ownerUserID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countUploadTasksByUser, ownerUserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUploadTask = `-- name: CreateUploadTask :one
-INSERT INTO upload_tasks (slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at
+INSERT INTO upload_tasks (slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, original_name, total_chunks, chunk_size, status, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name
 `
 
 type CreateUploadTaskParams struct {
-	Slug        string             `json:"slug"`
-	OwnerUserID int64              `json:"ownerUserId"`
-	HashAlgo    string             `json:"hashAlgo"`
-	FileHash    string             `json:"fileHash"`
-	PreHash     string             `json:"preHash"`
-	FileSize    int64              `json:"fileSize"`
-	MimeType    string             `json:"mimeType"`
-	TotalChunks int32              `json:"totalChunks"`
-	ChunkSize   int32              `json:"chunkSize"`
-	Status      string             `json:"status"`
-	ExpiresAt   pgtype.Timestamptz `json:"expiresAt"`
+	Slug         string             `json:"slug"`
+	OwnerUserID  int64              `json:"ownerUserId"`
+	HashAlgo     string             `json:"hashAlgo"`
+	FileHash     string             `json:"fileHash"`
+	PreHash      string             `json:"preHash"`
+	FileSize     int64              `json:"fileSize"`
+	MimeType     string             `json:"mimeType"`
+	OriginalName string             `json:"originalName"`
+	TotalChunks  int32              `json:"totalChunks"`
+	ChunkSize    int32              `json:"chunkSize"`
+	Status       string             `json:"status"`
+	ExpiresAt    pgtype.Timestamptz `json:"expiresAt"`
 }
 
 func (q *Queries) CreateUploadTask(ctx context.Context, arg CreateUploadTaskParams) (UploadTask, error) {
@@ -40,6 +53,7 @@ func (q *Queries) CreateUploadTask(ctx context.Context, arg CreateUploadTaskPara
 		arg.PreHash,
 		arg.FileSize,
 		arg.MimeType,
+		arg.OriginalName,
 		arg.TotalChunks,
 		arg.ChunkSize,
 		arg.Status,
@@ -63,6 +77,7 @@ func (q *Queries) CreateUploadTask(ctx context.Context, arg CreateUploadTaskPara
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OriginalName,
 	)
 	return i, err
 }
@@ -78,7 +93,7 @@ func (q *Queries) DeleteExpiredTasks(ctx context.Context) error {
 }
 
 const getUploadTaskByHashForUser = `-- name: GetUploadTaskByHashForUser :one
-SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at FROM upload_tasks
+SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name FROM upload_tasks
 WHERE owner_user_id = $1 AND file_hash = $2 AND status IN ('created', 'uploading')
 LIMIT 1
 `
@@ -108,12 +123,13 @@ func (q *Queries) GetUploadTaskByHashForUser(ctx context.Context, arg GetUploadT
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OriginalName,
 	)
 	return i, err
 }
 
 const getUploadTaskBySlug = `-- name: GetUploadTaskBySlug :one
-SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at FROM upload_tasks WHERE slug = $1 LIMIT 1
+SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name FROM upload_tasks WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetUploadTaskBySlug(ctx context.Context, slug string) (UploadTask, error) {
@@ -136,8 +152,60 @@ func (q *Queries) GetUploadTaskBySlug(ctx context.Context, slug string) (UploadT
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OriginalName,
 	)
 	return i, err
+}
+
+const listUploadTasksByUser = `-- name: ListUploadTasksByUser :many
+SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name FROM upload_tasks
+WHERE owner_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListUploadTasksByUserParams struct {
+	OwnerUserID int64 `json:"ownerUserId"`
+	Limit       int32 `json:"limit"`
+	Offset      int32 `json:"offset"`
+}
+
+func (q *Queries) ListUploadTasksByUser(ctx context.Context, arg ListUploadTasksByUserParams) ([]UploadTask, error) {
+	rows, err := q.db.Query(ctx, listUploadTasksByUser, arg.OwnerUserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UploadTask
+	for rows.Next() {
+		var i UploadTask
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.OwnerUserID,
+			&i.HashAlgo,
+			&i.FileHash,
+			&i.PreHash,
+			&i.FileSize,
+			&i.MimeType,
+			&i.TotalChunks,
+			&i.ChunkSize,
+			&i.Status,
+			&i.PhysicalFileID,
+			&i.ErrorMsg,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OriginalName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateUploadTaskFileHash = `-- name: UpdateUploadTaskFileHash :exec

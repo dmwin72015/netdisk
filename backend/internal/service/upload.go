@@ -73,6 +73,7 @@ type InitRequest struct {
 	PreHash  string `json:"preHash"`
 	FileSize int64  `json:"fileSize"`
 	MimeType string `json:"mimeType"`
+	FileName string `json:"fileName"`
 }
 
 type InitResponse struct {
@@ -224,17 +225,18 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 	}
 
 	_, err = s.queries.CreateUploadTask(ctx, sqlc.CreateUploadTaskParams{
-		Slug:        slug,
-		OwnerUserID: userID,
-		HashAlgo:    "sha256",
-		FileHash:    req.FileHash,
-		PreHash:     req.PreHash,
-		FileSize:    req.FileSize,
-		MimeType:    req.MimeType,
-		TotalChunks: totalChunks,
-		ChunkSize:   chunkSize,
-		Status:      "uploading",
-		ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(24 * 30 * time.Hour), Valid: true},
+		Slug:         slug,
+		OwnerUserID:  userID,
+		HashAlgo:     "sha256",
+		FileHash:     req.FileHash,
+		PreHash:      req.PreHash,
+		FileSize:     req.FileSize,
+		MimeType:     req.MimeType,
+		OriginalName: req.FileName,
+		TotalChunks:  totalChunks,
+		ChunkSize:    chunkSize,
+		Status:       "uploading",
+		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(24 * 30 * time.Hour), Valid: true},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create upload task: %w", err)
@@ -445,4 +447,111 @@ func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug 
 	}
 
 	return resp, nil
+}
+
+type TaskItem struct {
+	Slug       string `json:"slug"`
+	FileName   string `json:"fileName"`
+	FileSize   int64  `json:"fileSize"`
+	MimeType   string `json:"mimeType"`
+	Status     string `json:"status"`
+	ErrorMsg   string `json:"errorMsg,omitempty"`
+	TotalChunks int32 `json:"totalChunks"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
+type ListTasksResponse struct {
+	Items  []TaskItem `json:"items"`
+	Total  int64      `json:"total"`
+	Limit  int        `json:"limit"`
+	Offset int        `json:"offset"`
+}
+
+func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offset int) (*ListTasksResponse, error) {
+	total, err := s.queries.CountUploadTasksByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("count tasks: %w", err)
+	}
+
+	tasks, err := s.queries.ListUploadTasksByUser(ctx, sqlc.ListUploadTasksByUserParams{
+		OwnerUserID: userID,
+		Limit:       int32(limit),
+		Offset:      int32(offset),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list tasks: %w", err)
+	}
+
+	items := make([]TaskItem, len(tasks))
+	for i, t := range tasks {
+		items[i] = TaskItem{
+			Slug:        t.Slug,
+			FileName:    t.OriginalName,
+			FileSize:    t.FileSize,
+			MimeType:    t.MimeType,
+			Status:      t.Status,
+			TotalChunks: t.TotalChunks,
+			CreatedAt:   t.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt:   t.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
+		}
+		if t.ErrorMsg.Valid {
+			items[i].ErrorMsg = t.ErrorMsg.String
+		}
+	}
+
+	return &ListTasksResponse{
+		Items:  items,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
+}
+
+func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug string) (*InitResponse, error) {
+	task, err := s.queries.GetUploadTaskBySlug(ctx, taskSlug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrNotFound
+		}
+		return nil, fmt.Errorf("get task: %w", err)
+	}
+	if task.OwnerUserID != userID {
+		return nil, model.ErrUnauthorized
+	}
+	if task.Status != "failed" {
+		return nil, model.ErrInvalidInput
+	}
+
+	totalChunks := int32(math.Ceil(float64(task.FileSize) / float64(chunkSize)))
+
+	slug, err := gonanoid.New(21)
+	if err != nil {
+		return nil, fmt.Errorf("generate slug: %w", err)
+	}
+
+	_, err = s.queries.CreateUploadTask(ctx, sqlc.CreateUploadTaskParams{
+		Slug:         slug,
+		OwnerUserID:  userID,
+		HashAlgo:     "sha256",
+		FileHash:     task.FileHash,
+		PreHash:      task.PreHash,
+		FileSize:     task.FileSize,
+		MimeType:     task.MimeType,
+		OriginalName: task.OriginalName,
+		TotalChunks:  totalChunks,
+		ChunkSize:    chunkSize,
+		Status:       "uploading",
+		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(24 * 30 * time.Hour), Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create upload task: %w", err)
+	}
+
+	return &InitResponse{
+		UploadSlug:      slug,
+		TotalChunks:     totalChunks,
+		ChunkSize:       chunkSize,
+		CompletedChunks: []int{},
+	}, nil
 }

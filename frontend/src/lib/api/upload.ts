@@ -49,10 +49,10 @@ export async function verify(fileHash: string, proofCode: string) {
 	});
 }
 
-export async function initUpload(fileHash: string, preHash: string, fileSize: number, mimeType: string) {
+export async function initUpload(fileHash: string, preHash: string, fileSize: number, mimeType: string, fileName?: string) {
 	return api<InitResponse>('/api/v1/upload/init', {
 		method: 'POST',
-		body: JSON.stringify({ fileHash, preHash, fileSize, mimeType })
+		body: JSON.stringify({ fileHash, preHash, fileSize, mimeType, fileName: fileName ?? '' })
 	});
 }
 

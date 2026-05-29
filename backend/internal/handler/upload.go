@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
@@ -181,4 +182,46 @@ func (h *UploadHandler) GetStatus(c echo.Context) error {
 	}
 
 	return OK(c, resp)
+}
+
+func (h *UploadHandler) ListTasks(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset, _ := strconv.Atoi(c.QueryParam("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	resp, err := h.svc.ListTasks(c.Request().Context(), userID, limit, offset)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, resp)
+}
+
+func (h *UploadHandler) RetryTask(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	slug := c.Param("slug")
+	if slug == "" {
+		return echo.NewHTTPError(400, model.ErrInvalidInput)
+	}
+
+	resp, err := h.svc.RetryTask(c.Request().Context(), userID, slug)
+	if err != nil {
+		return err
+	}
+
+	return Created(c, resp)
 }

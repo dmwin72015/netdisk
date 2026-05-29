@@ -83,6 +83,7 @@ type UploadTask struct {
 	ExpiresAt      pgtype.Timestamptz `json:"expiresAt"`
 	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`
+	OriginalName   string             `json:"originalName"`
 }
 
 type User struct {

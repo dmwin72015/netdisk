@@ -3,7 +3,7 @@
 	import { logout } from '$lib/api/auth';
 	import { goto } from '$app/navigation';
 	import { setUser } from '$lib/stores/auth';
-	import { HardDrive, Folder, Upload, Star, Trash2, Film, User, Globe, ChevronDown, LogOut, Settings } from '@lucide/svelte';
+	import { HardDrive, Folder, Upload, Star, Trash2, Film, User, Globe, ChevronDown, LogOut, Settings, ListRestart } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import { page } from '$app/state';
 	import * as m from '$lib/paraglide/messages';
@@ -83,6 +83,12 @@
 							{m.nav_trash()}
 						</DropdownBase.Item>
 						<DropdownBase.Separator />
+						<DropdownBase.Item onSelect={() => goto('/tasks')}>
+							{#snippet icon()}
+								<ListRestart size={14} class="text-gray-400" />
+							{/snippet}
+							{m.upload_title()}
+						</DropdownBase.Item>
 						<DropdownBase.Item onSelect={() => goto('/account')}>
 							{#snippet icon()}
 								<Settings size={14} class="text-gray-400" />

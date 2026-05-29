@@ -90,6 +90,8 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	upload.POST("/chunk", h.Upload.UploadChunk)
 	upload.POST("/complete", h.Upload.Complete)
 	upload.POST("/update-hash", h.Upload.UpdateHash)
+	upload.GET("/tasks", h.Upload.ListTasks)
+	upload.POST("/tasks/:slug/retry", h.Upload.RetryTask)
 	upload.GET("/:upload_slug/status", h.Upload.GetStatus)
 
 	// Media routes

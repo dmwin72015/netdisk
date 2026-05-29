@@ -17,22 +17,44 @@
 
 	let categories = $state<CategoryStat[]>([]);
 	let loadingBreakdown = $state(false);
-	let hoveredCategory = $state<string | null>(null);
-
 	let percent = $derived(quotaBytes > 0 ? Math.min((usedBytes / quotaBytes) * 100, 100) : 0);
 
-	const categoryColors: Record<string, { bg: string; text: string; label: string }> = {
-		video:    { bg: 'bg-purple-500', text: 'text-purple-600', label: '视频' },
-		audio:    { bg: 'bg-blue-500',   text: 'text-blue-600',   label: '音频' },
-		image:    { bg: 'bg-pink-500',   text: 'text-pink-600',   label: '图片' },
-		document: { bg: 'bg-amber-500',  text: 'text-amber-600',  label: '文档' },
-		archive:  { bg: 'bg-gray-500',   text: 'text-gray-600',   label: '压缩包' },
-		other:    { bg: 'bg-gray-400',   text: 'text-gray-500',   label: '其他' },
+	const categoryColors: Record<string, string> = {
+		video:    '#8b5cf6',
+		audio:    '#3b82f6',
+		image:    '#ec4899',
+		document: '#f59e0b',
+		archive:  '#6b7280',
+		other:    '#9ca3af',
 	};
 
-	function getCategoryInfo(cat: string) {
+	const categoryLabels: Record<string, string> = {
+		video:    m.category_video(),
+		audio:    m.category_audio(),
+		image:    m.category_image(),
+		document: m.category_document(),
+		archive:  m.category_archive(),
+		other:    m.category_other(),
+	};
+
+	function getColor(cat: string) {
 		return categoryColors[cat] || categoryColors.other;
 	}
+
+	function getLabel(cat: string) {
+		return categoryLabels[cat] || categoryLabels.other;
+	}
+
+	let barSegments = $derived.by(() => {
+		if (categories.length === 0 || quotaBytes <= 0) return [];
+		return categories
+			.filter((cat) => cat.bytes > 0)
+			.map((cat) => ({
+				cat,
+				width: Math.max((cat.bytes / quotaBytes) * 100, 0.5),
+				color: getColor(cat.category),
+			}));
+	});
 
 	onMount(async () => {
 		loadingBreakdown = true;
@@ -47,72 +69,66 @@
 </script>
 
 <div class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-	<h2 class="mb-4 flex items-center gap-2 text-sm font-medium text-gray-500">
+	<h2 class="mb-5 flex items-center gap-2 text-sm font-medium text-gray-500">
 		<HardDrive size={16} /> {m.drive_storage()}
 	</h2>
-	<div class="space-y-3">
-		{#if loading}
-			<p class="text-sm text-gray-400">{m.loading()}</p>
-		{:else}
-			<div>
-				<div class="mb-2 flex items-baseline justify-between">
-					<span class="text-2xl font-semibold text-gray-900">{fmtSize(usedBytes)}</span>
-					<span class="text-sm text-gray-400">/ {fmtSize(quotaBytes)}</span>
-				</div>
 
-				<!-- Multi-segment progress bar -->
-				<div class="relative h-3 w-full overflow-hidden rounded-full bg-gray-100">
-					{#if categories.length > 0}
-						{#each categories as cat, i (cat.category)}
-							{@const info = getCategoryInfo(cat.category)}
-							{@const width = quotaBytes > 0 ? (cat.bytes / quotaBytes) * 100 : 0}
-							{@const offset = categories.slice(0, i).reduce((sum, c) => sum + (quotaBytes > 0 ? (c.bytes / quotaBytes) * 100 : 0), 0)}
-							<div
-								class="absolute top-0 h-full transition-all duration-300 {info.bg} {hoveredCategory === cat.category ? 'opacity-100 brightness-110' : hoveredCategory ? 'opacity-60' : 'opacity-100'}"
-								style="left:{offset}%; width:{width}%"
-								onmouseenter={() => hoveredCategory = cat.category}
-								onmouseleave={() => hoveredCategory = null}
-								role="presentation"
-							></div>
-						{/each}
-					{:else}
-						<div
-							class="h-full rounded-full transition-all {percent > 90 ? 'bg-red-500' : percent > 70 ? 'bg-amber-500' : 'bg-blue-600'}"
-							style="width:{percent}%"
-						></div>
+	{#if loading}
+		<p class="text-sm text-gray-400">{m.loading()}</p>
+	{:else}
+		<!-- Block 1: Overall usage (used of total) -->
+		<div class="mb-3 text-sm text-gray-600">
+			<span class="font-semibold text-gray-900">{fmtSize(usedBytes)}</span>
+			<span class="text-gray-400">{m.used()}</span>
+			<span class="mx-1 text-gray-300">/</span>
+			<span class="font-semibold text-gray-900">{fmtSize(quotaBytes)}</span>
+		</div>
+
+		<!-- Overall usage bar -->
+		<div class="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+			<div
+				class="h-full rounded-full transition-all {percent > 90 ? 'bg-red-500' : percent > 70 ? 'bg-amber-500' : 'bg-blue-600'}"
+				style="width:{percent}%"
+			></div>
+		</div>
+
+		<!-- Block 2: Category breakdown (GitHub-style) -->
+		{#if categories.length > 0 && !loadingBreakdown}
+			<div class="mt-6">
+				<!-- GitHub-style thin segmented bar -->
+				<div class="mb-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+					{#if barSegments.length > 0}
+						<div class="flex h-full">
+							{#each barSegments as seg (seg.cat.category)}
+								<div
+									style="background-color:{seg.color}; width:{seg.width}%"
+									class="h-full first:rounded-l-full last:rounded-r-full"
+								></div>
+							{/each}
+						</div>
 					{/if}
 				</div>
 
-				<p class="mt-1.5 text-right text-xs text-gray-400">{percent.toFixed(1)}%</p>
-			</div>
-
-			<!-- Category legend -->
-			{#if categories.length > 0 && !loadingBreakdown}
-				<div class="flex flex-wrap gap-x-4 gap-y-2">
+				<!-- GitHub-style compact legend -->
+				<div class="flex flex-wrap gap-x-5 gap-y-1.5">
 					{#each categories as cat (cat.category)}
-						{@const info = getCategoryInfo(cat.category)}
-						<div
-							class="group relative flex items-center gap-1.5 text-xs {info.text} cursor-default"
-							onmouseenter={() => hoveredCategory = cat.category}
-							onmouseleave={() => hoveredCategory = null}
-							role="presentation"
-						>
-							<span class="inline-block h-2.5 w-2.5 rounded-sm {info.bg}"></span>
-							<span>{info.label}</span>
-							<span class="text-gray-400">{fmtSize(cat.bytes)}</span>
-
+						{@const pct = quotaBytes > 0 ? ((cat.bytes / quotaBytes) * 100).toFixed(1) : '0.0'}
+						<div class="group relative flex items-center gap-1.5 text-sm">
+							<span
+								class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+								style="background-color:{getColor(cat.category)}"
+							></span>
+							<span class="cursor-default text-gray-900 underline decoration-dotted decoration-gray-300 underline-offset-2">{getLabel(cat.category)}</span>
+							<span class="text-gray-500">{pct}%</span>
 							<!-- Tooltip -->
-							<div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-2 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-								<p class="font-medium">{info.label}</p>
-								<p>{fmtSize(cat.bytes)} · {cat.count} 个文件</p>
-								<div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+							<div class="pointer-events-none absolute -top-1 left-0 z-10 -translate-y-full whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+								{m.total_items({ total: cat.count })}
+								<div class="absolute left-3 top-full h-0 w-0 border-4 border-transparent border-t-gray-900"></div>
 							</div>
 						</div>
 					{/each}
 				</div>
-			{/if}
-
-			<p class="text-xs text-gray-400">{m.used()}: {fmtSize(usedBytes)} &middot; {m.drive_storage()}: {fmtSize(quotaBytes)}</p>
+			</div>
 		{/if}
-	</div>
+	{/if}
 </div>
