@@ -3,17 +3,20 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Hls from 'hls.js';
-	import { ArrowLeft, Loader2, AlertCircle, Clock } from '@lucide/svelte';
-	import { getMediaItem, getHLSUrl, type MediaItem } from '$lib/api/media';
+	import { ArrowLeft, Loader2, AlertCircle, Clock, Info } from '@lucide/svelte';
+	import { getMediaItem, type MediaItem } from '$lib/api/media';
 	import { getAccessToken } from '$lib/api/client';
+	import VideoStats from '$lib/components/media/VideoStats.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let item = $state<MediaItem | null>(null);
 	let error = $state<string | null>(null);
 	let video: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
+	let hlsAttached = false;
+	let showStats = $state(false);
 
-	function authedHLS(url: string): string {
+	function authedUrl(url: string): string {
 		const token = getAccessToken();
 		if (!token) return url;
 		const u = new URL(url, window.location.origin);
@@ -24,17 +27,14 @@
 	async function load() {
 		try {
 			item = await getMediaItem(page.params.slug!);
-			if (item.status === 'done') {
-				const masterUrl = getHLSUrl(item.mediaSlug, 'master.m3u8');
-				attachHLS(authedHLS(masterUrl));
-			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : m.load_failed();
 		}
 	}
 
 	function attachHLS(src: string) {
-		if (!video) return;
+		if (!video || hlsAttached) return;
+		hlsAttached = true;
 		if (Hls.isSupported()) {
 			hls = new Hls({
 				xhrSetup: (xhr) => {
@@ -55,6 +55,13 @@
 		}
 	}
 
+	// Attach HLS once video element is bound and item is loaded
+	$effect(() => {
+		if (video && item?.status === 'done' && item.playUrl && !hlsAttached) {
+			attachHLS(authedUrl(item.playUrl));
+		}
+	});
+
 	// Poll for status updates while processing
 	let pollTimer: ReturnType<typeof setInterval> | undefined;
 	$effect(() => {
@@ -63,13 +70,11 @@
 				try {
 					const updated = await getMediaItem(page.params.slug!);
 					item = updated;
-					if (updated.status === 'done') {
+					if (updated.status === 'done' || updated.status === 'failed') {
 						if (pollTimer) clearInterval(pollTimer);
-						const masterUrl = getHLSUrl(updated.mediaSlug, 'master.m3u8');
-						attachHLS(authedHLS(masterUrl));
-					} else if (updated.status === 'failed') {
-						if (pollTimer) clearInterval(pollTimer);
-						error = updated.errorMsg || m.conversion_failed();
+						if (updated.status === 'failed') {
+							error = updated.errorMsg || m.conversion_failed();
+						}
 					}
 				} catch {
 					// ignore poll errors
@@ -81,15 +86,12 @@
 		}
 	});
 
-	function fmtDuration(sec: number | null): string {
-		if (!sec || sec <= 0) return '-';
-		const s = Math.round(sec);
-		const h = Math.floor(s / 3600);
-		const m = Math.floor((s % 3600) / 60);
-		const r = s % 60;
-		if (h > 0) return `${h}h ${m}m ${r}s`;
-		if (m > 0) return `${m}m ${r}s`;
-		return `${r}s`;
+	function onKeydown(e: KeyboardEvent) {
+		if (e.key === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			const tag = (e.target as HTMLElement)?.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+			showStats = !showStats;
+		}
 	}
 
 	onMount(load);
@@ -99,8 +101,12 @@
 	});
 </script>
 
-<div class="space-y-4">
-	<button type="button" onclick={() => goto('/media')} class="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700">
+<svelte:window onkeydown={onKeydown} />
+
+<div class="px-4 py-6">
+	<!-- Back button -->
+	<button type="button" onclick={() => goto('/media')}
+		class="mb-4 flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700">
 		<ArrowLeft size={16} /> {m.back_to_media()}
 	</button>
 
@@ -110,55 +116,42 @@
 			<span>{error}</span>
 		</div>
 	{:else if !item}
-		<div class="flex items-center justify-center py-16">
-			<Loader2 size={24} class="animate-spin text-gray-300" />
+		<div class="flex items-center justify-center py-32">
+			<Loader2 size={28} class="animate-spin text-gray-300" />
 		</div>
 	{:else}
-		<h1 class="text-xl font-semibold text-gray-900">{item.fileName}</h1>
-
+		<!-- Video player -->
 		{#if item.status === 'done'}
-			<div class="overflow-hidden rounded-xl bg-black">
+			<div class="group relative overflow-hidden rounded-2xl bg-black">
 				<video bind:this={video} controls class="w-full aspect-video"></video>
+				<VideoStats {hls} {video} bind:visible={showStats} />
+				<button type="button" onclick={() => showStats = !showStats}
+					class="absolute bottom-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
+					title="Stats (S)">
+					<Info size={16} />
+				</button>
 			</div>
 		{:else if item.status === 'processing'}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-blue-200 bg-blue-50 py-20">
-				<Loader2 size={32} class="animate-spin text-blue-400" />
-				<p class="mt-3 text-sm font-medium text-blue-600">{m.converting()} {item.progress}%</p>
-				<div class="mt-3 h-2 w-48 overflow-hidden rounded-full bg-blue-100">
+			<div class="flex flex-col items-center justify-center rounded-2xl bg-gray-900 py-24">
+				<Loader2 size={36} class="animate-spin text-gray-400" />
+				<p class="mt-4 text-sm font-medium text-gray-300">{m.converting()} {item.progress}%</p>
+				<div class="mt-3 h-1.5 w-64 overflow-hidden rounded-full bg-gray-700">
 					<div class="h-full rounded-full bg-blue-500 transition-all" style="width:{item.progress}%"></div>
 				</div>
 			</div>
 		{:else if item.status === 'pending'}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-gray-200 bg-gray-50 py-20">
-				<Clock size={32} class="text-gray-300" />
-				<p class="mt-3 text-sm text-gray-500">{m.in_queue()}</p>
+			<div class="flex flex-col items-center justify-center rounded-2xl bg-gray-900 py-24">
+				<Clock size={36} class="text-gray-500" />
+				<p class="mt-4 text-sm text-gray-400">{m.in_queue()}</p>
 			</div>
 		{:else if item.status === 'failed'}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-red-200 bg-red-50 py-20">
-				<AlertCircle size={32} class="text-red-300" />
-				<p class="mt-3 text-sm text-red-600">{item.errorMsg || m.conversion_failed()}</p>
+			<div class="flex flex-col items-center justify-center rounded-2xl bg-red-950 py-24">
+				<AlertCircle size={36} class="text-red-400" />
+				<p class="mt-4 text-sm text-red-300">{item.errorMsg || m.conversion_failed()}</p>
 			</div>
 		{/if}
 
-		<dl class="grid grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-white p-4 text-sm sm:grid-cols-4">
-			<div>
-				<dt class="text-gray-400">{m.status()}</dt>
-				<dd class="mt-0.5 font-medium capitalize">{item.status}</dd>
-			</div>
-			{#if item.durationSec}
-				<div>
-					<dt class="text-gray-400">{m.duration()}</dt>
-					<dd class="mt-0.5 font-medium">{fmtDuration(item.durationSec)}</dd>
-				</div>
-			{/if}
-			<div>
-				<dt class="text-gray-400">{m.created()}</dt>
-				<dd class="mt-0.5">{new Date(item.createdAt).toLocaleString()}</dd>
-			</div>
-			<div>
-				<dt class="text-gray-400">{m.media_id()}</dt>
-				<dd class="mt-0.5 font-mono text-xs">{item.mediaSlug}</dd>
-			</div>
-		</dl>
+		<!-- Video title -->
+		<h1 class="mt-4 text-lg font-semibold text-gray-900">{item.fileName}</h1>
 	{/if}
 </div>

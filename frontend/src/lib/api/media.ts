@@ -8,6 +8,7 @@ export type MediaItem = {
 	durationSec: number | null;
 	errorMsg: string | null;
 	posterUrl: string | null;
+	playUrl: string | null;
 	createdAt: string;
 };
 

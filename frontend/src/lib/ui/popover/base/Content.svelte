@@ -23,7 +23,7 @@
 		{side}
 		{sideOffset}
 		{align}
-		class="z-50 w-72 rounded-xl border border-gray-100 bg-white p-4 shadow-lg
+		class="z-50 w-72 rounded-xl border border-gray-100 bg-white shadow-lg
 			data-[state=open]:animate-in data-[state=closed]:animate-out
 			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
