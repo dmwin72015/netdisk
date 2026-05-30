@@ -20,15 +20,18 @@ function rotr(x: number, n: number): number {
 	return (x >>> n) | (x << (32 - n));
 }
 
-function sha256Block(state: Uint32Array, block: Uint32Array): void {
-	const w = new Uint32Array(64);
-	for (let i = 0; i < 16; i++) w[i] = block[i];
+const BLOCK_SIZE = 64;
+const w = new Uint32Array(64);
+
+function sha256Block(state: Uint32Array, block: DataView, offset: number): void {
+	for (let i = 0; i < 16; i++) w[i] = block.getUint32(offset + i * 4, false);
 	for (let i = 16; i < 64; i++) {
 		w[i] = (rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10)) + w[i - 7] +
 			(rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3)) + w[i - 16];
 	}
 
-	let [a, b, c, d, e, f, g, h] = state;
+	let a = state[0], b = state[1], c = state[2], d = state[3];
+	let e = state[4], f = state[5], g = state[6], h = state[7];
 
 	for (let i = 0; i < 64; i++) {
 		const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
@@ -52,8 +55,6 @@ function sha256Block(state: Uint32Array, block: Uint32Array): void {
 	state[7] = (state[7] + h) | 0;
 }
 
-const BLOCK_SIZE = 64;
-
 function createState(): Uint32Array {
 	return new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
 }
@@ -61,9 +62,7 @@ function createState(): Uint32Array {
 function processBlocks(state: Uint32Array, data: Uint8Array): void {
 	const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 	for (let i = 0; i + BLOCK_SIZE <= data.length; i += BLOCK_SIZE) {
-		const block = new Uint32Array(16);
-		for (let j = 0; j < 16; j++) block[j] = view.getUint32(i + j * 4, false);
-		sha256Block(state, block);
+		sha256Block(state, view, i);
 	}
 }
 
@@ -80,16 +79,37 @@ function createHashContext(): HashContext {
 function updateHash(ctx: HashContext, data: Uint8Array): void {
 	ctx.totalBytes += data.length;
 
-	const combined = new Uint8Array(ctx.buffer.length + data.length);
-	combined.set(ctx.buffer);
-	combined.set(data, ctx.buffer.length);
+	// Prepend leftover buffer, then process complete 64-byte blocks in-place
+	const prevLen = ctx.buffer.length;
+	const totalLen = prevLen + data.length;
 
-	const completeLen = Math.floor(combined.length / BLOCK_SIZE) * BLOCK_SIZE;
-	if (completeLen > 0) {
-		processBlocks(ctx.state, combined.subarray(0, completeLen));
+	// Process complete blocks: first from leftover + beginning of new data
+	if (totalLen >= BLOCK_SIZE) {
+		// Build a view over leftover + new data without copying where possible
+		const firstBlockEnd = BLOCK_SIZE - prevLen;
+		if (prevLen > 0) {
+			// Need to combine leftover with start of new data for first block(s)
+			const combined = new Uint8Array(totalLen);
+			combined.set(ctx.buffer);
+			combined.set(data, prevLen);
+			const completeLen = Math.floor(totalLen / BLOCK_SIZE) * BLOCK_SIZE;
+			processBlocks(ctx.state, combined.subarray(0, completeLen));
+			ctx.buffer = combined.subarray(completeLen);
+		} else {
+			// No leftover, process new data directly
+			const completeLen = Math.floor(data.length / BLOCK_SIZE) * BLOCK_SIZE;
+			if (completeLen > 0) {
+				processBlocks(ctx.state, data.subarray(0, completeLen));
+			}
+			ctx.buffer = data.slice(completeLen);
+		}
+	} else {
+		// Not enough data for a block, just buffer it
+		const combined = new Uint8Array(totalLen);
+		combined.set(ctx.buffer);
+		combined.set(data, prevLen);
+		ctx.buffer = combined;
 	}
-
-	ctx.buffer = combined.subarray(completeLen);
 }
 
 function finalizeHash(ctx: HashContext): string {
@@ -111,7 +131,6 @@ function finalizeHash(ctx: HashContext): string {
 // --- Main ---
 
 const PRE_HASH_SIZE = 512 * 1024; // 512KB
-const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
 
 let fullCtx = createHashContext();
 let preCtx = createHashContext();

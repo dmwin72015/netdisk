@@ -6,6 +6,7 @@ import {
 import { importFile } from '$lib/api/files';
 import { computeSHA256Chunked } from '$lib/upload-hash';
 import { fmtSize } from '$lib/utils/format';
+import { confirmAction } from '$lib/dialog';
 import * as m from '$lib/paraglide/messages';
 
 const CHUNK_SIZE = 4 * 1024 * 1024;
@@ -185,6 +186,23 @@ export function createUploadManager(opts: {
 
 								if (verifyResult.status === 'HIT' && verifyResult.physicalFileSlug) {
 									log(item.uid, `dedup HIT, importing from ${verifyResult.physicalFileSlug}`);
+
+									// Show confirmation if duplicate files exist
+									if (verifyResult.existingFiles && verifyResult.existingFiles.length > 0) {
+										const paths = verifyResult.existingFiles.map(f => f.path).join('\n');
+										const confirmed = await confirmAction(
+											m.duplicate_detected(),
+											m.duplicate_file_paths({ paths }),
+											m.continue_upload()
+										);
+										if (!confirmed) {
+											item.phase = 'failed';
+											item.errorMsg = m.upload_skipped_duplicate();
+											log(item.uid, 'skipped by user (duplicate)');
+											continue;
+										}
+									}
+
 									item.phase = 'importing';
 									item.progress = 100;
 									await importFile(verifyResult.physicalFileSlug, item.fileName, opts.getCurrentSlug() || undefined);

@@ -6,5 +6,6 @@ export interface NormalizedFile {
 	mimeType: string | null;
 	fileCategory: string;
 	isStarred: boolean;
+	createdAt: string;
 	updatedAt: string;
 }

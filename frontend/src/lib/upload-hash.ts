@@ -1,10 +1,19 @@
-const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
+const HASH_CHUNK_SIZE = 16 * 1024 * 1024; // 16MB for hash I/O
+const UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024; // must match upload-manager
+
+export async function computeSHA256(file: File): Promise<string> {
+	const buf = await file.arrayBuffer();
+	const hash = await crypto.subtle.digest('SHA-256', buf);
+	return Array.from(new Uint8Array(hash))
+		.map((b) => b.toString(16).padStart(2, '0'))
+		.join('');
+}
 
 export async function computeSHA256Chunked(
 	file: File,
 	callbacks: { onPreHash?: (hash: string) => void; onProgress?: (percent: number) => void }
 ): Promise<{ preHash: string; hash: string; totalChunks: number }> {
-	const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+	const totalChunks = Math.ceil(file.size / UPLOAD_CHUNK_SIZE);
 
 	return new Promise((resolve, reject) => {
 		let preHash = '';
@@ -29,13 +38,14 @@ export async function computeSHA256Chunked(
 		};
 
 		(async () => {
-			for (let i = 0; i < totalChunks; i++) {
-				const start = i * CHUNK_SIZE;
-				const end = Math.min(start + CHUNK_SIZE, file.size);
+			const hashChunks = Math.ceil(file.size / HASH_CHUNK_SIZE);
+			for (let i = 0; i < hashChunks; i++) {
+				const start = i * HASH_CHUNK_SIZE;
+				const end = Math.min(start + HASH_CHUNK_SIZE, file.size);
 				const buf = await file.slice(start, end).arrayBuffer();
 				worker.postMessage({ type: 'chunk', index: i, data: buf }, [buf]);
 			}
-			worker.postMessage({ type: 'done', totalChunks });
+			worker.postMessage({ type: 'done', totalChunks: hashChunks });
 		})();
 	});
 }

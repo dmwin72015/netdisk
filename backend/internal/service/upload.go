@@ -63,9 +63,15 @@ type VerifyRequest struct {
 	ProofCode string `json:"proofCode"`
 }
 
+type ExistingFileRef struct {
+	FileName string `json:"fileName"`
+	Path     string `json:"path"`
+}
+
 type VerifyResponse struct {
-	Status           string `json:"status"`
-	PhysicalFileSlug string `json:"physicalFileSlug,omitempty"`
+	Status           string            `json:"status"`
+	PhysicalFileSlug string            `json:"physicalFileSlug,omitempty"`
+	ExistingFiles    []ExistingFileRef `json:"existingFiles,omitempty"`
 }
 
 type InitRequest struct {
@@ -99,7 +105,7 @@ func (s *UploadService) PreCheck(ctx context.Context, userID int64, req PreCheck
 		return nil, model.ErrInvalidInput
 	}
 	if req.FileSize > s.cfg.Storage.MaxUploadSize {
-		return nil, model.ErrQuotaExceeded
+		return nil, model.ErrFileTooLarge
 	}
 
 	// Check Redis pre-cache
@@ -186,9 +192,29 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
+	// Find existing user files referencing this physical file
+	existingFiles := make([]ExistingFileRef, 0)
+	rows, err := s.queries.GetUserFilesByPhysicalFileID(ctx, sqlc.GetUserFilesByPhysicalFileIDParams{
+		PhysicalFileID: pgtype.Int8{Int64: pf.ID, Valid: true},
+		UserID:         userID,
+	})
+	if err == nil {
+		for _, r := range rows {
+			path := r.FileName
+			if r.ParentSlug.Valid && r.ParentSlug.String != "" {
+				path = r.ParentSlug.String + "/" + r.FileName
+			}
+			existingFiles = append(existingFiles, ExistingFileRef{
+				FileName: r.FileName,
+				Path:     path,
+			})
+		}
+	}
+
 	return &VerifyResponse{
 		Status:           "HIT",
 		PhysicalFileSlug: pf.Slug,
+		ExistingFiles:    existingFiles,
 	}, nil
 }
 
@@ -197,7 +223,7 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 		return nil, model.ErrInvalidInput
 	}
 	if req.FileSize > s.cfg.Storage.MaxUploadSize {
-		return nil, model.ErrQuotaExceeded
+		return nil, model.ErrFileTooLarge
 	}
 
 	// Resume check only when hash is known
@@ -450,15 +476,16 @@ func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug 
 }
 
 type TaskItem struct {
-	Slug       string `json:"slug"`
-	FileName   string `json:"fileName"`
-	FileSize   int64  `json:"fileSize"`
-	MimeType   string `json:"mimeType"`
-	Status     string `json:"status"`
-	ErrorMsg   string `json:"errorMsg,omitempty"`
-	TotalChunks int32 `json:"totalChunks"`
-	CreatedAt  string `json:"createdAt"`
-	UpdatedAt  string `json:"updatedAt"`
+	Slug          string `json:"slug"`
+	FileName      string `json:"fileName"`
+	FileSize      int64  `json:"fileSize"`
+	MimeType      string `json:"mimeType"`
+	Status        string `json:"status"`
+	ErrorMsg      string `json:"errorMsg,omitempty"`
+	TotalChunks   int32  `json:"totalChunks"`
+	ReceivedBytes int64  `json:"receivedBytes"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
 }
 
 type ListTasksResponse struct {
@@ -468,8 +495,18 @@ type ListTasksResponse struct {
 	Offset int        `json:"offset"`
 }
 
-func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offset int) (*ListTasksResponse, error) {
-	total, err := s.queries.CountUploadTasksByUser(ctx, userID)
+func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offset int, startDate, endDate pgtype.Timestamptz, status string) (*ListTasksResponse, error) {
+	statusParam := pgtype.Text{Valid: false}
+	if status != "" {
+		statusParam = pgtype.Text{String: status, Valid: true}
+	}
+
+	total, err := s.queries.CountUploadTasksByUser(ctx, sqlc.CountUploadTasksByUserParams{
+		OwnerUserID: userID,
+		StartDate:   startDate,
+		EndDate:     endDate,
+		Status:      statusParam,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("count tasks: %w", err)
 	}
@@ -478,6 +515,9 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 		OwnerUserID: userID,
 		Limit:       int32(limit),
 		Offset:      int32(offset),
+		StartDate:   startDate,
+		EndDate:     endDate,
+		Status:      statusParam,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list tasks: %w", err)
@@ -498,6 +538,17 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 		if t.ErrorMsg.Valid {
 			items[i].ErrorMsg = t.ErrorMsg.String
 		}
+		// Query chunk progress for interrupted tasks
+		if t.Status == "uploading" || t.Status == "created" {
+			chunkCount, err := s.cache.Chunks.ChunkCount(ctx, t.Slug)
+			if err == nil && chunkCount > 0 {
+				received := chunkCount * int64(t.ChunkSize)
+				if received > t.FileSize {
+					received = t.FileSize
+				}
+				items[i].ReceivedBytes = received
+			}
+		}
 	}
 
 	return &ListTasksResponse{
@@ -506,6 +557,53 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 		Limit:  limit,
 		Offset: offset,
 	}, nil
+}
+
+func (s *UploadService) DeleteTask(ctx context.Context, userID int64, taskSlug string) error {
+	task, err := s.queries.GetUploadTaskBySlug(ctx, taskSlug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get task: %w", err)
+	}
+	if task.OwnerUserID != userID {
+		return model.ErrNotFound
+	}
+
+	// Clean up Redis chunk tracking
+	_ = s.cache.Chunks.DeleteChunks(ctx, taskSlug)
+
+	// Delete the task row
+	if err := s.queries.DeleteUploadTaskBySlug(ctx, sqlc.DeleteUploadTaskBySlugParams{
+		Slug:        taskSlug,
+		OwnerUserID: userID,
+	}); err != nil {
+		return fmt.Errorf("delete task: %w", err)
+	}
+
+	return nil
+}
+
+func (s *UploadService) DeleteTasks(ctx context.Context, userID int64, slugs []string) error {
+	if len(slugs) == 0 {
+		return nil
+	}
+
+	// Clean up Redis chunk tracking for each task
+	for _, slug := range slugs {
+		_ = s.cache.Chunks.DeleteChunks(ctx, slug)
+	}
+
+	// Batch delete
+	if err := s.queries.DeleteUploadTasksBySlugs(ctx, sqlc.DeleteUploadTasksBySlugsParams{
+		Column1:     slugs,
+		OwnerUserID: userID,
+	}); err != nil {
+		return fmt.Errorf("delete tasks: %w", err)
+	}
+
+	return nil
 }
 
 func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug string) (*InitResponse, error) {

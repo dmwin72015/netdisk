@@ -45,6 +45,10 @@ type JWTConfig struct {
 type StorageConfig struct {
 	Root          string `mapstructure:"root"`
 	MaxUploadSize int64  `mapstructure:"max_upload_size"`
+	TmpDir        string `mapstructure:"tmp_dir"`
+	FilesDir      string `mapstructure:"files_dir"`
+	AvatarsDir    string `mapstructure:"avatars_dir"`
+	HLSDir        string `mapstructure:"hls_dir"`
 }
 
 type FFmpegConfig struct {

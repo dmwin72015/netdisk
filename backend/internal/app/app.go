@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"syscall"
 	"time"
@@ -32,10 +33,11 @@ type App struct {
 	cfg    *config.Config
 	logger zerolog.Logger
 
-	pg     *pgxpool.Pool
-	rdb    *redis.Client
-	jwtMgr *jwtutil.Manager
-	worker *media.Worker
+	pg          *pgxpool.Pool
+	rdb         *redis.Client
+	jwtMgr      *jwtutil.Manager
+	worker      *media.Worker
+	trashWorker *service.TrashWorker
 
 	echo *echo.Echo
 	srv  *http.Server
@@ -63,6 +65,11 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 	}
 
 	queries := sqlc.New(pg)
+
+	if err := migrateStoragePaths(ctx, cfg, pg); err != nil {
+		a.closePartial()
+		return nil, fmt.Errorf("migrate storage paths: %w", err)
+	}
 	a.jwtMgr = jwtutil.NewManager(
 		cfg.JWT.Secret,
 		time.Duration(cfg.JWT.AccessTTLMin)*time.Minute,
@@ -72,16 +79,17 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 	handlers := buildHandlers(cfg, logger, queries, pg, rdb, a.jwtMgr)
 
 	// Start media worker
-	store := storage.NewLocal(cfg.Storage.Root)
+	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb)
 	a.worker = media.NewWorker(queries, pg, cfg, store, c, logger)
+	a.trashWorker = service.NewTrashWorker(queries, pg, store, logger)
 
 	a.echo = echo.New()
 	a.echo.HideBanner = true
 	a.echo.HTTPErrorHandler = handler.EchoErrorHandler(logger)
 
 	installMiddleware(a.echo, cfg, logger)
-	registerRoutes(a.echo, rdb, a.jwtMgr, handlers)
+	registerRoutes(a.echo, rdb, a.jwtMgr, handlers, cfg)
 
 	a.srv = &http.Server{
 		Addr:         ":" + strconv.Itoa(cfg.Server.Port),
@@ -104,6 +112,7 @@ func (a *App) Run() error {
 	// Start media worker in background
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	go a.worker.Start(workerCtx)
+	go a.trashWorker.Start(workerCtx)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -138,15 +147,58 @@ func (a *App) releaseInfra() {
 
 func ensureStorageDirs(cfg *config.Config) error {
 	dirs := []string{
-		filepath.Join(cfg.Storage.Root, "tmp"),
-		filepath.Join(cfg.Storage.Root, "avatars"),
-		filepath.Join(cfg.Storage.Root, "hls"),
+		filepath.Join(cfg.Storage.Root, cfg.Storage.TmpDir),
+		filepath.Join(cfg.Storage.Root, cfg.Storage.FilesDir),
+		filepath.Join(cfg.Storage.Root, cfg.Storage.AvatarsDir),
+		filepath.Join(cfg.Storage.Root, cfg.Storage.HLSDir),
 	}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("mkdir %s: %w", dir, err)
 		}
 	}
+	return nil
+}
+
+var hexDirRe = regexp.MustCompile(`^[a-f0-9]{2}$`)
+
+// migrateStoragePaths moves files from old layout (data/ab/cd/hash) to
+// new layout (data/files/ab/cd/hash) and updates DB records.
+func migrateStoragePaths(ctx context.Context, cfg *config.Config, pg *pgxpool.Pool) error {
+	entries, err := os.ReadDir(cfg.Storage.Root)
+	if err != nil {
+		return fmt.Errorf("read storage root: %w", err)
+	}
+
+	filesRoot := filepath.Join(cfg.Storage.Root, cfg.Storage.FilesDir)
+	moved := 0
+
+	for _, e := range entries {
+		if !e.IsDir() || !hexDirRe.MatchString(e.Name()) {
+			continue
+		}
+
+		srcDir := filepath.Join(cfg.Storage.Root, e.Name())
+		dstDir := filepath.Join(filesRoot, e.Name())
+
+		if err := os.Rename(srcDir, dstDir); err != nil {
+			return fmt.Errorf("move %s -> %s: %w", srcDir, dstDir, err)
+		}
+		moved++
+	}
+
+	if moved > 0 {
+		prefix := cfg.Storage.FilesDir + "/"
+		tag, err := pg.Exec(ctx,
+			`UPDATE physical_files SET storage_path = $1 || storage_path WHERE storage_path NOT LIKE $2`,
+			prefix, prefix+"%",
+		)
+		if err != nil {
+			return fmt.Errorf("update db paths: %w", err)
+		}
+		fmt.Printf("migrated %d dirs, updated %d db rows\n", moved, tag.RowsAffected())
+	}
+
 	return nil
 }
 
@@ -169,7 +221,7 @@ func buildHandlers(
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg)
 	userSvc := service.NewUserService(queries, pg, cfg)
 
-	store := storage.NewLocal(cfg.Storage.Root)
+	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb)
 
 	filesSvc := service.NewFilesService(queries, pg, cfg, store)

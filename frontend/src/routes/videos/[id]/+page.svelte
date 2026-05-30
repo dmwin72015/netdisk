@@ -6,6 +6,7 @@
 	import { getVideo, uploadThumbnail, captureFrameThumbnail } from '$lib/api/videos';
 	import { ApiError, getAccessToken } from '$lib/api/client';
 	import type { Task } from '$lib/api/tasks';
+	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import * as m from '$lib/paraglide/messages';
 
 	let task = $state<Task | null>(null);
@@ -17,23 +18,6 @@
 	let thumbBusy = $state<null | 'upload' | 'frame'>(null);
 	let thumbMsg = $state<string | null>(null);
 
-	function authedHLS(url: string): string {
-		// Backend /hls routes require an access token; reuse the EventSource trick.
-		const token = getAccessToken();
-		if (!token) return url;
-		const u = new URL(url, window.location.origin);
-		u.searchParams.set('access_token', token);
-		return u.pathname + '?' + u.searchParams.toString();
-	}
-
-	function authedThumb(url: string): string {
-		const token = getAccessToken();
-		if (!token) return url;
-		const u = new URL(url, window.location.origin);
-		u.searchParams.set('access_token', token);
-		return u.pathname + '?' + u.searchParams.toString();
-	}
-
 	async function load() {
 		try {
 			task = await getVideo(page.params.id!);
@@ -42,29 +26,9 @@
 		}
 	}
 
-	// Format a duration in seconds using the largest applicable unit:
-	//   ≥ 1h → "Xh Ymin" (Y omitted when 0)
-	//   ≥ 1min → "Xmin Ys" (Y omitted when 0)
-	//   < 1min → "Xs"
-	function fmtDuration(sec?: number): string {
-		if (!sec || sec <= 0) return m.duration_seconds();
-		const s = Math.round(sec);
-		if (s >= 3600) {
-			const h = Math.floor(s / 3600);
-			const mVal = Math.floor((s % 3600) / 60);
-			return mVal > 0 ? m.duration_h_m({ h, m: mVal }) : m.duration_h({ h });
-		}
-		if (s >= 60) {
-			const mVal = Math.floor(s / 60);
-			const r = s % 60;
-			return r > 0 ? m.duration_m_s({ m: mVal, s: r }) : m.duration_m({ m: mVal });
-		}
-		return m.duration_s({ s });
-	}
-
 	$effect(() => {
 		if (!task?.m3u8Url || !video || hls) return;
-		attach(authedHLS(task.m3u8Url));
+		attach(authedUrl(task.m3u8Url));
 	});
 
 	function attach(src: string) {
@@ -150,7 +114,7 @@
 	<dl class="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
 		<div><dt class="text-slate-500">{m.detail_size()}</dt><dd>{(task.fileSize / 1024 / 1024).toFixed(1)} MB</dd></div>
 		{#if task.durationSec}
-			<div><dt class="text-slate-500">{m.duration()}</dt><dd>{fmtDuration(task.durationSec)}</dd></div>
+			<div><dt class="text-slate-500">{m.duration()}</dt><dd>{fmtDurationText(task.durationSec)}</dd></div>
 		{/if}
 		<div><dt class="text-slate-500">{m.status()}</dt><dd>{task.status}</dd></div>
 		<div><dt class="text-slate-500">{m.created()}</dt><dd>{new Date(task.createdAt * 1000).toLocaleString()}</dd></div>
@@ -179,7 +143,7 @@
 			<div class="aspect-video w-full max-w-xs overflow-hidden rounded bg-slate-200 sm:w-64">
 				{#if task.thumbnailUrl}
 					<img
-						src={authedThumb(task.thumbnailUrl)}
+						src={authedUrl(task.thumbnailUrl)}
 						alt={m.cover_preview()}
 						class="h-full w-full object-cover"
 					/>

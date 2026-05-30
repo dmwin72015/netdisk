@@ -108,7 +108,7 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 
 	// Build paths
 	inputPath := w.store.AbsPath(pf.FileHash)
-	outputDir := filepath.Join(w.cfg.Storage.Root, "hls", tc.Slug)
+	outputDir := filepath.Join(w.cfg.Storage.Root, w.cfg.Storage.HLSDir, tc.Slug)
 
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		log.Error().Err(err).Msg("create output dir")

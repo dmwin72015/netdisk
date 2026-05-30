@@ -6,7 +6,7 @@
 	import { listRecentFiles, type FileItem } from '$lib/api/files';
 	import { listUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
-	import { Folder, Film, Star, Trash2, Loader2, File, AlertCircle, RefreshCw, Upload } from '@lucide/svelte';
+	import { Folder, Film, Star, Trash2, Loader2, File, AlertCircle, RefreshCw, Upload, CheckCircle2 } from '@lucide/svelte';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -48,11 +48,16 @@
 	}
 
 	const statusConfig: Record<string, { label: string; icon: any; class: string }> = {
-		created:   { label: 'Pending',     icon: Upload,     class: 'text-blue-500 bg-blue-50' },
-		uploading: { label: 'Uploading',   icon: Upload,     class: 'text-blue-500 bg-blue-50' },
-		merging:   { label: 'Merging',     icon: RefreshCw,  class: 'text-amber-500 bg-amber-50' },
-		failed:    { label: 'Failed',      icon: AlertCircle,class: 'text-red-500 bg-red-50' },
+		created:   { label: 'Pending',     icon: Upload,      class: 'text-blue-600' },
+		uploading: { label: 'Uploading',   icon: Upload,      class: 'text-blue-600' },
+		merging:   { label: 'Merging',     icon: RefreshCw,   class: 'text-amber-600' },
+		failed:    { label: 'Failed',      icon: AlertCircle, class: 'text-red-600' },
 	};
+
+	function taskProgress(task: UploadTaskItem): number {
+		if (task.fileSize <= 0) return 0;
+		return Math.min(100, Math.round((task.receivedBytes / task.fileSize) * 100));
+	}
 
 	function getFileUrl(file: FileItem): string {
 		if (file.parentSlug) {
@@ -105,26 +110,35 @@
 		{#if incompleteTasks.length > 0}
 			<div>
 				<div class="flex items-center justify-between mb-3">
-					<h2 class="text-sm font-medium text-gray-500">{m.upload_title()}</h2>
-					<a href="/tasks" class="text-xs text-blue-600 hover:text-blue-700">{m.all_files()} →</a>
+					<h2 class="text-sm font-medium text-gray-500">{m.recent_uploads()}</h2>
+					<a href="/tasks" class="text-xs text-blue-600 hover:text-blue-700">{m.all_upload_tasks()} →</a>
 				</div>
 				<div class="space-y-2">
 					{#each incompleteTasks as task (task.slug)}
 						{@const cfg = statusConfig[task.status] || statusConfig.failed}
-						<div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-							<div class="flex h-9 w-9 items-center justify-center rounded-lg {cfg.class}">
-								<svelte:component this={cfg.icon} size={16} />
+						{@const progress = taskProgress(task)}
+						{@const showProgress = (task.status === 'uploading' || task.status === 'created') && progress > 0}
+						<div class="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm" style={showProgress ? `background:linear-gradient(to right, #dbeafe ${progress}%, white ${progress}%)` : ''}>
+							<div class="relative flex items-center gap-3 px-4 py-3">
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80 {cfg.class}">
+									<svelte:component this={cfg.icon} size={14} />
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-sm font-medium text-gray-900">{task.fileName || 'Unknown'}</p>
+									<p class="text-xs text-gray-500">
+										{fmtSize(task.fileSize)} &middot; {cfg.label}
+										{#if showProgress}
+											<span class="text-blue-500"> &middot; {progress}%</span>
+										{/if}
+									</p>
+								</div>
+								{#if task.status === 'failed'}
+									<a
+										href="/tasks"
+										class="shrink-0 rounded-lg bg-white/80 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-white"
+									>{m.upload_retry()}</a>
+								{/if}
 							</div>
-							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm font-medium text-gray-900">{task.fileName || 'Unknown'}</p>
-								<p class="text-xs text-gray-400">{fmtSize(task.fileSize)} &middot; {cfg.label}</p>
-							</div>
-							{#if task.status === 'failed'}
-								<a
-									href="/tasks"
-									class="shrink-0 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
-								>{m.upload_retry()}</a>
-							{/if}
 						</div>
 					{/each}
 				</div>

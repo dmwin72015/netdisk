@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
@@ -26,7 +27,7 @@ func (h *MediaHandler) AddToLibrary(c echo.Context) error {
 
 	var input service.AddToLibraryRequest
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.AddToLibrary(c.Request().Context(), userID, input)

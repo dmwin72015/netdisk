@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/netdisk/server/internal/db"
+	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
@@ -108,7 +109,7 @@ func (h *FilesHandler) Mkdir(c echo.Context) error {
 		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	item, err := h.svc.Mkdir(c.Request().Context(), userID, input.DirName, input.ParentSlug)
@@ -132,7 +133,7 @@ func (h *FilesHandler) CheckConflict(c echo.Context) error {
 		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.CheckConflict(c.Request().Context(), userID, input.FileName, input.PreHash, input.ParentSlug, input.FileSize)
@@ -154,7 +155,7 @@ func (h *FilesHandler) CheckDuplicate(c echo.Context) error {
 		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.CheckDuplicate(c.Request().Context(), userID, input.FileHash, input.ParentSlug)
@@ -177,7 +178,7 @@ func (h *FilesHandler) ImportFile(c echo.Context) error {
 		ParentSlug       string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.ImportFile(c.Request().Context(), userID, input.PhysicalFileSlug, input.FileName, input.ParentSlug)
@@ -256,7 +257,7 @@ func (h *FilesHandler) RenameFile(c echo.Context) error {
 		NewName string `json:"newName"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	if err := h.svc.RenameFile(c.Request().Context(), userID, slug, input.NewName); err != nil {
@@ -277,7 +278,7 @@ func (h *FilesHandler) MoveFile(c echo.Context) error {
 		TargetParentSlug string `json:"targetParentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	if err := h.svc.MoveFile(c.Request().Context(), userID, slug, input.TargetParentSlug); err != nil {
@@ -298,7 +299,7 @@ func (h *FilesHandler) SetStarred(c echo.Context) error {
 		Starred bool `json:"starred"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	if err := h.svc.SetStarred(c.Request().Context(), userID, slug, input.Starred); err != nil {

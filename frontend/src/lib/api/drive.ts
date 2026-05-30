@@ -1,5 +1,5 @@
 import { api, getAccessToken } from './client';
-import { computeSHA256 } from './uploads';
+import { computeSHA256 } from '$lib/upload-hash';
 import * as m from '$lib/paraglide/messages';
 
 export type DriveFile = {

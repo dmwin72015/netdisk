@@ -62,3 +62,13 @@ WITH RECURSIVE ancestors AS (
     JOIN ancestors a ON f.id = a.parent_id
 )
 SELECT a.id, a.slug, a.parent_id, a.file_name, a.is_dir FROM ancestors a ORDER BY a.id ASC;
+
+-- name: GetUserFilesByPhysicalFileID :many
+SELECT file_name, parent_slug FROM user_files
+WHERE physical_file_id = $1 AND user_id = $2 AND is_trashed = FALSE
+LIMIT 5;
+
+-- name: GetExpiredTrashedFiles :many
+SELECT uf.id, uf.user_id, uf.is_dir, uf.physical_file_id, uf.file_size
+FROM user_files uf
+WHERE uf.is_trashed = TRUE AND uf.trashed_at < NOW() - INTERVAL '30 days';

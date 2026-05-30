@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -32,7 +33,7 @@ func installMiddleware(e *echo.Echo, cfg *config.Config, logger zerolog.Logger) 
 	}
 }
 
-func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h *handlers) {
+func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h *handlers, cfg *config.Config) {
 	e.GET("/healthz", healthHandler)
 
 	api := e.Group("/api/v1")
@@ -57,8 +58,9 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	authed.POST("/user/me/avatar", h.User.UploadAvatar)
 	authed.GET("/user/transactions", h.User.ListTransactions)
 
-	// Public avatar route
-	api.GET("/user/avatar/:user_slug", h.User.GetAvatar)
+	// Static avatar serving
+	avatarDir := filepath.Join(cfg.Storage.Root, cfg.Storage.AvatarsDir)
+	api.Static("/avatars", avatarDir)
 
 	// File routes
 	files := authed.Group("/files")
@@ -92,6 +94,8 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	upload.POST("/update-hash", h.Upload.UpdateHash)
 	upload.GET("/tasks", h.Upload.ListTasks)
 	upload.POST("/tasks/:slug/retry", h.Upload.RetryTask)
+	upload.DELETE("/tasks", h.Upload.DeleteTasks)
+	upload.DELETE("/tasks/:slug", h.Upload.DeleteTask)
 	upload.GET("/:upload_slug/status", h.Upload.GetStatus)
 
 	// Media routes

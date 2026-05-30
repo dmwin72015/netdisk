@@ -5,7 +5,7 @@
 	import { deleteTask } from '$lib/api/tasks';
 	import { confirmDelete } from '$lib/dialog';
 	import * as m from '$lib/paraglide/messages';
-	import { getAccessToken } from '$lib/api/client';
+	import { fmtSize, fmtDurationHMS, timeAgo, authedUrl } from '$lib/utils/format';
 
 	let {
 		task,
@@ -15,39 +15,6 @@
 	let copied = $state(false);
 	let removing = $state(false);
 	let thumbFailed = $state(false);
-
-	function fmtSize(size: number): string {
-		if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-		if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
-		return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
-	}
-
-	function fmtDuration(sec?: number): string | null {
-		if (!sec || sec <= 0) return null;
-		const h = Math.floor(sec / 3600);
-		const m = Math.floor((sec % 3600) / 60);
-		const s = sec % 60;
-		if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-		return `${m}:${String(s).padStart(2, '0')}`;
-	}
-
-	function timeAgo(unix: number): string {
-		const diff = Math.max(0, Date.now() / 1000 - unix);
-		if (diff < 60) return m.just_now();
-		if (diff < 3600) return m.minutes_ago({ n: Math.floor(diff / 60) });
-		if (diff < 86400) return m.hours_ago({ n: Math.floor(diff / 3600) });
-		if (diff < 86400 * 30) return m.days_ago({ n: Math.floor(diff / 86400) });
-		if (diff < 86400 * 365) return m.months_ago({ n: Math.floor(diff / 86400 / 30) });
-		return m.years_ago({ n: Math.floor(diff / 86400 / 365) });
-	}
-
-	function authedThumb(url: string): string {
-		const token = getAccessToken();
-		if (!token) return url;
-		const u = new URL(url, window.location.origin);
-		u.searchParams.set('access_token', token);
-		return u.pathname + '?' + u.searchParams.toString();
-	}
 
 	async function copyUrl(url: string) {
 		await navigator.clipboard.writeText(url);
@@ -71,8 +38,8 @@
 		if (task.status === 'completed') void goto(`/videos/${task.id}`);
 	}
 
-	const duration = $derived(fmtDuration(task.durationSec));
-	const thumbnailSrc = $derived(task.thumbnailUrl ? authedThumb(task.thumbnailUrl) : null);
+	const duration = $derived(fmtDurationHMS(task.durationSec));
+	const thumbnailSrc = $derived(task.thumbnailUrl ? authedUrl(task.thumbnailUrl) : null);
 </script>
 
 <article

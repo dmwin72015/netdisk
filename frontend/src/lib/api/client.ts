@@ -37,11 +37,11 @@ export type Tokens = {
 
 export class ApiError extends Error {
 	status: number;
-	code?: string;
-	constructor(message: string, status: number, code?: string) {
+	errCode: number;
+	constructor(message: string, status: number, errCode: number) {
 		super(message);
 		this.status = status;
-		this.code = code;
+		this.errCode = errCode;
 	}
 }
 
@@ -155,17 +155,17 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
 	const contentType = res.headers.get('content-type') ?? '';
 	if (!res.ok) {
 		let message = res.statusText;
-		let code: string | undefined;
+		let errCode = 0;
 		if (contentType.includes('application/json')) {
 			try {
 				const body = await res.json();
 				message = body?.error ?? message;
-				code = body?.code;
+				errCode = body?.errCode ?? 0;
 			} catch {
 				// ignore
 			}
 		}
-		throw new ApiError(message || `HTTP ${res.status}`, res.status, code);
+		throw new ApiError(message || `HTTP ${res.status}`, res.status, errCode);
 	}
 
 	if (res.status === 204) return undefined as T;

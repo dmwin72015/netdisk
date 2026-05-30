@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -30,14 +31,14 @@ func NewUserService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config)
 }
 
 type UserMeResponse struct {
-	Slug      string         `json:"slug"`
-	Username  string         `json:"username"`
-	Email     string         `json:"email"`
-	Status    int16          `json:"status"`
-	Profile   ProfileData    `json:"profile"`
-	Storage   StorageData    `json:"storage"`
-	Level     LevelData      `json:"level"`
-	CreatedAt string         `json:"createdAt"`
+	Slug      string      `json:"slug"`
+	Username  string      `json:"username"`
+	Email     string      `json:"email"`
+	Status    int16       `json:"status"`
+	Profile   ProfileData `json:"profile"`
+	Storage   StorageData `json:"storage"`
+	Level     LevelData   `json:"level"`
+	CreatedAt string      `json:"createdAt"`
 }
 
 type ProfileData struct {
@@ -92,13 +93,12 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 	if profile.ID != 0 {
 		resp.Profile = ProfileData{
 			DisplayName: profile.DisplayName.String,
-			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
+			AvatarURL:   profile.AvatarPath.String,
 			Bio:         profile.Bio.String,
 		}
 	} else {
 		resp.Profile = ProfileData{
 			DisplayName: user.Username,
-			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
 		}
 	}
 
@@ -169,12 +169,23 @@ func (s *UserService) GetStorageBreakdown(ctx context.Context, userID int64) ([]
 	return stats, nil
 }
 
-func (s *UserService) UpdateProfile(ctx context.Context, userID int64, displayName, bio string) error {
-	return s.queries.UpdateProfile(ctx, sqlc.UpdateProfileParams{
+func (s *UserService) UpdateProfile(ctx context.Context, userID int64, displayName, bio, avatarURL string) error {
+	if err := s.queries.UpdateProfile(ctx, sqlc.UpdateProfileParams{
 		UserID:      userID,
 		DisplayName: pgtype.Text{String: displayName, Valid: true},
 		Bio:         pgtype.Text{String: bio, Valid: true},
-	})
+	}); err != nil {
+		return err
+	}
+	if avatarURL != "" {
+		if err := s.queries.UpdateAvatarPath(ctx, sqlc.UpdateAvatarPathParams{
+			UserID:     userID,
+			AvatarPath: pgtype.Text{String: avatarURL, Valid: true},
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
@@ -225,9 +236,23 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 		ext = ".webp"
 	}
 
-	avatarDir := filepath.Join(s.cfg.Storage.Root, "avatars")
-	filename := user.Slug + ext
-	path := filepath.Join(avatarDir, filename)
+	// Determine next version from current avatar path (/api/v1/avatars/{slug}/2.jpg)
+	version := 1
+	profile, err := s.queries.GetProfileByUserID(ctx, userID)
+	if err == nil && profile.AvatarPath.Valid && profile.AvatarPath.String != "" {
+		raw := strings.TrimSuffix(filepath.Base(profile.AvatarPath.String), filepath.Ext(profile.AvatarPath.String))
+		if v, err := strconv.Atoi(raw); err == nil {
+			version = v + 1
+		}
+	}
+
+	userDir := filepath.Join(s.cfg.Storage.Root, s.cfg.Storage.AvatarsDir, user.Slug)
+	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		return "", fmt.Errorf("create avatar dir: %w", err)
+	}
+
+	filename := fmt.Sprintf("%d%s", version, ext)
+	path := filepath.Join(userDir, filename)
 
 	f, err := os.Create(path)
 	if err != nil {
@@ -239,34 +264,8 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 		return "", fmt.Errorf("write avatar: %w", err)
 	}
 
-	avatarPath := "/avatars/" + filename
-	if err := s.queries.UpdateAvatarPath(ctx, sqlc.UpdateAvatarPathParams{
-		UserID:     userID,
-		AvatarPath: pgtype.Text{String: avatarPath, Valid: true},
-	}); err != nil {
-		return "", fmt.Errorf("update avatar path: %w", err)
-	}
-
-	return fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug), nil
-}
-
-func (s *UserService) GetAvatarPath(ctx context.Context, userSlug string) (string, error) {
-	user, err := s.queries.GetUserBySlug(ctx, userSlug)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", model.ErrNotFound
-		}
-		return "", fmt.Errorf("get user: %w", err)
-	}
-
-	profile, err := s.queries.GetProfileByUserID(ctx, user.ID)
-	if err != nil || !profile.AvatarPath.Valid || profile.AvatarPath.String == "" {
-		return "", model.ErrNotFound
-	}
-
-	// Resolve to absolute path
-	avatarPath := strings.TrimPrefix(profile.AvatarPath.String, "/avatars/")
-	return filepath.Join(s.cfg.Storage.Root, "avatars", avatarPath), nil
+	avatarURL := fmt.Sprintf("/api/v1/avatars/%s/%s", user.Slug, filename)
+	return avatarURL, nil
 }
 
 func (s *UserService) ListTransactions(ctx context.Context, userID int64, page, pageSize int) ([]sqlc.UserTransaction, int, error) {

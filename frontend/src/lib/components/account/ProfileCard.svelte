@@ -23,7 +23,7 @@
 	let nickname = $state('');
 	let editBio = $state('');
 	let avatarPreview = $state<string | null>(null);
-	let avatarFile: File | null = null;
+	let avatarFile = $state<File | null>(null);
 
 	function startEdit() {
 		nickname = displayName;
@@ -55,14 +55,15 @@
 		saving = true;
 		saveMsg = '';
 		try {
+			let newAvatarUrl: string | undefined;
 			if (avatarFile) {
-				const res = await uploadAvatar(avatarFile);
-				avatarUrl = res.avatarUrl;
+				newAvatarUrl = await uploadAvatar(avatarFile);
 				avatarFile = null;
 			}
-			await updateProfile({ displayName: nickname, bio: editBio });
+			await updateProfile({ displayName: nickname, bio: editBio, avatarUrl: newAvatarUrl });
 			saveMsg = m.profile_saved();
 			editing = false;
+			avatarPreview = null;
 			onSaved();
 		} catch {
 			saveMsg = m.profile_save_failed();

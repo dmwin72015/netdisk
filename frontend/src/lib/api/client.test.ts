@@ -60,8 +60,8 @@ function jsonResponse(data: unknown, status = 200): Response {
 	});
 }
 
-function errorResponse(status: number, error: string, code?: string): Response {
-	return new Response(JSON.stringify({ error, code }), {
+function errorResponse(status: number, error: string, errCode?: number): Response {
+	return new Response(JSON.stringify({ error, errCode: errCode ?? 0 }), {
 		status,
 		headers: { 'Content-Type': 'application/json' },
 	});
@@ -70,11 +70,11 @@ function errorResponse(status: number, error: string, code?: string): Response {
 // ── ApiError ───────────────────────────────────────────────────────
 
 describe('ApiError', () => {
-	it('sets status and code', () => {
-		const err = new ApiError('not found', 404, 'NOT_FOUND');
+	it('sets status and errCode', () => {
+		const err = new ApiError('not found', 404, 1001);
 		expect(err.message).toBe('not found');
 		expect(err.status).toBe(404);
-		expect(err.code).toBe('NOT_FOUND');
+		expect(err.errCode).toBe(1001);
 		expect(err).toBeInstanceOf(Error);
 	});
 });
@@ -147,11 +147,11 @@ describe('api', () => {
 	});
 
 	it('throws ApiError on non-2xx response', async () => {
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse(400, 'bad request', 'BAD')));
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse(400, 'bad request', 1004)));
 		await expect(api('/api/v1/test')).rejects.toMatchObject({
 			message: 'bad request',
 			status: 400,
-			code: 'BAD',
+			errCode: 1004,
 		});
 	});
 

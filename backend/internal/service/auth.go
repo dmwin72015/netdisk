@@ -143,7 +143,6 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 		Status:    user.Status,
 		Profile: ProfileData{
 			DisplayName: user.Username,
-			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
 		},
 		Storage: StorageData{
 			StorageQuota: 536870912000,
@@ -194,13 +193,12 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*UserRespons
 	if profile.ID != 0 {
 		resp.Profile = ProfileData{
 			DisplayName: profile.DisplayName.String,
-			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
+			AvatarURL:   profile.AvatarPath.String,
 			Bio:         profile.Bio.String,
 		}
 	} else {
 		resp.Profile = ProfileData{
 			DisplayName: user.Username,
-			AvatarURL:   fmt.Sprintf("/api/v1/user/avatar/%s", user.Slug),
 		}
 	}
 

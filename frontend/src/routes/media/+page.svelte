@@ -4,10 +4,10 @@
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
-	import { getAccessToken } from '$lib/api/client';
 	import { Film, Trash2, Loader2, Play, AlertCircle, Clock, Plus } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { confirmDelete } from '$lib/dialog';
+	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -16,14 +16,6 @@
 	let loading = $state(true);
 	let showAddDialog = $state(false);
 	let pollTimer: ReturnType<typeof setInterval> | undefined;
-
-	function authedPoster(url: string): string {
-		const token = getAccessToken();
-		if (!token) return url;
-		const u = new URL(url, window.location.origin);
-		u.searchParams.set('access_token', token);
-		return u.pathname + '?' + u.searchParams.toString();
-	}
 
 	function startPolling() {
 		stopPolling();
@@ -79,17 +71,6 @@
 		}
 	}
 
-	function fmtDuration(sec: number | null): string {
-		if (!sec || sec <= 0) return '';
-		const s = Math.round(sec);
-		const h = Math.floor(s / 3600);
-		const m = Math.floor((s % 3600) / 60);
-		const r = s % 60;
-		if (h > 0) return `${h}h ${m}m`;
-		if (m > 0) return `${m}m ${r}s`;
-		return `${r}s`;
-	}
-
 	onMount(() => {
 		if (!$user) void goto('/login');
 		else void refresh();
@@ -129,7 +110,7 @@
 							{#if item.status === 'done'}
 								<a href="/media/{item.mediaSlug}" class="block h-full">
 									{#if item.posterUrl}
-										<img src={authedPoster(item.posterUrl)} alt={item.fileName} class="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+										<img src={authedUrl(item.posterUrl)} alt={item.fileName} class="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
 										<div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
 											<Play size={40} class="text-white opacity-0 transition group-hover:opacity-100" fill="currentColor" />
 										</div>
@@ -159,7 +140,7 @@
 							<!-- Duration -->
 							{#if item.durationSec}
 								<div class="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
-									{fmtDuration(item.durationSec)}
+									{fmtDurationText(item.durationSec)}
 								</div>
 							{/if}
 						</div>

@@ -4,7 +4,7 @@ vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
 import { listTasks, getTask, deleteTask, computeFileSHA256 } from './tasks';
-import { computeSHA256 } from './uploads';
+import { computeSHA256 } from '$lib/upload-hash';
 
 // ── listTasks ──────────────────────────────────────────────────────
 

@@ -10,9 +10,15 @@ export type ChallengeResponse = {
 	challengeToken: string;
 };
 
+export type ExistingFileRef = {
+	fileName: string;
+	path: string;
+};
+
 export type VerifyResponse = {
 	status: 'HIT' | 'MISS';
 	physicalFileSlug?: string;
+	existingFiles?: ExistingFileRef[];
 };
 
 export type InitResponse = {

@@ -25,20 +25,21 @@ export async function getProfile(): Promise<ProfileData> {
 	return api<ProfileData>('/api/v1/user/me');
 }
 
-export async function updateProfile(data: { displayName?: string; bio?: string }): Promise<{ message: string }> {
+export async function updateProfile(data: { displayName?: string; bio?: string; avatarUrl?: string }): Promise<{ message: string }> {
 	return api<{ message: string }>('/api/v1/user/profile', {
 		method: 'PATCH',
 		body: JSON.stringify(data),
 	});
 }
 
-export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+export async function uploadAvatar(file: File): Promise<string> {
 	const form = new FormData();
 	form.append('file', file);
-	return api<{ avatarUrl: string }>('/api/v1/user/me/avatar', {
+	const res = await api<{ avatar_url: string }>('/api/v1/user/me/avatar', {
 		method: 'POST',
 		body: form,
 	});
+	return res.avatar_url;
 }
 
 export type CategoryStat = {

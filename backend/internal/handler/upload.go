@@ -3,7 +3,9 @@ package handler
 import (
 	"io"
 	"strconv"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
 
 	"github.com/netdisk/server/internal/model"
@@ -26,7 +28,7 @@ func (h *UploadHandler) PreCheck(c echo.Context) error {
 
 	var input service.PreCheckRequest
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.PreCheck(c.Request().Context(), userID, input)
@@ -45,7 +47,7 @@ func (h *UploadHandler) RequestChallenge(c echo.Context) error {
 
 	var input service.RequestChallengeRequest
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.RequestChallenge(c.Request().Context(), userID, input)
@@ -64,7 +66,7 @@ func (h *UploadHandler) Verify(c echo.Context) error {
 
 	var input service.VerifyRequest
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.Verify(c.Request().Context(), userID, input)
@@ -83,7 +85,7 @@ func (h *UploadHandler) Init(c echo.Context) error {
 
 	var input service.InitRequest
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.Init(c.Request().Context(), userID, input)
@@ -104,23 +106,23 @@ func (h *UploadHandler) UploadChunk(c echo.Context) error {
 	chunkIndexStr := c.FormValue("chunkIndex")
 	chunkIndex, err := strconv.Atoi(chunkIndexStr)
 	if err != nil {
-		return echo.NewHTTPError(400, "invalid chunk_index")
+		return model.ErrInvalidInput
 	}
 
 	file, err := c.FormFile("chunkData")
 	if err != nil {
-		return echo.NewHTTPError(400, "chunk_data is required")
+		return model.ErrInvalidInput
 	}
 
 	f, err := file.Open()
 	if err != nil {
-		return echo.NewHTTPError(400, "cannot open file")
+		return model.ErrInternal
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return echo.NewHTTPError(400, "cannot read file")
+		return model.ErrInternal
 	}
 
 	if err := h.svc.AppendChunk(c.Request().Context(), userID, uploadSlug, int32(chunkIndex), data); err != nil {
@@ -140,7 +142,7 @@ func (h *UploadHandler) Complete(c echo.Context) error {
 		UploadSlug string `json:"uploadSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.Complete(c.Request().Context(), userID, input.UploadSlug)
@@ -159,7 +161,7 @@ func (h *UploadHandler) UpdateHash(c echo.Context) error {
 
 	var input service.UpdateHashRequest
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	if err := h.svc.UpdateHash(c.Request().Context(), userID, input); err != nil {
@@ -199,7 +201,21 @@ func (h *UploadHandler) ListTasks(c echo.Context) error {
 		offset = 0
 	}
 
-	resp, err := h.svc.ListTasks(c.Request().Context(), userID, limit, offset)
+	var startDate, endDate pgtype.Timestamptz
+	if v := c.QueryParam("start_date"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			startDate = pgtype.Timestamptz{Time: t, Valid: true}
+		}
+	}
+	if v := c.QueryParam("end_date"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			endDate = pgtype.Timestamptz{Time: t, Valid: true}
+		}
+	}
+
+	status := c.QueryParam("status")
+
+	resp, err := h.svc.ListTasks(c.Request().Context(), userID, limit, offset, startDate, endDate, status)
 	if err != nil {
 		return err
 	}
@@ -215,7 +231,7 @@ func (h *UploadHandler) RetryTask(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if slug == "" {
-		return echo.NewHTTPError(400, model.ErrInvalidInput)
+		return model.ErrInvalidInput
 	}
 
 	resp, err := h.svc.RetryTask(c.Request().Context(), userID, slug)
@@ -224,4 +240,43 @@ func (h *UploadHandler) RetryTask(c echo.Context) error {
 	}
 
 	return Created(c, resp)
+}
+
+func (h *UploadHandler) DeleteTask(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	slug := c.Param("slug")
+	if slug == "" {
+		return model.ErrInvalidInput
+	}
+
+	if err := h.svc.DeleteTask(c.Request().Context(), userID, slug); err != nil {
+		return err
+	}
+	return c.NoContent(204)
+}
+
+func (h *UploadHandler) DeleteTasks(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var req struct {
+		Slugs []string `json:"slugs"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return model.ErrInvalidInput
+	}
+	if len(req.Slugs) == 0 {
+		return model.ErrInvalidInput
+	}
+
+	if err := h.svc.DeleteTasks(c.Request().Context(), userID, req.Slugs); err != nil {
+		return err
+	}
+	return c.NoContent(204)
 }

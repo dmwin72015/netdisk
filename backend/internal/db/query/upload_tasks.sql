@@ -14,12 +14,18 @@ LIMIT 1;
 -- name: ListUploadTasksByUser :many
 SELECT * FROM upload_tasks
 WHERE owner_user_id = $1
+  AND (sqlc.narg(start_date)::timestamptz IS NULL OR created_at >= sqlc.narg(start_date)::timestamptz)
+  AND (sqlc.narg(end_date)::timestamptz IS NULL OR created_at <= sqlc.narg(end_date)::timestamptz)
+  AND (sqlc.narg(status)::varchar IS NULL OR status = sqlc.narg(status)::varchar)
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: CountUploadTasksByUser :one
 SELECT COUNT(*) FROM upload_tasks
-WHERE owner_user_id = $1;
+WHERE owner_user_id = $1
+  AND (sqlc.narg(start_date)::timestamptz IS NULL OR created_at >= sqlc.narg(start_date)::timestamptz)
+  AND (sqlc.narg(end_date)::timestamptz IS NULL OR created_at <= sqlc.narg(end_date)::timestamptz)
+  AND (sqlc.narg(status)::varchar IS NULL OR status = sqlc.narg(status)::varchar);
 
 -- name: UpdateUploadTaskStatus :exec
 UPDATE upload_tasks
@@ -44,3 +50,9 @@ WHERE id = $1;
 -- name: DeleteExpiredTasks :exec
 DELETE FROM upload_tasks
 WHERE expires_at < NOW() AND status IN ('created', 'uploading', 'merging');
+
+-- name: DeleteUploadTaskBySlug :exec
+DELETE FROM upload_tasks WHERE slug = $1 AND owner_user_id = $2;
+
+-- name: DeleteUploadTasksBySlugs :exec
+DELETE FROM upload_tasks WHERE slug = ANY($1::varchar[]) AND owner_user_id = $2;

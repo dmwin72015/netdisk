@@ -51,8 +51,10 @@
 				</div>
 				<div class="max-h-72 overflow-y-auto">
 					{#each items as item (item.uid)}
-						<div class="border-b border-gray-50 px-4 py-2 last:border-0">
-							<div class="flex items-center gap-2">
+						{@const showProgress = item.phase === 'uploading' || item.phase === 'paused'}
+						{@const bgColor = item.phase === 'paused' ? 'bg-amber-50' : 'bg-blue-50'}
+						<div class="relative border-b border-gray-50 last:border-0 {showProgress ? bgColor : ''}" style={showProgress ? `background:linear-gradient(to right, ${item.phase === 'paused' ? '#fef3c7' : '#dbeafe'} ${item.progress}%, transparent ${item.progress}%)` : ''}>
+							<div class="relative flex items-center gap-2 px-4 py-2">
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm text-gray-700" title={item.fileName}>{item.fileName}</p>
 									<div class="flex items-center gap-2 text-xs text-gray-400">
@@ -97,16 +99,8 @@
 									{/if}
 								</div>
 							</div>
-							{#if item.phase === 'uploading'}
-								<div class="mt-1.5 h-1 overflow-hidden rounded-full bg-gray-100">
-									<div class="h-full rounded-full bg-blue-500 transition-all" style="width:{item.progress}%"></div>
-								</div>
-							{:else if item.phase === 'paused'}
-								<div class="mt-1.5 h-1 overflow-hidden rounded-full bg-gray-100">
-									<div class="h-full rounded-full bg-amber-400 transition-all" style="width:{item.progress}%"></div>
-								</div>
-							{:else if item.phase === 'failed' && item.errorMsg}
-								<p class="mt-1 text-xs text-red-500">{item.errorMsg}</p>
+							{#if item.phase === 'failed' && item.errorMsg}
+								<p class="relative px-4 pb-2 text-xs text-red-500">{item.errorMsg}</p>
 							{/if}
 						</div>
 					{/each}

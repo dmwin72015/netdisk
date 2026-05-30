@@ -6,6 +6,7 @@
 	import { ArrowLeft, Loader2, AlertCircle, Clock, Info } from '@lucide/svelte';
 	import { getMediaItem, type MediaItem } from '$lib/api/media';
 	import { getAccessToken } from '$lib/api/client';
+	import { authedUrl } from '$lib/utils/format';
 	import VideoStats from '$lib/components/media/VideoStats.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -15,14 +16,6 @@
 	let hls: Hls | null = null;
 	let hlsAttached = false;
 	let showStats = $state(false);
-
-	function authedUrl(url: string): string {
-		const token = getAccessToken();
-		if (!token) return url;
-		const u = new URL(url, window.location.origin);
-		u.searchParams.set('access_token', token);
-		return u.pathname + '?' + u.searchParams.toString();
-	}
 
 	async function load() {
 		try {
@@ -103,7 +96,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="px-4 py-6">
+<div class="px-4">
 	<!-- Back button -->
 	<button type="button" onclick={() => goto('/media')}
 		class="mb-4 flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700">

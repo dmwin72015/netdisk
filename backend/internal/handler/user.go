@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/netdisk/server/internal/middleware"
+	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
@@ -22,7 +23,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 func requireUserID(c echo.Context) (int64, error) {
 	id, ok := middleware.UserID(c)
 	if !ok {
-		return 0, echo.NewHTTPError(401, "unauthorized")
+		return 0, model.ErrUnauthorized
 	}
 	return id, nil
 }
@@ -60,12 +61,13 @@ func (h *UserHandler) UpdateProfile(c echo.Context) error {
 	var input struct {
 		DisplayName string `json:"displayName"`
 		Bio         string `json:"bio"`
+		AvatarURL   string `json:"avatarUrl"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
-	if err := h.svc.UpdateProfile(c.Request().Context(), userID, input.DisplayName, input.Bio); err != nil {
+	if err := h.svc.UpdateProfile(c.Request().Context(), userID, input.DisplayName, input.Bio, input.AvatarURL); err != nil {
 		return err
 	}
 	return OK(c, map[string]string{"message": "profile updated"})
@@ -82,7 +84,7 @@ func (h *UserHandler) ChangePassword(c echo.Context) error {
 		NewPassword string `json:"newPassword"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return echo.NewHTTPError(400, "invalid request body")
+		return model.ErrInvalidInput
 	}
 
 	if err := h.svc.ChangePassword(c.Request().Context(), userID, input.OldPassword, input.NewPassword); err != nil {
@@ -99,12 +101,12 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		return echo.NewHTTPError(400, "file is required")
+		return model.ErrFileRequired
 	}
 
 	f, err := file.Open()
 	if err != nil {
-		return echo.NewHTTPError(400, "cannot open file")
+		return model.ErrInternal
 	}
 	defer f.Close()
 
@@ -112,17 +114,17 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 	buf := make([]byte, 512)
 	n, err := f.Read(buf)
 	if err != nil && err != io.EOF {
-		return echo.NewHTTPError(400, "cannot read file")
+		return model.ErrInternal
 	}
 
 	contentType := http.DetectContentType(buf[:n])
 	if contentType != "image/jpeg" && contentType != "image/png" && contentType != "image/webp" {
-		return echo.NewHTTPError(400, "only JPEG, PNG and WebP are supported")
+		return model.ErrUnsupportedImage
 	}
 
 	// Seek back to start
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return echo.NewHTTPError(500, "seek error")
+		return model.ErrInternal
 	}
 
 	url, err := h.svc.UploadAvatar(c.Request().Context(), userID, f, contentType)
@@ -131,20 +133,6 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 	}
 
 	return OK(c, map[string]string{"avatar_url": url})
-}
-
-func (h *UserHandler) GetAvatar(c echo.Context) error {
-	userSlug := c.Param("user_slug")
-	if userSlug == "" {
-		return echo.NewHTTPError(400, "user_slug is required")
-	}
-
-	path, err := h.svc.GetAvatarPath(c.Request().Context(), userSlug)
-	if err != nil {
-		return err
-	}
-
-	return c.File(path)
 }
 
 func (h *UserHandler) ListTransactions(c echo.Context) error {
