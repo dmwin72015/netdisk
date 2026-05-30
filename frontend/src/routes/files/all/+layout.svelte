@@ -19,6 +19,7 @@
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FilesToolbar, { type SortField, type ViewMode } from '$lib/components/files/FilesToolbar.svelte';
 	import { confirmDelete, promptInput } from '$lib/dialog';
+	import { FileQuestion, LoaderCircle } from '@lucide/svelte';
 	import { createUploadManager } from '$lib/upload-manager.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -32,6 +33,7 @@
 	let total = $state(0);
 	let loading = $state(true);
 	let loadingMore = $state(false);
+	let notFound = $state(false);
 	let refreshId = 0;
 
 	// --- Upload manager ---
@@ -122,6 +124,7 @@
 		const id = ++refreshId;
 		if (showLoading) loading = true;
 		loadingMore = false;
+		notFound = false;
 		try {
 			const data = await listFiles(currentSlug || undefined, 1, PAGE_SIZE, undefined, undefined, sortBy, sortDir);
 			if (id !== refreshId) return;
@@ -129,7 +132,11 @@
 			total = data.total;
 		} catch (e) {
 			if (id !== refreshId) return;
-			toast.error(e instanceof Error ? e.message : m.load_failed());
+			if (e instanceof Error && 'status' in e && (e as any).status === 404) {
+				notFound = true;
+			} else {
+				toast.error(e instanceof Error ? e.message : m.load_failed());
+			}
 		} finally {
 			if (id === refreshId) loading = false;
 		}
@@ -150,6 +157,30 @@
 		} finally {
 			if (id === refreshId) loadingMore = false;
 		}
+	}
+
+	async function loadFolderSummary(slug: string) {
+		const pageSize = 100;
+		let pageNum = 1;
+		let loaded = 0;
+		let total = 0;
+		const summary = { fileCount: 0, folderCount: 0, size: 0 };
+
+		do {
+			const data = await listFiles(slug, pageNum, pageSize);
+			total = data.total;
+			loaded += data.files.length;
+			for (const file of data.files) {
+				if (file.isDir) summary.folderCount += 1;
+				else {
+					summary.fileCount += 1;
+					summary.size += file.fileSize;
+				}
+			}
+			pageNum += 1;
+		} while (loaded < total);
+
+		return summary;
 	}
 
 	onDestroy(() => {
@@ -233,8 +264,25 @@
 {#if !$authReady}
 {:else if $user}
 	<div class="space-y-4">
-		<!-- Breadcrumb -->
-		{#if currentSlug}
+		{#if notFound}
+			<div class="flex flex-col items-center justify-center py-24 text-center">
+				<FileQuestion size={48} class="mb-4 text-gray-300" />
+				<p class="mb-4 text-lg text-gray-500">{m.file_not_found()}</p>
+				<button
+					type="button"
+					onclick={() => { notFound = false; void goto('/files/all', { keepFocus: true }); }}
+					class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+				>
+					{m.back_to_root()}
+				</button>
+			</div>
+		{:else if loading && files.length === 0}
+			<div class="flex items-center justify-center py-24">
+				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+			</div>
+		{:else}
+			<!-- Breadcrumb -->
+			{#if currentSlug}
 			<Breadcrumb
 				bind:this={breadcrumbRef}
 				items={crumbs}
@@ -265,6 +313,7 @@
 			{viewMode}
 			{loading}
 			directoryId={currentSlug}
+			currentPath={crumbs}
 			downloadUrlFn={downloadUrl}
 			emptyMessage={currentSlug ? m.dir_empty() : m.no_files()}
 			onNavigateDir={navigateToDir}
@@ -273,6 +322,7 @@
 			onRename={rename}
 			onDelete={remove}
 			onAddToMedia={onAddToMedia}
+			{loadFolderSummary}
 		/>
 
 		{#if files.length > 0}
@@ -284,6 +334,7 @@
 					</button>
 				{/if}
 			</div>
+		{/if}
 		{/if}
 	</div>
 {:else}

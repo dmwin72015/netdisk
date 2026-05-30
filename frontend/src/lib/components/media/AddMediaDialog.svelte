@@ -1,17 +1,18 @@
 <script lang="ts">
-	import { Loader2, Film, Check, X, Search, Folder } from '@lucide/svelte';
+	import { Loader2, Film, Check, Search, Folder } from '@lucide/svelte';
 	import { listFiles, type FileItem } from '$lib/api/files';
 	import { addToLibrary } from '$lib/api/media';
 	import { fmtSize } from '$lib/utils/format';
+	import { Dialog } from '$lib/ui/dialog';
 	import * as m from '$lib/paraglide/messages';
 
 	let {
-		open,
+		open = $bindable(false),
 		onClose,
 		onDone,
 		onNavigateDir
 	}: {
-		open: boolean;
+		open?: boolean;
 		onClose: () => void;
 		onDone: () => void;
 		onNavigateDir?: (slug: string) => void;
@@ -84,6 +85,7 @@
 				if (isSelected) await addToLibrary(slug);
 			}
 			onDone();
+			open = false;
 			onClose();
 		} catch (e) {
 			error = e instanceof Error ? e.message : m.media_add_failed();
@@ -92,116 +94,110 @@
 		}
 	}
 
-	let closing = $state(false);
-	function closeWithAnimation() {
-		closing = true;
-		setTimeout(() => {
-			closing = false;
+	function handleOpenChange(v: boolean) {
+		if (!v) {
+			open = false;
 			onClose();
-		}, 150);
+		}
 	}
 </script>
 
-{#if open}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm {closing ? 'animate-out fade-out-0' : 'animate-in fade-in-0'}" onclick={(e) => { if (e.target === e.currentTarget) closeWithAnimation(); }}>
-		<div class="flex h-[70vh] w-full max-w-2xl flex-col rounded-xl border border-gray-100 bg-white shadow-2xl {closing ? 'animate-out fade-out-0 zoom-out-95' : 'animate-in fade-in-0 zoom-in-95'}">
-			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-gray-100 px-5 py-3.5">
-				<h2 class="text-base font-semibold text-gray-900">{m.select_videos()}</h2>
-				<button type="button" onclick={closeWithAnimation} class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
-					<X size={18} />
-				</button>
-			</div>
-
-			<!-- Search -->
-			<div class="border-b border-gray-100 px-5 py-2.5">
-				<div class="relative">
-					<Search size={14} class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-					<input
-						type="text"
-						bind:value={searchQuery}
-						placeholder={m.search_files()}
-						class="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:bg-white"
-					/>
-				</div>
-			</div>
-
-			<!-- Content -->
-			<div class="flex-1 overflow-y-auto p-4">
-				{#if error}
-					<div class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-				{/if}
-
-				{#if loading}
-					<div class="flex items-center justify-center py-16">
-						<Loader2 size={24} class="animate-spin text-gray-300" />
-					</div>
-				{:else if filteredVideos.length === 0}
-					<div class="flex flex-col items-center justify-center py-16 text-center">
-						<Film size={40} class="mb-3 text-gray-300" />
-						<p class="text-sm text-gray-400">{searchQuery.trim() ? m.no_videos_found() : m.no_videos_found()}</p>
-					</div>
-				{:else}
-					<!-- Select all -->
-					<button type="button" onclick={toggleAll} class="mb-2 text-xs text-blue-600 transition-colors hover:text-blue-700">
-						{filteredVideos.every(v => selected[v.slug]) ? m.cancel() : m.add_selected({ count: filteredVideos.length })}
-					</button>
-
-					<div class="space-y-1">
-						{#each filteredVideos as v (v.slug)}
-							{@const isSelected = !!selected[v.slug]}
-							<button type="button" onclick={() => toggle(v.slug)} class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-gray-50 {isSelected ? 'bg-blue-50' : ''}">
-								<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
-									{#if isSelected}
-										<Check size={12} />
-									{/if}
-								</div>
-								<div class="min-w-0 flex-1">
-									<p class="truncate text-sm text-gray-700">{v.fileName}</p>
-									<div class="flex items-center gap-2 text-xs text-gray-400">
-										{#if v.parentName && v.parentSlug && onNavigateDir}
-											<button
-												type="button"
-												class="flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline"
-												onclick={(e) => { e.stopPropagation(); onNavigateDir(v.parentSlug!); }}
-											>
-												<Folder size={12} />
-												{v.parentName}
-											</button>
-										{:else if v.parentName}
-											<span class="flex items-center gap-1">
-												<Folder size={12} />
-												{v.parentName}
-											</span>
-										{/if}
-										<span>{fmtSize(v.fileSize)}</span>
-									</div>
-								</div>
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
-
-			<!-- Footer -->
-			<div class="flex items-center justify-between border-t border-gray-100 px-5 py-3">
-				<span class="text-xs text-gray-400">
-					{#if selectedCount() > 0}
-						{m.add_selected({ count: selectedCount() })}
-					{/if}
-				</span>
-				<div class="flex gap-2">
-					<button type="button" onclick={closeWithAnimation} class="rounded-lg px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100">
-						{m.cancel()}
-					</button>
-					<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
-						{#if submitting}
-							<Loader2 size={14} class="animate-spin" />
-						{/if}
-						{m.add_selected({ count: selectedCount() })}
-					</button>
-				</div>
+<Dialog
+	bind:open
+	onOpenChange={handleOpenChange}
+	onCancel={onClose}
+	title={m.select_videos()}
+	footer={false}
+	class="h-[70vh] max-w-2xl"
+	bodyClass="!p-0 flex flex-col min-h-0 !overflow-hidden"
+>
+		<!-- Search -->
+		<div class="border-b border-gray-100 px-5 py-2.5">
+			<div class="relative">
+				<Search size={14} class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder={m.search_files()}
+					class="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:bg-white"
+				/>
 			</div>
 		</div>
-	</div>
-{/if}
+
+		<!-- Content -->
+		<div class="flex-1 overflow-y-auto p-4">
+			{#if error}
+				<div class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+			{/if}
+
+			{#if loading}
+				<div class="flex items-center justify-center py-16">
+					<Loader2 size={24} class="animate-spin text-gray-300" />
+				</div>
+			{:else if filteredVideos.length === 0}
+				<div class="flex flex-col items-center justify-center py-16 text-center">
+					<Film size={40} class="mb-3 text-gray-300" />
+					<p class="text-sm text-gray-400">{searchQuery.trim() ? m.no_videos_found() : m.no_videos_found()}</p>
+				</div>
+			{:else}
+				<!-- Select all -->
+				<button type="button" onclick={toggleAll} class="mb-2 text-xs text-blue-600 transition-colors hover:text-blue-700">
+					{filteredVideos.every(v => selected[v.slug]) ? m.cancel() : m.add_selected({ count: filteredVideos.length })}
+				</button>
+
+				<div class="space-y-1">
+					{#each filteredVideos as v (v.slug)}
+						{@const isSelected = !!selected[v.slug]}
+						<button type="button" onclick={() => toggle(v.slug)} class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-gray-50 {isSelected ? 'bg-blue-50' : ''}">
+							<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
+								{#if isSelected}
+									<Check size={12} />
+								{/if}
+							</div>
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-sm text-gray-700">{v.fileName}</p>
+								<div class="flex items-center gap-2 text-xs text-gray-400">
+									{#if v.parentName && v.parentSlug && onNavigateDir}
+										<button
+											type="button"
+											class="flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline"
+											onclick={(e) => { e.stopPropagation(); onNavigateDir(v.parentSlug!); }}
+										>
+											<Folder size={12} />
+											{v.parentName}
+										</button>
+									{:else if v.parentName}
+										<span class="flex items-center gap-1">
+											<Folder size={12} />
+											{v.parentName}
+										</span>
+									{/if}
+									<span>{fmtSize(v.fileSize)}</span>
+								</div>
+							</div>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Footer -->
+		<div class="flex items-center justify-between border-t border-gray-100 px-5 py-3">
+			<span class="text-xs text-gray-400">
+				{#if selectedCount() > 0}
+					{m.add_selected({ count: selectedCount() })}
+				{/if}
+			</span>
+			<div class="flex gap-2">
+				<button type="button" onclick={() => { open = false; onClose(); }} class="rounded-lg px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100">
+					{m.cancel()}
+				</button>
+				<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
+					{#if submitting}
+						<Loader2 size={14} class="animate-spin" />
+					{/if}
+					{m.add_selected({ count: selectedCount() })}
+				</button>
+			</div>
+		</div>
+</Dialog>

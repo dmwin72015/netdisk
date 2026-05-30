@@ -8,6 +8,8 @@
     Pencil,
     Trash2,
     Film,
+    Info,
+    Link,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
@@ -20,6 +22,8 @@
     onRename,
     onDelete,
     onAddToMedia,
+    onShowDetails,
+    onCopyLink,
     triggerClass = "",
   }: {
     file: NormalizedFile;
@@ -29,6 +33,8 @@
     onRename: (id: string, name: string) => void;
     onDelete: (id: string, name: string) => void;
     onAddToMedia?: (file: NormalizedFile) => void;
+    onShowDetails?: (file: NormalizedFile) => void;
+    onCopyLink?: (file: NormalizedFile) => void;
     triggerClass?: string;
   } = $props();
 
@@ -72,6 +78,22 @@
         >
           {m.download()}
         </a>
+      </DropdownBase.Item>
+      {#if onCopyLink}
+        <DropdownBase.Item onSelect={() => onCopyLink(file)}>
+          {#snippet icon()}
+            <Link size={14} class="text-gray-400" />
+          {/snippet}
+          {m.copy_url()}
+        </DropdownBase.Item>
+      {/if}
+    {/if}
+    {#if onShowDetails}
+      <DropdownBase.Item onSelect={() => onShowDetails(file)}>
+        {#snippet icon()}
+          <Info size={14} class="text-gray-400" />
+        {/snippet}
+        {m.view_details()}
       </DropdownBase.Item>
     {/if}
     {#if isVideo && onAddToMedia}

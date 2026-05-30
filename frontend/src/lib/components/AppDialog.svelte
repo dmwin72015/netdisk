@@ -97,11 +97,11 @@
 							bind:this={contentEl}
 							class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-100 bg-white p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
 						>
-							<Dialog.Title class="text-base font-semibold text-gray-900">
+							<Dialog.Title class="text-sm font-medium leading-5 text-gray-800">
 								{pending?.opts.title ?? ''}
 							</Dialog.Title>
 							{#if pending?.opts.message}
-								<Dialog.Description class="mt-1.5 text-sm text-gray-500">
+								<Dialog.Description class="mt-1 text-xs text-gray-500">
 									{pending.opts.message}
 								</Dialog.Description>
 							{/if}
@@ -152,10 +152,10 @@
 							bind:this={contentEl}
 							class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-100 bg-white p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
 						>
-							<AlertDialog.Title class="text-base font-semibold text-gray-900">
+							<AlertDialog.Title class="text-sm font-medium leading-5 text-gray-800">
 								{pending?.opts.title ?? ''}
 							</AlertDialog.Title>
-							<AlertDialog.Description class="mt-1.5 text-sm text-gray-500">
+							<AlertDialog.Description class="mt-1 text-xs text-gray-500">
 								{pending?.opts.message ?? ''}
 							</AlertDialog.Description>
 							<div class="mt-5 flex justify-end gap-2">

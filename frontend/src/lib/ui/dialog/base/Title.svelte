@@ -14,7 +14,7 @@
 </script>
 
 <Dialog.Title
-	class="text-lg font-semibold leading-none tracking-tight {className}"
+	class="text-sm font-medium leading-5 text-gray-800 {className}"
 	{level}
 >
 	{@render children()}

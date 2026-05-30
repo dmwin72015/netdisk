@@ -1,18 +1,19 @@
 <script lang="ts">
   import { fmtSize } from '$lib/utils/format';
-  import { Loader2, FolderOpen, Check, X } from '@lucide/svelte';
+  import { Loader2, Check } from '@lucide/svelte';
   import MimeIcon from '$lib/components/MimeIcon.svelte';
+  import { Dialog } from '$lib/ui/dialog';
   import * as m from '$lib/paraglide/messages';
 
   let {
     files,
-    open,
+    open = $bindable(false),
     loading = false,
     onConfirm,
     onCancel,
   }: {
     files: { file: File; relativePath: string }[];
-    open: boolean;
+    open?: boolean;
     loading?: boolean;
     onConfirm: (selected: { file: File; relativePath: string }[]) => void;
     onCancel: () => void;
@@ -77,109 +78,90 @@
     };
     return map[ext] || null;
   }
+
+  function handleOpenChange(v: boolean) {
+    if (!v && !loading) onCancel();
+  }
 </script>
 
-{#if open}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-    onclick={loading ? undefined : onCancel}
-    onkeydown={(e) => e.key === 'Escape' && !loading && onCancel()}
-  >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl"
-      onclick={(e) => e.stopPropagation()}
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div class="flex items-center gap-2">
-          <FolderOpen size={20} class="text-blue-500" />
-          <h2 class="text-base font-semibold text-gray-900">
-            {loading ? m.loading() : m.select_files_to_upload()}
-          </h2>
-        </div>
-        {#if !loading}
-          <button
-            type="button"
-            onclick={onCancel}
-            class="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-          >
-            <X size={18} />
-          </button>
-        {/if}
+<Dialog
+  bind:open
+  onOpenChange={handleOpenChange}
+  onCancel={onCancel}
+  title={loading ? m.loading() : m.select_files_to_upload()}
+  footer={false}
+  closable={!loading}
+  class="max-w-lg"
+  bodyClass="!p-0"
+>
+    {#if loading}
+      <!-- Loading state -->
+      <div class="flex flex-col items-center justify-center py-16">
+        <Loader2 size={32} class="mb-4 animate-spin text-blue-500" />
+        <p class="text-sm text-gray-500">正在读取文件...</p>
+      </div>
+    {:else}
+      <!-- Stats bar -->
+      <div class="flex items-center justify-between border-b border-gray-50 px-5 py-2.5 text-xs text-gray-500">
+        <button
+          type="button"
+          onclick={toggleAll}
+          class="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+        >
+          <span class="flex h-4 w-4 items-center justify-center rounded border {selected.size === files.length ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
+            {#if selected.size === files.length}
+              <Check size={12} />
+            {/if}
+          </span>
+          {m.files_selected({ count: String(selectedCount) })}
+        </button>
+        <span>{m.total_size({ size: fmtSize(selectedSize) })}</span>
       </div>
 
-      {#if loading}
-        <!-- Loading state -->
-        <div class="flex flex-col items-center justify-center py-16">
-          <Loader2 size={32} class="mb-4 animate-spin text-blue-500" />
-          <p class="text-sm text-gray-500">正在读取文件...</p>
-        </div>
-      {:else}
-        <!-- Stats bar -->
-        <div class="flex items-center justify-between border-b border-gray-50 px-5 py-2.5 text-xs text-gray-500">
+      <!-- File list -->
+      <div class="max-h-[50vh] overflow-y-auto px-2 py-2">
+        {#each files as item, i (item.relativePath)}
           <button
             type="button"
-            onclick={toggleAll}
-            class="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+            onclick={() => toggle(i)}
+            class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-gray-50"
           >
-            <span class="flex h-4 w-4 items-center justify-center rounded border {selected.size === files.length ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
-              {#if selected.size === files.length}
+            <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border {selected.has(i) ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
+              {#if selected.has(i)}
                 <Check size={12} />
               {/if}
             </span>
-            {m.files_selected({ count: String(selectedCount) })}
+            <MimeIcon
+              mimeType={getMimeTypeFromName(item.file.name)}
+              isDir={false}
+              category={getCategoryFromName(item.file.name)}
+              size={18}
+            />
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm text-gray-700">{item.relativePath}</p>
+            </div>
+            <span class="shrink-0 text-xs text-gray-400">{fmtSize(item.file.size)}</span>
           </button>
-          <span>{m.total_size({ size: fmtSize(selectedSize) })}</span>
-        </div>
+        {/each}
+      </div>
 
-        <!-- File list -->
-        <div class="flex-1 overflow-y-auto px-2 py-2">
-          {#each files as item, i (item.relativePath)}
-            <button
-              type="button"
-              onclick={() => toggle(i)}
-              class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-gray-50"
-            >
-              <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border {selected.has(i) ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
-                {#if selected.has(i)}
-                  <Check size={12} />
-                {/if}
-              </span>
-              <MimeIcon
-                mimeType={getMimeTypeFromName(item.file.name)}
-                isDir={false}
-                category={getCategoryFromName(item.file.name)}
-                size={18}
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm text-gray-700">{item.relativePath}</p>
-              </div>
-              <span class="shrink-0 text-xs text-gray-400">{fmtSize(item.file.size)}</span>
-            </button>
-          {/each}
-        </div>
-
-        <!-- Footer -->
-        <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
-          <button
-            type="button"
-            onclick={onCancel}
-            class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            {m.cancel()}
-          </button>
-          <button
-            type="button"
-            onclick={handleConfirm}
-            disabled={selectedCount === 0}
-            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            {m.upload_files()} ({selectedCount})
-          </button>
-        </div>
-      {/if}
-    </div>
-  </div>
-{/if}
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
+        <button
+          type="button"
+          onclick={onCancel}
+          class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          {m.cancel()}
+        </button>
+        <button
+          type="button"
+          onclick={handleConfirm}
+          disabled={selectedCount === 0}
+          class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+        >
+          {m.upload_files()} ({selectedCount})
+        </button>
+      </div>
+    {/if}
+</Dialog>

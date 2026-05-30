@@ -29,6 +29,6 @@
 		{...restProps}
 	>
 		{@render children()}
-		<Tooltip.Arrow class="fill-gray-900" />
+		<Tooltip.Arrow class="text-gray-900" />
 	</Tooltip.Content>
 </Tooltip.Portal>

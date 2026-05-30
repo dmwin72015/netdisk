@@ -1,30 +1,68 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { X } from '@lucide/svelte';
 	import * as DialogBase from './base';
 
 	let {
 		open = $bindable(false),
 		title,
 		description,
-		confirmText = 'Confirm',
-		cancelText = 'Cancel',
-		onConfirm,
+		okText,
+		cancelText,
+		confirmText,
+		onOpenChange,
+		onOk,
 		onCancel,
+		onConfirm,
 		children,
+		headerExtra,
+		footer = true,
+		showFooter,
+		showCancel,
+		showConfirm,
+		headerClass = '',
+		titleClass = '',
+		descriptionClass = '',
+		bodyClass = '',
+		closeButtonClass = '',
+		closeIconSize = 18,
+		closable = true,
 		class: className = '',
 	}: {
 		open?: boolean;
 		title?: string;
 		description?: string;
-		confirmText?: string;
+		okText?: string;
 		cancelText?: string;
-		onConfirm?: () => void;
+		confirmText?: string;
+		onOpenChange?: (open: boolean) => void;
+		onOk?: () => void;
 		onCancel?: () => void;
+		onConfirm?: () => void;
 		children?: Snippet;
+		headerExtra?: Snippet;
+		footer?: boolean;
+		showFooter?: boolean;
+		showCancel?: boolean;
+		showConfirm?: boolean;
+		headerClass?: string;
+		titleClass?: string;
+		descriptionClass?: string;
+		bodyClass?: string;
+		closeButtonClass?: string;
+		closeIconSize?: number;
+		closable?: boolean;
 		class?: string;
 	} = $props();
 
+	const shouldShowFooter = $derived(showFooter ?? footer);
+	const shouldShowCancel = $derived(showCancel ?? true);
+	const shouldShowOk = $derived(showConfirm ?? true);
+	const resolvedOkText = $derived(okText ?? confirmText ?? 'Confirm');
+	const resolvedCancelText = $derived(cancelText ?? 'Cancel');
+
 	function handleConfirm() {
+		onOk?.();
 		onConfirm?.();
 		open = false;
 	}
@@ -35,40 +73,65 @@
 	}
 </script>
 
-<DialogBase.Root bind:open>
-	<DialogBase.Content class={className}>
-		<DialogBase.Header>
-			{#if title}
-				<DialogBase.Title>{title}</DialogBase.Title>
+<DialogBase.Root bind:open {onOpenChange}>
+	<DialogBase.Content class="max-h-[90vh] max-w-lg p-0! flex flex-col overflow-hidden {className}">
+		<div class="flex {description ? 'items-start' : 'items-center'} gap-3 border-b border-gray-100 px-5 py-3 {headerClass}">
+			<DialogBase.Header class="min-w-0 flex-1 space-y-1">
+				{#if title}
+					<DialogBase.Title class="truncate text-sm font-medium leading-5 text-gray-800 {titleClass}">{title}</DialogBase.Title>
+				{/if}
+				{#if description}
+					<DialogBase.Description class="text-xs text-gray-400 {descriptionClass}">{description}</DialogBase.Description>
+				{/if}
+			</DialogBase.Header>
+			{#if headerExtra}
+				<div class="flex shrink-0 items-center gap-1">
+					{@render headerExtra()}
+				</div>
 			{/if}
-			{#if description}
-				<DialogBase.Description>{description}</DialogBase.Description>
+			{#if closable}
+				<DialogBase.Close>
+					<button
+						type="button"
+						onclick={handleCancel}
+						class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 {closeButtonClass}"
+						aria-label="Close"
+					>
+						<X size={closeIconSize} />
+					</button>
+				</DialogBase.Close>
 			{/if}
-		</DialogBase.Header>
+		</div>
 
-		{#if children}
-			<div class="py-4">
+		<div class="flex-1 overflow-auto px-5 py-4 {bodyClass}">
+			{#if children}
 				{@render children()}
-			</div>
-		{/if}
+			{/if}
+		</div>
 
-		<DialogBase.Footer>
-			<DialogBase.Close>
-				<button
-					type="button"
-					class="inline-flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-					onclick={handleCancel}
-				>
-					{cancelText}
-				</button>
-			</DialogBase.Close>
-			<button
-				type="button"
-				class="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-				onclick={handleConfirm}
-			>
-				{confirmText}
-			</button>
-		</DialogBase.Footer>
+		{#if shouldShowFooter && (shouldShowCancel || shouldShowOk)}
+			<DialogBase.Footer class="border-t border-gray-100 px-5 py-3">
+				{#if shouldShowCancel}
+					<DialogBase.Close>
+						<button
+							type="button"
+							class="inline-flex h-8 items-center justify-center rounded-lg px-3.5 text-sm text-gray-600 transition-colors hover:bg-gray-100"
+							onclick={handleCancel}
+						>
+							{resolvedCancelText}
+						</button>
+					</DialogBase.Close>
+				{/if}
+				{#if shouldShowOk}
+					<button
+						type="button"
+						class="inline-flex h-8 items-center justify-center rounded-lg bg-blue-600 px-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+						onclick={handleConfirm}
+					>
+						{resolvedOkText}
+					</button>
+				{/if}
+			</DialogBase.Footer>
+		{/if}
 	</DialogBase.Content>
 </DialogBase.Root>
