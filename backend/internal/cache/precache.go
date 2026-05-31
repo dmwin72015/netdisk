@@ -7,14 +7,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const preCacheTTL = 7 * 24 * time.Hour
-
+// PreCache maps (fileSize, preHash) → physicalFileSlug so that
+// a client presenting the same pre-hash can skip the upload entirely.
 type PreCache struct {
 	rdb *redis.Client
+	ttl time.Duration
 }
 
-func NewPreCache(rdb *redis.Client) *PreCache {
-	return &PreCache{rdb: rdb}
+func NewPreCache(rdb *redis.Client, ttl time.Duration) *PreCache {
+	return &PreCache{rdb: rdb, ttl: ttl}
 }
 
 func (pc *PreCache) Get(ctx context.Context, fileSize int64, preHash string) (string, error) {
@@ -31,5 +32,5 @@ func (pc *PreCache) Get(ctx context.Context, fileSize int64, preHash string) (st
 
 func (pc *PreCache) Set(ctx context.Context, fileSize int64, preHash, physicalFileSlug string) error {
 	key := PreCacheKey(fileSize, preHash)
-	return pc.rdb.Set(ctx, key, physicalFileSlug, preCacheTTL).Err()
+	return pc.rdb.Set(ctx, key, physicalFileSlug, pc.ttl).Err()
 }

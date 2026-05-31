@@ -202,7 +202,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userID int64, oldPassw
 		return model.ErrUnauthorized
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 12)
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), s.cfg.Limits.BcryptCost)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
@@ -222,6 +222,10 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 	if mimeType != "image/jpeg" && mimeType != "image/png" && mimeType != "image/webp" {
 		return "", model.ErrUnsupportedType
 	}
+
+	// Limit avatar size from config
+	maxAvatarSize := s.cfg.Limits.AvatarMaxSize
+	limitedReader := io.LimitReader(reader, maxAvatarSize+1)
 
 	user, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
@@ -260,8 +264,13 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 	}
 	defer f.Close()
 
-	if _, err := io.Copy(f, reader); err != nil {
+	written, err := io.Copy(f, limitedReader)
+	if err != nil {
 		return "", fmt.Errorf("write avatar: %w", err)
+	}
+	if written > maxAvatarSize {
+		os.Remove(path)
+		return "", model.ErrFileTooLarge
 	}
 
 	avatarURL := fmt.Sprintf("/api/v1/avatars/%s/%s", user.Slug, filename)

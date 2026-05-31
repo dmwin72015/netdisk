@@ -75,6 +75,8 @@ func MapError(err error) (int, int, string) {
 		return http.StatusBadRequest, model.ErrCodeFileRequired, "file is required"
 	case errors.Is(err, model.ErrUnsupportedImage):
 		return http.StatusBadRequest, model.ErrCodeUnsupportedImage, "only JPEG, PNG and WebP are supported"
+	case errors.Is(err, model.ErrSystemFileLocked):
+		return http.StatusForbidden, model.ErrCodeSystemFileLocked, "system file cannot be modified"
 	default:
 		return http.StatusInternalServerError, model.ErrCodeInternal, "internal error"
 	}

@@ -36,6 +36,8 @@ type ListFilesParams struct {
 	IsStarred      *bool
 	IsTrashed      bool
 	IncludeDirs    bool
+	OnlyDirs       bool
+	ExcludeSystem  bool
 	IgnoreParentID bool   // true = skip parent_id filter (for recent files, search, etc.)
 	SortBy         string // "file_name" | "created_at" | "updated_at" | "trashed_at"
 	SortDir        string // "ASC" | "DESC"
@@ -89,8 +91,13 @@ func buildWhere(p ListFilesParams) sq.And {
 	if p.IsStarred != nil {
 		w = append(w, sq.Eq{"f.is_starred": *p.IsStarred})
 	}
-	if !p.IncludeDirs {
+	if p.OnlyDirs {
+		w = append(w, sq.Eq{"f.is_dir": true})
+	} else if !p.IncludeDirs {
 		w = append(w, sq.Eq{"f.is_dir": false})
+	}
+	if p.ExcludeSystem {
+		w = append(w, sq.Eq{"f.is_system": false})
 	}
 
 	return w
@@ -113,6 +120,7 @@ func BuildListFilesQuery(p ListFilesParams) (sql string, args []any, countSql st
 	listQuery := psql.Select(
 		"f.id", "f.slug", "f.file_name", "f.is_dir", "f.file_size",
 		"f.mime_type", "f.file_category", "f.is_starred",
+		"f.is_system", "f.system_kind",
 		"f.created_at", "f.updated_at", "f.parent_slug",
 		"p.file_name AS parent_name",
 	).

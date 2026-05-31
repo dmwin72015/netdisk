@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X } from "@lucide/svelte";
+  import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X, FolderInput } from "@lucide/svelte";
   import { fade, fly } from "svelte/transition";
   import type { NormalizedFile } from "$lib/types/file";
   import { fmtSize, fmtTime } from "$lib/utils/format";
@@ -10,6 +10,7 @@
   import { getAccessToken } from "$lib/api/client";
   import { toast } from "svelte-sonner";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
+  import MoveDialog from "./MoveDialog.svelte";
 
   type FolderSummary = {
     fileCount: number;
@@ -23,6 +24,7 @@
     loading,
     directoryId = '',
     currentPath = [],
+    includeSystemDirs = true,
     emptyMessage,
     downloadUrlFn,
     onNavigateDir,
@@ -30,6 +32,7 @@
     onPreview,
     onRename,
     onDelete,
+    onMove,
     onAddToMedia,
     loadFolderSummary,
   }: {
@@ -38,6 +41,7 @@
     loading: boolean;
     directoryId?: string;
     currentPath?: { id: string; name: string }[];
+    includeSystemDirs?: boolean;
     emptyMessage: string;
     downloadUrlFn: (id: string) => string;
     onNavigateDir: (id: string) => void;
@@ -45,6 +49,7 @@
     onPreview: (file: NormalizedFile) => void;
     onRename: (id: string, name: string) => void;
     onDelete: (id: string, name: string) => void;
+    onMove?: (ids: string[], targetParentSlug: string) => void | Promise<void>;
     onAddToMedia?: (file: NormalizedFile) => void;
     loadFolderSummary?: (id: string) => Promise<FolderSummary>;
   } = $props();
@@ -56,10 +61,16 @@
   let detailOpen = $state(false);
   let detailSummary = $state<FolderSummary | null>(null);
   let detailSummaryLoading = $state(false);
-  let allSelected = $derived(files.length > 0 && files.every(f => selected.has(f.id)));
+  let moveOpen = $state(false);
+  let moveTargets = $state<NormalizedFile[]>([]);
+  let selectableFiles = $derived(files.filter((file) => !file.isSystem));
+  let allSelected = $derived(selectableFiles.length > 0 && selectableFiles.every(f => selected.has(f.id)));
   let hasSelection = $derived(selected.size > 0);
+  let moveExcludedIds = $derived(moveTargets.filter((file) => file.isDir).map((file) => file.id));
 
   function toggleSelect(id: string) {
+    const file = files.find((item) => item.id === id);
+    if (file?.isSystem) return;
     if (selected.has(id)) selected.delete(id);
     else selected.add(id);
     selected = new Set(selected);
@@ -67,7 +78,7 @@
 
   function toggleSelectAll() {
     if (allSelected) selected = new Set();
-    else selected = new Set(files.map(f => f.id));
+    else selected = new Set(selectableFiles.map(f => f.id));
   }
 
   function showDetails(file: NormalizedFile) {
@@ -98,6 +109,34 @@
       detailSummary = null;
       detailSummaryLoading = false;
     }
+  }
+
+  function openMoveDialog(targetFiles: NormalizedFile[]) {
+    if (!onMove || targetFiles.length === 0) return;
+    moveTargets = targetFiles.filter((file) => !file.isSystem);
+    if (moveTargets.length === 0) return;
+    moveOpen = true;
+  }
+
+  function openSingleMoveDialog(file: NormalizedFile) {
+    openMoveDialog([file]);
+  }
+
+  function openSelectedMoveDialog() {
+    openMoveDialog(files.filter((file) => selected.has(file.id)));
+  }
+
+  function handleMoveClose() {
+    moveOpen = false;
+    moveTargets = [];
+  }
+
+  async function confirmMove(targetParentSlug: string) {
+    if (!onMove || moveTargets.length === 0) return;
+    await onMove(moveTargets.map((file) => file.id), targetParentSlug);
+    selected = new Set();
+    moveOpen = false;
+    moveTargets = [];
   }
 
   async function copyFileLink(file: NormalizedFile) {
@@ -229,6 +268,7 @@
             {onPreview}
             {onRename}
             {onDelete}
+            onMove={onMove ? openSingleMoveDialog : undefined}
             {onAddToMedia}
             onShowDetails={showDetails}
             onCopyLink={copyFileLink}
@@ -241,12 +281,19 @@
           category={f.fileCategory}
           size={36}
         />
-        <p
-          class="mt-3 w-full truncate text-center text-sm font-medium text-gray-700"
-          title={f.name}
-        >
-          {f.name}
-        </p>
+        <div class="mt-3 flex w-full min-w-0 items-center justify-center gap-1.5">
+          <p
+            class="min-w-0 truncate text-center text-sm font-medium text-gray-700"
+            title={f.name}
+          >
+            {f.name}
+          </p>
+          {#if f.isSystem}
+            <span class="shrink-0 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
+              {m.system_badge()}
+            </span>
+          {/if}
+        </div>
         <p class="mt-0.5 text-xs text-gray-400">
           {f.isDir ? "" : fmtSize(f.size)}
         </p>
@@ -295,11 +342,15 @@
             <td class="px-2 py-2.5">
               <div class="flex items-center gap-2.5">
                 <!-- Checkbox: hidden by default, show on hover or when selected -->
-                <button type="button" onclick={(e) => { e.stopPropagation(); toggleSelect(f.id); }} class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-opacity {isSelected ? 'border-blue-500 bg-blue-500 text-white opacity-100' : 'border-gray-300 opacity-0 group-hover:opacity-100'}">
-                  {#if isSelected}
-                    <Check size={10} />
-                  {/if}
-                </button>
+                {#if f.isSystem}
+                  <span class="h-4 w-4 shrink-0"></span>
+                {:else}
+                  <button type="button" onclick={(e) => { e.stopPropagation(); toggleSelect(f.id); }} class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-opacity {isSelected ? 'border-blue-500 bg-blue-500 text-white opacity-100' : 'border-gray-300 opacity-0 group-hover:opacity-100'}">
+                    {#if isSelected}
+                      <Check size={10} />
+                    {/if}
+                  </button>
+                {/if}
                 <span class="shrink-0">
                   <MimeIcon
                     mimeType={f.mimeType}
@@ -309,6 +360,11 @@
                   />
                 </span>
                 <span class="min-w-0 flex-1 truncate text-gray-700" title={f.name}>{f.name}</span>
+                {#if f.isSystem}
+                  <span class="shrink-0 rounded-full border border-sky-100 bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-sky-700">
+                    {m.system_badge()}
+                  </span>
+                {/if}
                 {#if f.isStarred}
                   <Star size={12} class="shrink-0 text-amber-400" fill="currentColor" />
                 {/if}
@@ -324,6 +380,7 @@
                     {onPreview}
                     {onRename}
                     {onDelete}
+                    onMove={onMove ? openSingleMoveDialog : undefined}
                     {onAddToMedia}
                     onShowDetails={showDetails}
                     onCopyLink={copyFileLink}
@@ -377,6 +434,19 @@
                 <Star size={16} />
               </Tooltip>
             {/if}
+            {#if onMove}
+              <Tooltip
+                content={m.move_to()}
+                delayDuration={200}
+                triggerProps={{
+                  'aria-label': m.move_to(),
+                  onclick: openSelectedMoveDialog,
+                }}
+                triggerClass="h-8 w-8 rounded-full text-gray-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
+              >
+                <FolderInput size={16} />
+              </Tooltip>
+            {/if}
             <Tooltip
               content={m.delete_label()}
               delayDuration={200}
@@ -403,6 +473,14 @@
     {/if}
   {/key}
 {/if}
+
+<MoveDialog
+  bind:open={moveOpen}
+  excludedIds={moveExcludedIds}
+  {includeSystemDirs}
+  onClose={handleMoveClose}
+  onConfirm={confirmMove}
+/>
 
 <Dialog
   bind:open={detailOpen}

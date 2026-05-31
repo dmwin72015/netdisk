@@ -33,15 +33,14 @@
 		const dpr = window.devicePixelRatio || 1;
 		const vw = window.innerWidth;
 		const vh = window.innerHeight;
-		const v = video as any;
 		let totalFrames = 0;
 		let droppedFrames = 0;
-		if (v.getVideoPlaybackQuality) {
-			const q = v.getVideoPlaybackQuality();
+		if ('getVideoPlaybackQuality' in video) {
+			const q = (video as { getVideoPlaybackQuality(): { totalVideoFrames: number; droppedVideoFrames: number } }).getVideoPlaybackQuality();
 			totalFrames = q.totalVideoFrames;
 			droppedFrames = q.droppedVideoFrames;
-		} else if (v.webkitDroppedFrameCount !== undefined) {
-			droppedFrames = v.webkitDroppedFrameCount;
+		} else if ('webkitDroppedFrameCount' in video) {
+			droppedFrames = (video as { webkitDroppedFrameCount: number }).webkitDroppedFrameCount;
 		}
 		r.push({ label: 'Viewport / Frames', value: `${vw}x${vh}*${dpr.toFixed(2)} / ${droppedFrames} dropped of ${totalFrames}` });
 

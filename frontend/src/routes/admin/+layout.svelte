@@ -14,7 +14,7 @@
 			void goto('/login');
 			return;
 		}
-		if (($user as any).role !== 'admin') {
+		if ($user.role !== 'admin') {
 			void goto('/');
 			return;
 		}
@@ -24,7 +24,7 @@
 
 {#if $authReady && authorized}
 	{@render children()}
-{:else if $authReady && $user && ($user as any).role !== 'admin'}
+{:else if $authReady && $user && $user.role !== 'admin'}
 	<div class="flex flex-col items-center justify-center py-20 text-center">
 		<p class="text-lg text-slate-500">{m.admin_only()}</p>
 	</div>

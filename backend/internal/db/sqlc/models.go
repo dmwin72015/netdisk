@@ -114,6 +114,8 @@ type UserFile struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`
 	FileCategory   string             `json:"fileCategory"`
 	ParentSlug     pgtype.Text        `json:"parentSlug"`
+	IsSystem       bool               `json:"isSystem"`
+	SystemKind     pgtype.Text        `json:"systemKind"`
 }
 
 type UserLevel struct {

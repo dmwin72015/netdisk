@@ -23,10 +23,25 @@ type MediaService struct {
 	cfg     *config.Config
 	store   *storage.Local
 	cache   *cache.Cache
+	files   *FilesService
 }
 
-func NewMediaService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config, store *storage.Local, c *cache.Cache) *MediaService {
-	return &MediaService{queries: queries, pg: pg, cfg: cfg, store: store, cache: c}
+func NewMediaService(
+	queries *sqlc.Queries,
+	pg *pgxpool.Pool,
+	cfg *config.Config,
+	store *storage.Local,
+	c *cache.Cache,
+	files *FilesService,
+) *MediaService {
+	return &MediaService{
+		queries: queries,
+		pg:      pg,
+		cfg:     cfg,
+		store:   store,
+		cache:   c,
+		files:   files,
+	}
 }
 
 type AddToLibraryRequest struct {
@@ -52,6 +67,13 @@ type MediaItemResponse struct {
 	PosterURL       *string `json:"posterUrl"`
 	PlayURL         *string `json:"playUrl"`
 	CreatedAt       string  `json:"createdAt"`
+}
+
+func (s *MediaService) EnsureUploadDir(ctx context.Context, userID int64) (*FileItem, error) {
+	return s.files.EnsureSystemDir(ctx, userID, SystemDirOptions{
+		Kind: SystemDirMediaUploads,
+		Name: "媒体库上传",
+	})
 }
 
 func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddToLibraryRequest) (*AddToLibraryResponse, error) {
@@ -80,21 +102,22 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		UserFileID: uf.ID,
 	})
 	if err == nil && existing.ID != 0 {
-		// Already in library, get transcode info
-		tc, _ := s.queries.GetTranscodeBySlug(ctx, "")
+		// Already in library, get transcode status
+		status := "unknown"
 		if existing.TranscodeID.Valid {
-			tc, _ = s.queries.GetTranscodeBySlug(ctx, "")
-			// Get transcode by ID
+			tc, tcErr := s.queries.GetTranscodeByID(ctx, existing.TranscodeID.Int64)
+			if tcErr == nil {
+				status = tc.Status
+			}
 		}
-		_ = tc
 		return &AddToLibraryResponse{
 			MediaSlug:       existing.Slug,
-			TranscodeStatus: "existing",
+			TranscodeStatus: status,
 		}, nil
 	}
 
 	// Find or create shared transcode
-	profile := "default"
+	profile := "hls_1080p"
 	tc, err := s.queries.GetTranscodeByPhysicalFileAndProfile(ctx, sqlc.GetTranscodeByPhysicalFileAndProfileParams{
 		PhysicalFileID: uf.PhysicalFileID.Int64,
 		Profile:        profile,

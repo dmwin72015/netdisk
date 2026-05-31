@@ -2,12 +2,13 @@
 	import { DatePicker, type DateValue } from 'bits-ui';
 	import { CalendarDate, parseDate, today, getLocalTimeZone } from '@internationalized/date';
 	import { ChevronLeft, ChevronRight, CalendarDays } from '@lucide/svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		value = $bindable(null),
 		placeholder = $bindable(null),
 		disabled = false,
-		placeholderText = '选择日期',
+		placeholderText = m.select_date(),
 		onValueChange,
 	}: {
 		value?: Date | null;

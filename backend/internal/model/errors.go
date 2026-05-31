@@ -5,11 +5,11 @@ import "errors"
 // Numeric business error codes.
 const (
 	// General
-	ErrCodeNotFound      = 1001
-	ErrCodeUnauthorized  = 1002
-	ErrCodeForbidden     = 1003
-	ErrCodeInvalidInput  = 1004
-	ErrCodeInternal      = 1005
+	ErrCodeNotFound     = 1001
+	ErrCodeUnauthorized = 1002
+	ErrCodeForbidden    = 1003
+	ErrCodeInvalidInput = 1004
+	ErrCodeInternal     = 1005
 
 	// File operations
 	ErrCodeAlreadyExists    = 2001
@@ -22,6 +22,7 @@ const (
 	ErrCodeFileRequired     = 2008
 	ErrCodeUnsupportedType  = 2009
 	ErrCodeUnsupportedImage = 2010
+	ErrCodeSystemFileLocked = 2011
 
 	// Upload
 	ErrCodeChallengeExpired  = 3001
@@ -29,21 +30,22 @@ const (
 )
 
 var (
-	ErrNotFound           = errors.New("not found")
-	ErrUnauthorized       = errors.New("unauthorized")
-	ErrForbidden          = errors.New("forbidden")
-	ErrInvalidInput       = errors.New("invalid input")
-	ErrAlreadyExists      = errors.New("already exists")
-	ErrFileTooLarge       = errors.New("file exceeds size limit")
-	ErrUnsupportedType    = errors.New("unsupported file type")
-	ErrInternal           = errors.New("internal error")
-	ErrQuotaExceeded      = errors.New("storage quota exceeded")
-	ErrNameConflict       = errors.New("name conflict")
-	ErrDuplicateFile      = errors.New("duplicate file")
-	ErrSameFileConflict   = errors.New("same file conflict")
-	ErrChallengeExpired   = errors.New("challenge expired")
-	ErrChallengeMismatch  = errors.New("challenge mismatch")
-	ErrDirNotEmpty        = errors.New("directory is not empty")
-	ErrFileRequired       = errors.New("file is required")
-	ErrUnsupportedImage   = errors.New("only JPEG, PNG and WebP are supported")
+	ErrNotFound          = errors.New("not found")
+	ErrUnauthorized      = errors.New("unauthorized")
+	ErrForbidden         = errors.New("forbidden")
+	ErrInvalidInput      = errors.New("invalid input")
+	ErrAlreadyExists     = errors.New("already exists")
+	ErrFileTooLarge      = errors.New("file exceeds size limit")
+	ErrUnsupportedType   = errors.New("unsupported file type")
+	ErrInternal          = errors.New("internal error")
+	ErrQuotaExceeded     = errors.New("storage quota exceeded")
+	ErrNameConflict      = errors.New("name conflict")
+	ErrDuplicateFile     = errors.New("duplicate file")
+	ErrSameFileConflict  = errors.New("same file conflict")
+	ErrChallengeExpired  = errors.New("challenge expired")
+	ErrChallengeMismatch = errors.New("challenge mismatch")
+	ErrDirNotEmpty       = errors.New("directory is not empty")
+	ErrFileRequired      = errors.New("file is required")
+	ErrUnsupportedImage  = errors.New("only JPEG, PNG and WebP are supported")
+	ErrSystemFileLocked  = errors.New("system file cannot be modified")
 )

@@ -156,11 +156,11 @@ func TestNormalize(t *testing.T) {
 
 func TestBuildListFilesQuery_BasicOutput(t *testing.T) {
 	params := ListFilesParams{
-		UserID:   42,
-		ParentID: int64Ptr(10),
+		UserID:    42,
+		ParentID:  int64Ptr(10),
 		IsTrashed: false,
-		Page:     1,
-		PageSize: 20,
+		Page:      1,
+		PageSize:  20,
 	}
 
 	sql, args, countSql, countArgs, err := BuildListFilesQuery(params)
@@ -216,13 +216,13 @@ func TestBuildListFilesQuery_BasicOutput(t *testing.T) {
 func TestBuildListFilesQuery_SortOrder(t *testing.T) {
 	// With parent_id set and not trashed: should have "is_dir DESC" prefix
 	params := ListFilesParams{
-		UserID:   1,
-		ParentID: int64Ptr(5),
+		UserID:    1,
+		ParentID:  int64Ptr(5),
 		IsTrashed: false,
-		SortBy:   "file_name",
-		SortDir:  "ASC",
-		Page:     1,
-		PageSize: 10,
+		SortBy:    "file_name",
+		SortDir:   "ASC",
+		Page:      1,
+		PageSize:  10,
 	}
 
 	sql, _, _, _, err := BuildListFilesQuery(params)
@@ -254,12 +254,12 @@ func TestBuildListFilesQuery_MimePrefixEscaping(t *testing.T) {
 	// LIKE wildcards in mime prefix should be escaped
 	mimePrefix := "image/%test_value"
 	params := ListFilesParams{
-		UserID:     1,
-		MimePrefix: &mimePrefix,
-		IsTrashed:   false,
+		UserID:         1,
+		MimePrefix:     &mimePrefix,
+		IsTrashed:      false,
 		IgnoreParentID: true,
-		Page:       1,
-		PageSize:   10,
+		Page:           1,
+		PageSize:       10,
 	}
 
 	sql, args, _, _, err := BuildListFilesQuery(params)
@@ -281,11 +281,11 @@ func TestBuildListFilesQuery_MimePrefixEscaping(t *testing.T) {
 
 func TestBuildListFilesQuery_TrashedFilter(t *testing.T) {
 	params := ListFilesParams{
-		UserID:   1,
-		IsTrashed: true,
+		UserID:         1,
+		IsTrashed:      true,
 		IgnoreParentID: true,
-		Page:     1,
-		PageSize: 10,
+		Page:           1,
+		PageSize:       10,
 	}
 
 	_, args, _, _, err := BuildListFilesQuery(params)
@@ -302,6 +302,35 @@ func TestBuildListFilesQuery_TrashedFilter(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected is_trashed=true in args: %v", args)
+	}
+}
+
+func TestBuildListFilesQuery_OnlyDirs(t *testing.T) {
+	params := ListFilesParams{
+		UserID:      1,
+		OnlyDirs:    true,
+		IncludeDirs: true,
+		Page:        1,
+		PageSize:    10,
+	}
+
+	sql, args, _, _, err := BuildListFilesQuery(params)
+	if err != nil {
+		t.Fatalf("BuildListFilesQuery() error: %v", err)
+	}
+
+	if !strings.Contains(sql, "is_dir") {
+		t.Errorf("expected is_dir filter in SQL: %s", sql)
+	}
+
+	found := false
+	for _, a := range args {
+		if b, ok := a.(bool); ok && b {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected is_dir=true in args: %v", args)
 	}
 }
 

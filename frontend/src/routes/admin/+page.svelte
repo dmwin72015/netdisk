@@ -28,7 +28,7 @@
 
 	onMount(() => {
 		if (!browser) return;
-		if (!$user || ($user as any).role !== 'admin') {
+		if (!$user || $user.role !== 'admin') {
 			void goto('/');
 			return;
 		}
@@ -122,7 +122,7 @@
 					</tr>
 				{:else if users.length === 0}
 					<tr>
-						<td colspan="6" class="px-4 py-10 text-center text-slate-400">{m.no_files()}</td>
+						<td colspan="6" class="px-4 py-10 text-center text-slate-400">{m.no_users()}</td>
 					</tr>
 				{:else}
 					{#each users as u (u.id)}

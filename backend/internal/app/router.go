@@ -15,11 +15,6 @@ import (
 	"github.com/netdisk/server/pkg/jwtutil"
 )
 
-const (
-	apiRequestsPerMin  = 600
-	authRequestsPerMin = 20
-)
-
 func installMiddleware(e *echo.Echo, cfg *config.Config, logger zerolog.Logger) {
 	e.Use(echomw.Recover())
 	e.Use(mw.RequestLogger(logger))
@@ -37,11 +32,11 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	e.GET("/healthz", healthHandler)
 
 	api := e.Group("/api/v1")
-	api.Use(mw.RateLimit(rdb, "api", apiRequestsPerMin, time.Minute))
+	api.Use(mw.RateLimit(rdb, "api", cfg.RateLimit.APIRequestsPerMin, time.Minute))
 
 	// Auth routes
 	auth := api.Group("/auth")
-	auth.Use(mw.RateLimit(rdb, "auth", authRequestsPerMin, time.Minute))
+	auth.Use(mw.RateLimit(rdb, "auth", cfg.RateLimit.AuthRequestsPerMin, time.Minute))
 	auth.POST("/register", h.Auth.Register)
 	auth.POST("/login", h.Auth.Login)
 	auth.POST("/refresh", h.Auth.Refresh)
@@ -100,6 +95,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// Media routes
 	media := authed.Group("/media")
+	media.GET("/upload-dir", h.Media.EnsureUploadDir)
 	media.POST("/items", h.Media.AddToLibrary)
 	media.GET("/items", h.Media.ListMediaItems)
 	media.GET("/items/:media_slug", h.Media.GetMediaItem)

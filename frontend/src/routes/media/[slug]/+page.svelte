@@ -35,9 +35,27 @@
 					if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 				}
 			});
+			let bufferRetries = 0;
 			hls.on(Hls.Events.ERROR, (_event, data) => {
-				console.error('hls error', data);
-				if (data.fatal) error = m.player_error({ details: data.details });
+				if (data.fatal) {
+					switch (data.type) {
+						case Hls.ErrorTypes.NETWORK_ERROR:
+							hls?.startLoad();
+							break;
+						case Hls.ErrorTypes.MEDIA_ERROR:
+							hls?.recoverMediaError();
+							break;
+						default:
+							error = m.player_error({ details: data.details });
+							break;
+					}
+				} else if (data.details === Hls.ErrorDetails.BUFFER_APPENDING_ERROR) {
+					bufferRetries++;
+					if (bufferRetries > 3) {
+						hls?.destroy();
+						error = m.player_error({ details: data.details });
+					}
+				}
 			});
 			hls.loadSource(src);
 			hls.attachMedia(video);

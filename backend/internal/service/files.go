@@ -33,6 +33,8 @@ func NewFilesService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config
 	return &FilesService{queries: queries, pg: pg, cfg: cfg, store: store}
 }
 
+const SystemDirMediaUploads = "media_uploads"
+
 type FileItem struct {
 	Slug         string  `json:"slug"`
 	FileName     string  `json:"fileName"`
@@ -41,10 +43,18 @@ type FileItem struct {
 	MimeType     *string `json:"mimeType"`
 	FileCategory string  `json:"fileCategory"`
 	IsStarred    bool    `json:"isStarred"`
+	IsSystem     bool    `json:"isSystem"`
+	SystemKind   *string `json:"systemKind,omitempty"`
 	ParentSlug   *string `json:"parentSlug,omitempty"`
 	ParentName   *string `json:"parentName,omitempty"`
 	CreatedAt    string  `json:"createdAt"`
 	UpdatedAt    string  `json:"updatedAt"`
+}
+
+type SystemDirOptions struct {
+	Kind       string
+	Name       string
+	ParentSlug string
 }
 
 type ConflictResponse struct {
@@ -117,6 +127,79 @@ func (s *FilesService) ListRecentFiles(ctx context.Context, userID int64, limit 
 	return s.ListUserFiles(ctx, params)
 }
 
+func (s *FilesService) EnsureSystemDir(ctx context.Context, userID int64, opts SystemDirOptions) (*FileItem, error) {
+	if opts.Kind == "" || opts.Name == "" || len(opts.Name) > 100 {
+		return nil, model.ErrInvalidInput
+	}
+
+	parentID, err := s.resolveParentID(ctx, userID, opts.ParentSlug)
+	if err != nil {
+		return nil, err
+	}
+
+	existing, err := s.queries.GetSystemDirByKind(ctx, sqlc.GetSystemDirByKindParams{
+		UserID:     userID,
+		ParentID:   parentID,
+		SystemKind: pgtype.Text{String: opts.Kind, Valid: true},
+	})
+	if err == nil {
+		item := fileToItem(existing)
+		return &item, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("get system dir: %w", err)
+	}
+
+	conflict, err := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
+		UserID:   userID,
+		ParentID: parentID,
+		FileName: opts.Name,
+		IsSystem: true,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("check system dir conflict: %w", err)
+	}
+	if conflict.ID != 0 {
+		return nil, model.ErrNameConflict
+	}
+
+	slug, err := gonanoid.New(21)
+	if err != nil {
+		return nil, fmt.Errorf("generate slug: %w", err)
+	}
+
+	f, err := s.queries.CreateFile(ctx, sqlc.CreateFileParams{
+		Slug:         slug,
+		UserID:       userID,
+		ParentID:     parentID,
+		ParentSlug:   pgtype.Text{String: opts.ParentSlug, Valid: opts.ParentSlug != ""},
+		FileName:     opts.Name,
+		IsDir:        true,
+		FileSize:     0,
+		FileCategory: string(fileutil.CategoryFolder),
+		IsSystem:     true,
+		SystemKind:   pgtype.Text{String: opts.Kind, Valid: true},
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			existing, getErr := s.queries.GetSystemDirByKind(ctx, sqlc.GetSystemDirByKindParams{
+				UserID:     userID,
+				ParentID:   parentID,
+				SystemKind: pgtype.Text{String: opts.Kind, Valid: true},
+			})
+			if getErr == nil {
+				item := fileToItem(existing)
+				return &item, nil
+			}
+			return nil, model.ErrNameConflict
+		}
+		return nil, fmt.Errorf("create system dir: %w", err)
+	}
+
+	item := fileToItem(f)
+	return &item, nil
+}
+
 type BreadcrumbItem struct {
 	Slug     string `json:"slug"`
 	FileName string `json:"fileName"`
@@ -154,25 +237,16 @@ func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentS
 		return nil, model.ErrInvalidInput
 	}
 
-	var parentID pgtype.Int8
-	if parentSlug != "" {
-		parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
-			Slug:   parentSlug,
-			UserID: userID,
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, model.ErrNotFound
-			}
-			return nil, fmt.Errorf("get parent: %w", err)
-		}
-		parentID = pgtype.Int8{Int64: parent.ID, Valid: true}
+	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
+	if err != nil {
+		return nil, err
 	}
 
 	conflict, err := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
 		UserID:   userID,
 		ParentID: parentID,
 		FileName: dirName,
+		IsSystem: false,
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("check conflict: %w", err)
@@ -195,6 +269,7 @@ func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentS
 		IsDir:        true,
 		FileSize:     0,
 		FileCategory: string(fileutil.CategoryFolder),
+		IsSystem:     false,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -215,25 +290,16 @@ func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentS
 }
 
 func (s *FilesService) CheckConflict(ctx context.Context, userID int64, fileName, preHash, parentSlug string, fileSize int64) (*ConflictResponse, error) {
-	var parentID pgtype.Int8
-	if parentSlug != "" {
-		parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
-			Slug:   parentSlug,
-			UserID: userID,
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, model.ErrNotFound
-			}
-			return nil, fmt.Errorf("get parent: %w", err)
-		}
-		parentID = pgtype.Int8{Int64: parent.ID, Valid: true}
+	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
+	if err != nil {
+		return nil, err
 	}
 
 	conflict, err := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
 		UserID:   userID,
 		ParentID: parentID,
 		FileName: fileName,
+		IsSystem: false,
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("check conflict: %w", err)
@@ -274,15 +340,8 @@ func (s *FilesService) CheckConflict(ctx context.Context, userID int64, fileName
 
 func (s *FilesService) CheckDuplicate(ctx context.Context, userID int64, fileHash, parentSlug string) (*ConflictResponse, error) {
 	if parentSlug != "" {
-		_, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
-			Slug:   parentSlug,
-			UserID: userID,
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, model.ErrNotFound
-			}
-			return nil, fmt.Errorf("get parent: %w", err)
+		if _, err := s.resolveParentID(ctx, userID, parentSlug); err != nil {
+			return nil, err
 		}
 	}
 
@@ -323,25 +382,16 @@ func (s *FilesService) ImportFile(ctx context.Context, userID int64, physicalFil
 		return nil, model.ErrInvalidInput
 	}
 
-	var parentID pgtype.Int8
-	if parentSlug != "" {
-		parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
-			Slug:   parentSlug,
-			UserID: userID,
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, model.ErrNotFound
-			}
-			return nil, fmt.Errorf("get parent: %w", err)
-		}
-		parentID = pgtype.Int8{Int64: parent.ID, Valid: true}
+	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
+	if err != nil {
+		return nil, err
 	}
 
 	conflict, err := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
 		UserID:   userID,
 		ParentID: parentID,
 		FileName: fileName,
+		IsSystem: false,
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("check conflict: %w", err)
@@ -385,6 +435,7 @@ func (s *FilesService) ImportFile(ctx context.Context, userID int64, physicalFil
 		FileSize:       pf.FileSize,
 		MimeType:       mimeType,
 		FileCategory:   string(category),
+		IsSystem:       false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create file: %w", err)
@@ -409,6 +460,9 @@ func (s *FilesService) TrashFile(ctx context.Context, userID int64, fileSlug str
 	}
 	if f.IsTrashed {
 		return nil
+	}
+	if f.IsSystem {
+		return model.ErrSystemFileLocked
 	}
 
 	// Check if directory is empty before trashing
@@ -443,6 +497,9 @@ func (s *FilesService) RestoreFile(ctx context.Context, userID int64, fileSlug s
 		}
 		return fmt.Errorf("get file: %w", err)
 	}
+	if f.IsSystem {
+		return model.ErrSystemFileLocked
+	}
 	if !f.IsTrashed {
 		return nil
 	}
@@ -460,6 +517,9 @@ func (s *FilesService) PermanentDelete(ctx context.Context, userID int64, fileSl
 			return model.ErrNotFound
 		}
 		return fmt.Errorf("get file: %w", err)
+	}
+	if f.IsSystem {
+		return model.ErrSystemFileLocked
 	}
 
 	// Decrement storage for non-directories
@@ -500,7 +560,7 @@ func (s *FilesService) PermanentDelete(ctx context.Context, userID int64, fileSl
 func (s *FilesService) EmptyTrash(ctx context.Context, userID int64) (int, error) {
 	// Get all trashed files
 	rows, err := s.pg.Query(ctx,
-		"SELECT id, is_dir, physical_file_id, file_size FROM user_files WHERE user_id = $1 AND is_trashed = TRUE",
+		"SELECT id, is_dir, physical_file_id, file_size FROM user_files WHERE user_id = $1 AND is_trashed = TRUE AND is_system = FALSE",
 		userID,
 	)
 	if err != nil {
@@ -542,17 +602,20 @@ func (s *FilesService) EmptyTrash(ctx context.Context, userID int64) (int, error
 	}
 
 	// Delete all trashed files
-	_, err = s.pg.Exec(ctx, "DELETE FROM user_files WHERE user_id = $1 AND is_trashed = TRUE", userID)
+	_, err = s.pg.Exec(ctx, "DELETE FROM user_files WHERE user_id = $1 AND is_trashed = TRUE AND is_system = FALSE", userID)
 	if err != nil {
 		return 0, fmt.Errorf("delete trashed files: %w", err)
 	}
 
 	// Decrement storage
 	if reclaimSize > 0 {
-		_, _ = s.queries.AtomicIncrementStorage(ctx, sqlc.AtomicIncrementStorageParams{
+		if _, err := s.queries.AtomicIncrementStorage(ctx, sqlc.AtomicIncrementStorageParams{
 			UserID:      userID,
 			StorageUsed: -reclaimSize,
-		})
+		}); err != nil {
+			// Log error but don't fail - user files are already deleted
+			// Storage quota may be slightly inaccurate until next recalculation
+		}
 	}
 
 	// Clean up unreferenced physical files
@@ -575,7 +638,7 @@ func (s *FilesService) EmptyTrash(ctx context.Context, userID int64) (int, error
 
 func (s *FilesService) RestoreAll(ctx context.Context, userID int64) (int, error) {
 	result, err := s.pg.Exec(ctx,
-		"UPDATE user_files SET is_trashed = FALSE, trashed_at = NULL, updated_at = NOW() WHERE user_id = $1 AND is_trashed = TRUE",
+		"UPDATE user_files SET is_trashed = FALSE, trashed_at = NULL, updated_at = NOW() WHERE user_id = $1 AND is_trashed = TRUE AND is_system = FALSE",
 		userID,
 	)
 	if err != nil {
@@ -600,11 +663,15 @@ func (s *FilesService) RenameFile(ctx context.Context, userID int64, fileSlug, n
 		}
 		return fmt.Errorf("get file: %w", err)
 	}
+	if f.IsSystem {
+		return model.ErrSystemFileLocked
+	}
 
 	conflict, err := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
 		UserID:   userID,
 		ParentID: f.ParentID,
 		FileName: newName,
+		IsSystem: false,
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("check conflict: %w", err)
@@ -630,6 +697,9 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 		}
 		return fmt.Errorf("get file: %w", err)
 	}
+	if f.IsSystem {
+		return model.ErrSystemFileLocked
+	}
 
 	var targetParentID pgtype.Int8
 	if targetParentSlug != "" {
@@ -646,6 +716,18 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 		if !target.IsDir {
 			return model.ErrInvalidInput
 		}
+		if f.IsDir {
+			if target.ID == f.ID {
+				return model.ErrInvalidInput
+			}
+			isDescendant, err := s.isDescendantDir(ctx, userID, f.ID, target.ID)
+			if err != nil {
+				return err
+			}
+			if isDescendant {
+				return model.ErrInvalidInput
+			}
+		}
 		targetParentID = pgtype.Int8{Int64: target.ID, Valid: true}
 	}
 
@@ -653,6 +735,7 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 		UserID:   userID,
 		ParentID: targetParentID,
 		FileName: f.FileName,
+		IsSystem: f.IsSystem,
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("check conflict: %w", err)
@@ -668,6 +751,29 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 	})
 }
 
+func (s *FilesService) isDescendantDir(ctx context.Context, userID, sourceID, targetID int64) (bool, error) {
+	for currentID := targetID; ; {
+		if currentID == sourceID {
+			return true, nil
+		}
+
+		current, err := s.queries.GetFileByID(ctx, currentID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return false, model.ErrNotFound
+			}
+			return false, fmt.Errorf("get parent chain file: %w", err)
+		}
+		if current.UserID != userID {
+			return false, model.ErrNotFound
+		}
+		if !current.ParentID.Valid {
+			return false, nil
+		}
+		currentID = current.ParentID.Int64
+	}
+}
+
 func (s *FilesService) SetStarred(ctx context.Context, userID int64, fileSlug string, starred bool) error {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
@@ -679,13 +785,15 @@ func (s *FilesService) SetStarred(ctx context.Context, userID int64, fileSlug st
 		}
 		return fmt.Errorf("get file: %w", err)
 	}
+	if f.IsSystem {
+		return model.ErrSystemFileLocked
+	}
 
 	return s.queries.SetStarred(ctx, sqlc.SetStarredParams{
 		ID:        f.ID,
 		IsStarred: starred,
 	})
 }
-
 
 func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug string) (io.ReadSeeker, string, string, error) {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
@@ -731,11 +839,15 @@ func fileRowsToItems(files []db.FileRow) []FileItem {
 			FileSize:     f.FileSize,
 			FileCategory: f.FileCategory,
 			IsStarred:    f.IsStarred,
+			IsSystem:     f.IsSystem,
 			CreatedAt:    f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt:    f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
 		}
 		if f.MimeType.Valid {
 			item.MimeType = &f.MimeType.String
+		}
+		if f.SystemKind.Valid {
+			item.SystemKind = &f.SystemKind.String
 		}
 		if f.ParentSlug.Valid {
 			item.ParentSlug = &f.ParentSlug.String
@@ -746,6 +858,51 @@ func fileRowsToItems(files []db.FileRow) []FileItem {
 		items = append(items, item)
 	}
 	return items
+}
+
+func (s *FilesService) resolveParentID(ctx context.Context, userID int64, parentSlug string) (pgtype.Int8, error) {
+	if parentSlug == "" {
+		return pgtype.Int8{}, nil
+	}
+
+	parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+		Slug:   parentSlug,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgtype.Int8{}, model.ErrNotFound
+		}
+		return pgtype.Int8{}, fmt.Errorf("get parent: %w", err)
+	}
+	if parent.IsTrashed || !parent.IsDir {
+		return pgtype.Int8{}, model.ErrNotFound
+	}
+	return pgtype.Int8{Int64: parent.ID, Valid: true}, nil
+}
+
+func fileToItem(f sqlc.UserFile) FileItem {
+	item := FileItem{
+		Slug:         f.Slug,
+		FileName:     f.FileName,
+		IsDir:        f.IsDir,
+		FileSize:     f.FileSize,
+		FileCategory: f.FileCategory,
+		IsStarred:    f.IsStarred,
+		IsSystem:     f.IsSystem,
+		CreatedAt:    f.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:    f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
+	}
+	if f.MimeType.Valid {
+		item.MimeType = &f.MimeType.String
+	}
+	if f.ParentSlug.Valid {
+		item.ParentSlug = &f.ParentSlug.String
+	}
+	if f.SystemKind.Valid {
+		item.SystemKind = &f.SystemKind.String
+	}
+	return item
 }
 
 func safeFilename(name string) string {

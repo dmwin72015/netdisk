@@ -11,6 +11,8 @@ export function normalizeFileItem(f: FileItem): NormalizedFile {
 		mimeType: f.mimeType,
 		fileCategory: f.fileCategory,
 		isStarred: f.isStarred,
+		isSystem: f.isSystem,
+		systemKind: f.systemKind,
 		createdAt: f.createdAt,
 		updatedAt: f.updatedAt,
 	};
@@ -25,6 +27,7 @@ export function normalizeDriveFile(f: DriveFile): NormalizedFile {
 		mimeType: f.mimeType || null,
 		fileCategory: f.fileCategory,
 		isStarred: false,
+		isSystem: false,
 		createdAt: new Date(f.createdAt * 1000).toISOString(),
 		updatedAt: new Date(f.createdAt * 1000).toISOString(),
 	};

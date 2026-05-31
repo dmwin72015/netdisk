@@ -17,6 +17,7 @@
 	let thumbInput: HTMLInputElement | undefined = $state();
 	let thumbBusy = $state<null | 'upload' | 'frame'>(null);
 	let thumbMsg = $state<string | null>(null);
+	let thumbIsError = $state(false);
 
 	async function load() {
 		try {
@@ -40,9 +41,27 @@
 					if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 				}
 			});
+			let bufferRetries = 0;
 			hls.on(Hls.Events.ERROR, (_event, data) => {
-				console.error('hls error', data);
-				if (data.fatal) error = m.player_error({ details: data.details });
+				if (data.fatal) {
+					switch (data.type) {
+						case Hls.ErrorTypes.NETWORK_ERROR:
+							hls?.startLoad();
+							break;
+						case Hls.ErrorTypes.MEDIA_ERROR:
+							hls?.recoverMediaError();
+							break;
+						default:
+							error = m.player_error({ details: data.details });
+							break;
+					}
+				} else if (data.details === Hls.ErrorDetails.BUFFER_APPENDING_ERROR) {
+					bufferRetries++;
+					if (bufferRetries > 3) {
+						hls?.destroy();
+						error = m.player_error({ details: data.details });
+					}
+				}
 			});
 			hls.loadSource(src);
 			hls.attachMedia(video);
@@ -72,11 +91,13 @@
 		if (!file || !task) return;
 		thumbBusy = 'upload';
 		thumbMsg = null;
+		thumbIsError = false;
 		try {
 			task = await uploadThumbnail(task.id, file);
 			thumbMsg = m.cover_updated();
 		} catch (err) {
 			thumbMsg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : m.upload_failed();
+			thumbIsError = true;
 		} finally {
 			thumbBusy = null;
 		}
@@ -87,10 +108,13 @@
 		const at = video.currentTime;
 		thumbBusy = 'frame';
 		thumbMsg = null;
+		thumbIsError = false;
 		try {
 			task = await captureFrameThumbnail(task.id, at);
 			thumbMsg = m.used_frame_at({ at: at.toFixed(1) });
 		} catch (err) {
+			thumbMsg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : m.capture_failed();
+			thumbIsError = true;
 			thumbMsg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : m.capture_failed();
 		} finally {
 			thumbBusy = null;
@@ -174,7 +198,7 @@
 				</button>
 				<p class="text-xs text-slate-500">{m.cover_hint()}</p>
 				{#if thumbMsg}
-					<p class="flex items-center gap-1 text-xs {thumbMsg.includes('失败') || thumbMsg.includes('错误') || thumbMsg.includes('failed') || thumbMsg.includes('error') ? 'text-red-600' : 'text-emerald-700'}">
+					<p class="flex items-center gap-1 text-xs {thumbIsError ? 'text-red-600' : 'text-emerald-700'}">
 						{thumbMsg}
 						<button type="button" onclick={() => (thumbMsg = null)} aria-label={m.close()} class="text-slate-400 hover:text-slate-700">
 							<X size={12} />

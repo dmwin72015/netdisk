@@ -3,11 +3,11 @@
 	import { logout } from '$lib/api/auth';
 	import { goto } from '$app/navigation';
 	import { setUser } from '$lib/stores/auth';
-	import { HardDrive, Folder, Upload, Star, Trash2, Film, User, Globe, ChevronDown, LogOut, Settings, ListRestart } from '@lucide/svelte';
+	import { HardDrive, Folder, Star, Trash2, Film, User, ChevronDown, LogOut, Settings, ListRestart } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
+	import LanguageDropdown from '$lib/components/LanguageDropdown.svelte';
 	import { page } from '$app/state';
 	import * as m from '$lib/paraglide/messages';
-	import { getLocale, setLocale, locales } from '$lib/paraglide/runtime';
 
 	async function handleLogout() {
 		await logout();
@@ -22,9 +22,7 @@
 		return currentPath.startsWith(path);
 	}
 
-	const localeLabels: Record<string, string> = { zh: '中文', en: 'English' };
 	let accountOpen = $state(false);
-	let langOpen = $state(false);
 </script>
 
 <header class="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
@@ -112,28 +110,7 @@
 			<div class="mx-1 h-5 w-px bg-gray-200"></div>
 
 			<!-- Language dropdown -->
-			<Dropdown
-				bind:open={langOpen}
-				triggerClass="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-700"
-				contentClass="min-w-[120px]"
-				sideOffset={8}
-				align="end"
-			>
-				{#snippet trigger()}
-					<Globe size={14} />
-					<span>{localeLabels[getLocale()] ?? getLocale()}</span>
-					<ChevronDown size={10} class="text-gray-400" />
-				{/snippet}
-
-				{#each locales as locale}
-					<DropdownBase.Item
-						class="{locale === getLocale() ? 'bg-blue-50 text-blue-600 font-medium' : ''}"
-						onSelect={() => setLocale(locale)}
-					>
-						{localeLabels[locale] ?? locale}
-					</DropdownBase.Item>
-				{/each}
-			</Dropdown>
+			<LanguageDropdown />
 		</nav>
 	</div>
 </header>

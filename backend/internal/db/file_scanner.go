@@ -7,18 +7,20 @@ import (
 
 // FileRow holds the columns needed for file listing.
 type FileRow struct {
-	ID           int64       `json:"id"`
-	Slug         string      `json:"slug"`
-	FileName     string      `json:"fileName"`
-	IsDir        bool        `json:"isDir"`
-	FileSize     int64       `json:"fileSize"`
-	MimeType     pgtype.Text `json:"mimeType"`
-	FileCategory string      `json:"fileCategory"`
-	IsStarred    bool        `json:"isStarred"`
+	ID           int64              `json:"id"`
+	Slug         string             `json:"slug"`
+	FileName     string             `json:"fileName"`
+	IsDir        bool               `json:"isDir"`
+	FileSize     int64              `json:"fileSize"`
+	MimeType     pgtype.Text        `json:"mimeType"`
+	FileCategory string             `json:"fileCategory"`
+	IsStarred    bool               `json:"isStarred"`
+	IsSystem     bool               `json:"isSystem"`
+	SystemKind   pgtype.Text        `json:"systemKind"`
 	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
-	ParentSlug   pgtype.Text `json:"parentSlug"`
-	ParentName   pgtype.Text `json:"parentName"`
+	ParentSlug   pgtype.Text        `json:"parentSlug"`
+	ParentName   pgtype.Text        `json:"parentName"`
 }
 
 // ScanFileRows collects all rows from pgx.Rows into []FileRow.
@@ -34,6 +36,8 @@ func ScanFileRows(rows pgx.Rows) ([]FileRow, error) {
 			&f.MimeType,
 			&f.FileCategory,
 			&f.IsStarred,
+			&f.IsSystem,
+			&f.SystemKind,
 			&f.CreatedAt,
 			&f.UpdatedAt,
 			&f.ParentSlug,
@@ -42,4 +46,3 @@ func ScanFileRows(rows pgx.Rows) ([]FileRow, error) {
 		return f, err
 	})
 }
-

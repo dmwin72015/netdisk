@@ -8,6 +8,8 @@ export type FileItem = {
 	mimeType: string | null;
 	fileCategory: string;
 	isStarred: boolean;
+	isSystem: boolean;
+	systemKind?: string;
 	parentSlug?: string;
 	parentName?: string;
 	createdAt: string;
@@ -43,7 +45,9 @@ export async function listFiles(
 	mimeType?: string,
 	fileCategory?: string | null,
 	sortBy?: string,
-	sortDir?: string
+	sortDir?: string,
+	onlyDirs = false,
+	includeSystem = true
 ) {
 	const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
 	if (parentSlug) params.set('parentSlug', parentSlug);
@@ -51,6 +55,8 @@ export async function listFiles(
 	if (fileCategory) params.set('fileCategory', fileCategory);
 	if (sortBy) params.set('sortBy', sortBy);
 	if (sortDir) params.set('sortDir', sortDir);
+	if (onlyDirs) params.set('onlyDirs', 'true');
+	if (!includeSystem) params.set('includeSystem', 'false');
 	return api<{ files: FileItem[]; total: number }>(`/api/v1/files?${params}`);
 }
 

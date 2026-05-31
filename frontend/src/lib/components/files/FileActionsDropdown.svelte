@@ -10,6 +10,7 @@
     Film,
     Info,
     Link,
+    FolderInput,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
@@ -21,6 +22,7 @@
     onPreview,
     onRename,
     onDelete,
+    onMove,
     onAddToMedia,
     onShowDetails,
     onCopyLink,
@@ -32,6 +34,7 @@
     onPreview: (file: NormalizedFile) => void;
     onRename: (id: string, name: string) => void;
     onDelete: (id: string, name: string) => void;
+    onMove?: (file: NormalizedFile) => void;
     onAddToMedia?: (file: NormalizedFile) => void;
     onShowDetails?: (file: NormalizedFile) => void;
     onCopyLink?: (file: NormalizedFile) => void;
@@ -48,7 +51,7 @@
     <MoreHorizontal size={16} />
   </DropdownBase.Trigger>
   <DropdownBase.Content sideOffset={4} align="end">
-    {#if onStar}
+    {#if onStar && !file.isSystem}
       <DropdownBase.Item onSelect={() => onStar(file.id, file.isStarred)}>
         {#snippet icon()}
           <Star
@@ -105,20 +108,32 @@
       </DropdownBase.Item>
     {/if}
     <DropdownBase.Separator />
-    <DropdownBase.Item onSelect={() => onRename(file.id, file.name)}>
-      {#snippet icon()}
-        <Pencil size={14} class="text-gray-400" />
-      {/snippet}
-      {m.rename()}
-    </DropdownBase.Item>
-    <DropdownBase.Item
-      variant="destructive"
-      onSelect={() => onDelete(file.id, file.name)}
-    >
-      {#snippet icon()}
-        <Trash2 size={14} />
-      {/snippet}
-      {m.delete_label()}
-    </DropdownBase.Item>
+    {#if !file.isSystem}
+      <DropdownBase.Item onSelect={() => onRename(file.id, file.name)}>
+        {#snippet icon()}
+          <Pencil size={14} class="text-gray-400" />
+        {/snippet}
+        {m.rename()}
+      </DropdownBase.Item>
+    {/if}
+    {#if onMove && !file.isSystem}
+      <DropdownBase.Item onSelect={() => onMove(file)}>
+        {#snippet icon()}
+          <FolderInput size={14} class="text-gray-400" />
+        {/snippet}
+        {m.move_to()}
+      </DropdownBase.Item>
+    {/if}
+    {#if !file.isSystem}
+      <DropdownBase.Item
+        variant="destructive"
+        onSelect={() => onDelete(file.id, file.name)}
+      >
+        {#snippet icon()}
+          <Trash2 size={14} />
+        {/snippet}
+        {m.delete_label()}
+      </DropdownBase.Item>
+    {/if}
   </DropdownBase.Content>
 </DropdownBase.Root>

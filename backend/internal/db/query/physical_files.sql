@@ -24,4 +24,7 @@ SELECT * FROM physical_files WHERE id = $1 LIMIT 1;
 DELETE FROM physical_files WHERE id = $1;
 
 -- name: CountReferencesByFileID :one
-SELECT COUNT(*) FROM user_files WHERE physical_file_id = $1;
+SELECT
+    (SELECT COUNT(*) FROM user_files uf WHERE uf.physical_file_id = $1)
+    +
+    (SELECT COUNT(*) FROM media_items mi WHERE mi.physical_file_id = $1);

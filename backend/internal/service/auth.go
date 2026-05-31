@@ -75,7 +75,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 		return nil, model.ErrInvalidInput
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), 12)
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), s.cfg.Limits.BcryptCost)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
@@ -117,7 +117,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 
 	_, err = qtx.CreateStorageStats(ctx, sqlc.CreateStorageStatsParams{
 		UserID:       user.ID,
-		StorageQuota: 536870912000, // 500 GB (500 * 1024 * 1024 * 1024)
+		StorageQuota: s.cfg.Limits.DefaultStorageQuota,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create storage stats: %w", err)
@@ -145,7 +145,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 			DisplayName: user.Username,
 		},
 		Storage: StorageData{
-			StorageQuota: 536870912000,
+			StorageQuota: s.cfg.Limits.DefaultStorageQuota,
 		},
 		Level: LevelData{
 			LevelCode: "vip1",

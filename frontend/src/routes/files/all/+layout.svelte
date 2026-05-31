@@ -6,8 +6,9 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import {
 		listFiles, mkdir, trashFile, renameFile, setStarred,
-		downloadUrl, getBreadcrumb, type FileItem
+		downloadUrl, getBreadcrumb, moveFile, type FileItem
 	} from '$lib/api/files';
+	import { ApiError } from '$lib/api/client';
 	import type { NormalizedFile } from '$lib/types/file';
 	import { normalizeFileItem } from '$lib/types/adapters';
 	import { addToLibrary } from '$lib/api/media';
@@ -63,6 +64,16 @@
 	let sortDir = $state<'ASC' | 'DESC'>(
 		browser ? (localStorage.getItem('nd.files.sortDir') as 'ASC' | 'DESC') || 'DESC' : 'DESC'
 	);
+	let showSystemDirs = $state(
+		browser ? localStorage.getItem('nd.files.showSystemDirs') !== 'false' : true
+	);
+
+	function setShowSystemDirs(value: boolean) {
+		showSystemDirs = value;
+		if (browser) localStorage.setItem('nd.files.showSystemDirs', String(value));
+		void refresh(true);
+	}
+
 	function setSort(field: SortField) {
 		if (sortBy === field) {
 			sortDir = sortDir === 'ASC' ? 'DESC' : 'ASC';
@@ -126,13 +137,23 @@
 		loadingMore = false;
 		notFound = false;
 		try {
-			const data = await listFiles(currentSlug || undefined, 1, PAGE_SIZE, undefined, undefined, sortBy, sortDir);
+			const data = await listFiles(
+				currentSlug || undefined,
+				1,
+				PAGE_SIZE,
+				undefined,
+				undefined,
+				sortBy,
+				sortDir,
+				false,
+				showSystemDirs
+			);
 			if (id !== refreshId) return;
 			files = data.files;
 			total = data.total;
 		} catch (e) {
 			if (id !== refreshId) return;
-			if (e instanceof Error && 'status' in e && (e as any).status === 404) {
+			if (e instanceof ApiError && e.status === 404) {
 				notFound = true;
 			} else {
 				toast.error(e instanceof Error ? e.message : m.load_failed());
@@ -148,7 +169,17 @@
 		const id = ++refreshId;
 		try {
 			const page_num = Math.floor(files.length / PAGE_SIZE) + 1;
-			const data = await listFiles(currentSlug || undefined, page_num, PAGE_SIZE, undefined, undefined, sortBy, sortDir);
+			const data = await listFiles(
+				currentSlug || undefined,
+				page_num,
+				PAGE_SIZE,
+				undefined,
+				undefined,
+				sortBy,
+				sortDir,
+				false,
+				showSystemDirs
+			);
 			if (id !== refreshId) return;
 			files = [...files, ...data.files];
 		} catch (e) {
@@ -223,6 +254,18 @@
 			await refresh();
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.rename_failed());
+		}
+	}
+
+	async function move(ids: string[], targetParentSlug: string) {
+		if (ids.length === 0) return;
+		try {
+			await Promise.all(ids.map((id) => moveFile(id, targetParentSlug)));
+			toast.success(m.move_success({ count: ids.length }));
+			await refresh();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.move_failed());
+			throw e;
 		}
 	}
 
@@ -303,6 +346,8 @@
 			onUploadFiles={() => fileInput?.click()}
 			onUploadFolder={() => folderInput?.click()}
 			onCreateDir={createDir}
+			{showSystemDirs}
+			onShowSystemDirsChange={setShowSystemDirs}
 		/>
 		<input bind:this={fileInput} type="file" multiple class="hidden" onchange={upload.onPick} />
 		<input bind:this={folderInput} type="file" webkitdirectory class="hidden" onchange={upload.onPickFolder} />
@@ -314,6 +359,7 @@
 			{loading}
 			directoryId={currentSlug}
 			currentPath={crumbs}
+			includeSystemDirs={showSystemDirs}
 			downloadUrlFn={downloadUrl}
 			emptyMessage={currentSlug ? m.dir_empty() : m.no_files()}
 			onNavigateDir={navigateToDir}
@@ -321,6 +367,7 @@
 			onPreview={onPreview}
 			onRename={rename}
 			onDelete={remove}
+			onMove={move}
 			onAddToMedia={onAddToMedia}
 			{loadFolderSummary}
 		/>

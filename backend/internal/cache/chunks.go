@@ -9,21 +9,21 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const chunksTTL = 24 * time.Hour
-
+// Chunks stores the set of uploaded chunk indices for an upload session.
 type Chunks struct {
 	rdb *redis.Client
+	ttl time.Duration
 }
 
-func NewChunks(rdb *redis.Client) *Chunks {
-	return &Chunks{rdb: rdb}
+func NewChunks(rdb *redis.Client, ttl time.Duration) *Chunks {
+	return &Chunks{rdb: rdb, ttl: ttl}
 }
 
 func (ch *Chunks) AddChunk(ctx context.Context, uploadSlug string, chunkIndex int) error {
 	key := ChunksKey(uploadSlug)
 	pipe := ch.rdb.Pipeline()
 	pipe.SAdd(ctx, key, chunkIndex)
-	pipe.Expire(ctx, key, chunksTTL)
+	pipe.Expire(ctx, key, ch.ttl)
 	_, err := pipe.Exec(ctx)
 	return err
 }

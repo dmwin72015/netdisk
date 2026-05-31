@@ -16,6 +16,7 @@ describe('normalizeFileItem', () => {
 		mimeType: 'image/jpeg',
 		fileCategory: 'image',
 		isStarred: true,
+		isSystem: false,
 		createdAt: '2025-01-01T00:00:00Z',
 		updatedAt: '2025-06-15T12:00:00Z',
 	};
@@ -30,6 +31,7 @@ describe('normalizeFileItem', () => {
 			mimeType: 'image/jpeg',
 			fileCategory: 'image',
 			isStarred: true,
+			isSystem: false,
 			createdAt: '2025-01-01T00:00:00Z',
 			updatedAt: '2025-06-15T12:00:00Z',
 		};

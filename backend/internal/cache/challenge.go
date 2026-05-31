@@ -8,14 +8,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const challengeTTL = 2 * time.Minute
-
 type Challenge struct {
 	rdb *redis.Client
+	ttl time.Duration
 }
 
-func NewChallenge(rdb *redis.Client) *Challenge {
-	return &Challenge{rdb: rdb}
+func NewChallenge(rdb *redis.Client, ttl time.Duration) *Challenge {
+	return &Challenge{rdb: rdb, ttl: ttl}
 }
 
 // SetChallenge stores a challenge for the given user and file hash.
@@ -30,7 +29,7 @@ func (c *Challenge) SetChallenge(ctx context.Context, userID int64, fileHash str
 // ExpireChallenge sets the TTL on a challenge key.
 func (c *Challenge) ExpireChallenge(ctx context.Context, userID int64, fileHash string) error {
 	key := ChallengeKey(userID, fileHash)
-	return c.rdb.Expire(ctx, key, challengeTTL).Err()
+	return c.rdb.Expire(ctx, key, c.ttl).Err()
 }
 
 // consumeChallengeScript atomically reads and deletes the challenge.

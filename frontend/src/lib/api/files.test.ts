@@ -68,7 +68,7 @@ describe('listFiles', () => {
 		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ files: [], total: 0 }));
 		vi.stubGlobal('fetch', fetchSpy);
 
-		await listFiles('parent-1', 2, 10, 'image/jpeg', 'image', 'name', 'asc');
+		await listFiles('parent-1', 2, 10, 'image/jpeg', 'image', 'name', 'asc', true);
 
 		const url = fetchSpy.mock.calls[0][0] as string;
 		expect(url).toContain('parentSlug=parent-1');
@@ -78,6 +78,17 @@ describe('listFiles', () => {
 		expect(url).toContain('fileCategory=image');
 		expect(url).toContain('sortBy=name');
 		expect(url).toContain('sortDir=asc');
+		expect(url).toContain('onlyDirs=true');
+	});
+
+	it('can hide system directories', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ files: [], total: 0 }));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		await listFiles(undefined, 1, 50, undefined, undefined, undefined, undefined, false, false);
+
+		const url = fetchSpy.mock.calls[0][0] as string;
+		expect(url).toContain('includeSystem=false');
 	});
 });
 

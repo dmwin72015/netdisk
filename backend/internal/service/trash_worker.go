@@ -9,33 +9,36 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
+	"github.com/netdisk/server/internal/config"
 	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/internal/storage"
 )
 
-// TrashWorker periodically purges files that have been in the trash for more than 30 days.
+// TrashWorker periodically purges files that have been in the trash for more than retention_days.
 type TrashWorker struct {
 	queries *sqlc.Queries
 	pg      *pgxpool.Pool
 	store   *storage.Local
 	logger  zerolog.Logger
+	cfg     *config.Config
 }
 
 // NewTrashWorker creates a new TrashWorker.
-func NewTrashWorker(queries *sqlc.Queries, pg *pgxpool.Pool, store *storage.Local, logger zerolog.Logger) *TrashWorker {
+func NewTrashWorker(queries *sqlc.Queries, pg *pgxpool.Pool, store *storage.Local, logger zerolog.Logger, cfg *config.Config) *TrashWorker {
 	return &TrashWorker{
 		queries: queries,
 		pg:      pg,
 		store:   store,
 		logger:  logger,
+		cfg:     cfg,
 	}
 }
 
-// Start begins the periodic purge loop. It runs every 1 hour until ctx is cancelled.
+// Start begins the periodic purge loop. It runs every poll_interval until ctx is cancelled.
 func (w *TrashWorker) Start(ctx context.Context) {
 	w.logger.Info().Msg("trash worker started")
 
-	ticker := time.NewTicker(1 * time.Hour)
+	ticker := time.NewTicker(w.cfg.Trash.PollInterval)
 	defer ticker.Stop()
 
 	for {

@@ -10,7 +10,8 @@
 	import { getStoredUser } from '$lib/api/client';
 	import { user, authReady } from '$lib/stores/auth';
 
-	let { children } = $props();
+	let { children, data } = $props();
+	let isAuthPage = $derived(data.isAuthPage);
 
 	if (browser) {
 		onMount(() => {
@@ -26,8 +27,10 @@
 </svelte:head>
 
 <div class="flex min-h-screen flex-col">
-	<Navbar />
-	<main class="mx-auto w-full max-w-6xl flex-1 px-4 py-5">
+	{#if !isAuthPage}
+		<Navbar />
+	{/if}
+	<main class={isAuthPage ? 'w-full flex-1' : 'mx-auto w-full max-w-6xl flex-1 px-4 py-5'}>
 		{@render children()}
 	</main>
 </div>

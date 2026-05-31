@@ -3,22 +3,60 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
-	import { listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
-	import { Film, Trash2, Loader2, Play, AlertCircle, Clock, Plus } from '@lucide/svelte';
+	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
+	import { Film, Trash2, Loader2, Play, AlertCircle, Clock, Plus, Upload } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { confirmDelete } from '$lib/dialog';
 	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
+	import UploadPanel from '$lib/components/files/UploadPanel.svelte';
+	import { createUploadManager } from '$lib/upload-manager.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let items = $state<MediaItem[]>([]);
 	let total = $state(0);
 	let loading = $state(true);
 	let showAddDialog = $state(false);
+	let videoInput: HTMLInputElement | undefined = $state();
 	let pollTimer: ReturnType<typeof setInterval> | undefined;
+	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function isVideoFile(file: File) {
+		if (file.type.startsWith('video/')) return true;
+		return /\.(mp4|mov|webm|mkv|avi|flv|wmv|ogv|ogg|mpeg|mpg|m4v)$/i.test(file.name);
+	}
+
+	const upload = createUploadManager({
+		getCurrentSlug: async () => {
+			const dir = await ensureMediaUploadDir();
+			return dir.slug;
+		},
+		acceptFile: isVideoFile,
+		onRejected: (files) => {
+			toast.error(m.media_upload_rejected({ count: files.length }));
+		},
+		onFileImported: async ({ fileSlug }) => {
+			try {
+				const resp = await addToLibrary(fileSlug);
+				if (resp.transcodeStatus === 'existing') {
+					toast.info(m.media_already_in_library());
+				} else {
+					toast.success(m.media_transcode_started());
+				}
+				scheduleRefresh();
+				startPolling();
+			} catch (e) {
+				toast.error(e instanceof Error ? e.message : m.media_add_failed());
+				throw e;
+			}
+		},
+		onCompleted: async () => {
+			await refresh(false);
+		},
+	});
 
 	function startPolling() {
-		stopPolling();
+		if (pollTimer) return;
 		pollTimer = setInterval(async () => {
 			if (!$user) return;
 			try {
@@ -41,9 +79,14 @@
 		}
 	}
 
-	async function refresh() {
+	function scheduleRefresh() {
+		clearTimeout(refreshTimer);
+		refreshTimer = setTimeout(() => void refresh(false), 250);
+	}
+
+	async function refresh(showLoading = true) {
 		if (!$user) return;
-		loading = true;
+		if (showLoading) loading = true;
 		try {
 			const data = await listMedia();
 			items = data.items;
@@ -54,11 +97,14 @@
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.media_load_failed());
 		} finally {
-			loading = false;
+			if (showLoading) loading = false;
 		}
 	}
 
-	onDestroy(stopPolling);
+	onDestroy(() => {
+		stopPolling();
+		clearTimeout(refreshTimer);
+	});
 
 	async function remove(slug: string, name: string) {
 		if (!(await confirmDelete(m.confirm_remove_media({ name })))) return;
@@ -80,16 +126,37 @@
 {#if !$authReady}
 {:else if $user}
 	<div class="space-y-4">
-		<div class="flex items-center justify-between">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-2">
 				<Film size={20} class="text-gray-500" />
 				<h1 class="text-lg font-semibold text-gray-900">{m.media_title()}</h1>
 				<span class="text-sm text-gray-400">{m.total_items({ total })}</span>
 			</div>
-			<button type="button" onclick={() => (showAddDialog = true)} class="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800">
-				<Plus size={15} /> {m.add_to_media_library()}
-			</button>
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+				<button
+					type="button"
+					onclick={() => videoInput?.click()}
+					class="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800"
+				>
+					<Upload size={15} /> {m.upload_video()}
+				</button>
+				<button
+					type="button"
+					onclick={() => (showAddDialog = true)}
+					class="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+				>
+					<Plus size={15} /> {m.add_to_media_library()}
+				</button>
+			</div>
 		</div>
+		<input
+			bind:this={videoInput}
+			type="file"
+			accept="video/*,.mkv,.avi,.flv,.wmv,.ogv,.ogg,.mpeg,.mpg,.m4v"
+			multiple
+			class="hidden"
+			onchange={upload.onPick}
+		/>
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
@@ -173,6 +240,14 @@
 		onClose={() => (showAddDialog = false)}
 		onDone={refresh}
 	/>
+
+	<UploadPanel
+		items={upload.items}
+		onPause={upload.pauseUpload}
+		onResume={upload.resumeUpload}
+		onDelete={upload.deleteUpload}
+		onClear={upload.clearCompleted}
+	/>
 {:else}
-	<p class="text-gray-600">Please <a href="/login" class="text-blue-600 underline hover:text-blue-700">login</a> to continue.</p>
+	<p class="text-gray-600">{@html m.please_login({ link: `<a href="/login" class="text-blue-600 underline hover:text-blue-700">${m.login_link_text()}</a>` })}</p>
 {/if}

@@ -33,3 +33,31 @@ ffmpeg:
 
 log:
   level: "info"
+
+limits:
+  default_storage_quota: 536870912000  # 500 GB
+  bcrypt_cost: 12
+  avatar_max_size: 5242880  # 5 MB
+  content_detect_bytes: 512
+
+trash:
+  retention_days: 30
+  poll_interval: "1h"
+
+upload:
+  chunk_size: 4194304  # 4 MB
+  task_expiry_days: 30
+  merge_lock_ttl: "10m"
+
+cache:
+  challenge_ttl: "2m"
+  chunks_ttl: "24h"
+  precache_ttl: "168h"  # 7 days
+
+media:
+  poll_interval: "5s"
+  batch_size: 3
+
+rate_limit:
+  api_requests_per_min: 600
+  auth_requests_per_min: 20

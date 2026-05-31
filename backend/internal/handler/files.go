@@ -44,6 +44,13 @@ func (h *FilesHandler) ListFiles(c echo.Context) error {
 	if v := c.QueryParam("sortDir"); v != "" {
 		params.SortDir = v
 	}
+	if v := c.QueryParam("onlyDirs"); v == "true" {
+		params.OnlyDirs = true
+		params.IncludeDirs = true
+	}
+	if v := c.QueryParam("includeSystem"); v == "false" {
+		params.ExcludeSystem = true
+	}
 
 	if parentSlug := c.QueryParam("parentSlug"); parentSlug != "" {
 		parent, pErr := h.svc.ResolveParent(c.Request().Context(), userID, parentSlug)

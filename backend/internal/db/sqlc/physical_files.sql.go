@@ -12,14 +12,17 @@ import (
 )
 
 const countReferencesByFileID = `-- name: CountReferencesByFileID :one
-SELECT COUNT(*) FROM user_files WHERE physical_file_id = $1
+SELECT
+    (SELECT COUNT(*) FROM user_files uf WHERE uf.physical_file_id = $1)
+    +
+    (SELECT COUNT(*) FROM media_items mi WHERE mi.physical_file_id = $1)
 `
 
-func (q *Queries) CountReferencesByFileID(ctx context.Context, physicalFileID pgtype.Int8) (int64, error) {
+func (q *Queries) CountReferencesByFileID(ctx context.Context, physicalFileID pgtype.Int8) (int32, error) {
 	row := q.db.QueryRow(ctx, countReferencesByFileID, physicalFileID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const createPhysicalFile = `-- name: CreatePhysicalFile :one

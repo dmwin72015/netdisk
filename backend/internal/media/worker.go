@@ -43,7 +43,7 @@ func NewWorker(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config, stor
 func (w *Worker) Start(ctx context.Context) {
 	w.logger.Info().Msg("media worker started")
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(w.cfg.Media.PollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -58,7 +58,7 @@ func (w *Worker) Start(ctx context.Context) {
 }
 
 func (w *Worker) processJobs(ctx context.Context) {
-	jobs, err := w.queries.GetPendingJobs(ctx, 3)
+	jobs, err := w.queries.GetPendingJobs(ctx, int32(w.cfg.Media.BatchSize))
 	if err != nil {
 		w.logger.Error().Err(err).Msg("get pending jobs")
 		return

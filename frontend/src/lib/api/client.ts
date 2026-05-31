@@ -12,6 +12,7 @@ export type UserInfo = {
 	username: string;
 	email: string;
 	status: number;
+	role?: string;
 	profile: {
 		displayName: string;
 		avatarUrl: string;

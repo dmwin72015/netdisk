@@ -98,7 +98,7 @@
       <!-- Loading state -->
       <div class="flex flex-col items-center justify-center py-16">
         <Loader2 size={32} class="mb-4 animate-spin text-blue-500" />
-        <p class="text-sm text-gray-500">正在读取文件...</p>
+        <p class="text-sm text-gray-500">{m.reading_files()}</p>
       </div>
     {:else}
       <!-- Stats bar -->

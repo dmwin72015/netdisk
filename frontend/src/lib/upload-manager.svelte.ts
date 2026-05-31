@@ -11,9 +11,19 @@ import * as m from '$lib/paraglide/messages';
 
 const CHUNK_SIZE = 4 * 1024 * 1024;
 
+export type ImportedUploadFile = {
+	fileSlug: string;
+	fileName: string;
+	physicalFileSlug: string;
+	item: UploadItem;
+};
+
 export function createUploadManager(opts: {
-	getCurrentSlug: () => string | null;
+	getCurrentSlug: () => string | null | Promise<string | null>;
 	onCompleted: () => void | Promise<void>;
+	acceptFile?: (file: File) => boolean;
+	onRejected?: (files: File[]) => void;
+	onFileImported?: (result: ImportedUploadFile) => void | Promise<void>;
 }) {
 	let uploadItems = $state<UploadItem[]>([]);
 	let folderDialogFiles = $state<{ file: File; relativePath: string }[]>([]);
@@ -31,6 +41,34 @@ export function createUploadManager(opts: {
 		else console.log(prefix, msg);
 	}
 
+	function filterAcceptedFiles(files: File[]) {
+		if (!opts.acceptFile) return files;
+
+		const accepted: File[] = [];
+		const rejected: File[] = [];
+		for (const file of files) {
+			if (opts.acceptFile(file)) accepted.push(file);
+			else rejected.push(file);
+		}
+
+		if (rejected.length > 0) {
+			opts.onRejected?.(rejected);
+		}
+		return accepted;
+	}
+
+	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string) {
+		item.phase = 'importing';
+		const parentSlug = await opts.getCurrentSlug();
+		const imported = await importFile(physicalFileSlug, item.fileName, parentSlug || undefined);
+		await opts.onFileImported?.({
+			fileSlug: imported.fileSlug,
+			fileName: imported.fileName,
+			physicalFileSlug,
+			item
+		});
+	}
+
 	// --- File picker handlers ---
 
 	function onPick(e: Event) {
@@ -38,8 +76,9 @@ export function createUploadManager(opts: {
 		const fileList = el?.files;
 		if (!fileList || fileList.length === 0) return;
 
-		const pickedFiles = Array.from(fileList);
+		const pickedFiles = filterAcceptedFiles(Array.from(fileList));
 		el.value = '';
+		if (pickedFiles.length === 0) return;
 
 		const newItems: UploadItem[] = pickedFiles.map((f) => ({
 			uid: nextUid(),
@@ -78,17 +117,23 @@ export function createUploadManager(opts: {
 		setTimeout(() => {
 			const pickedFiles = Array.from(fileList).map((f) => ({
 				file: f,
-				relativePath: (f as any).webkitRelativePath || f.name,
+				relativePath: ('webkitRelativePath' in f ? (f as { webkitRelativePath: string }).webkitRelativePath : '') || f.name,
 			}));
 			el.value = '';
 
-			folderDialogFiles = pickedFiles;
+			const acceptedFiles = filterAcceptedFiles(pickedFiles.map((f) => f.file));
+			const acceptedSet = new Set(acceptedFiles);
+			folderDialogFiles = pickedFiles.filter((f) => acceptedSet.has(f.file));
 			folderDialogLoading = false;
+			if (folderDialogFiles.length === 0) {
+				folderDialogOpen = false;
+			}
 		}, 50);
 	}
 
 	function onFolderConfirm(selected: { file: File; relativePath: string }[]) {
 		folderDialogOpen = false;
+		if (selected.length === 0) return;
 
 		const newItems: UploadItem[] = selected.map((f) => ({
 			uid: nextUid(),
@@ -205,7 +250,7 @@ export function createUploadManager(opts: {
 
 									item.phase = 'importing';
 									item.progress = 100;
-									await importFile(verifyResult.physicalFileSlug, item.fileName, opts.getCurrentSlug() || undefined);
+									await importPhysicalFile(item, verifyResult.physicalFileSlug);
 									item.phase = 'completed';
 									item.uploadedBytes = item.fileSize;
 									log(item.uid, 'completed (dedup)');
@@ -273,8 +318,7 @@ export function createUploadManager(opts: {
 					const completedTask = await getUploadStatus(task.uploadSlug);
 					if (completedTask.physicalFileSlug) {
 						log(item.uid, `importing physicalFile: ${completedTask.physicalFileSlug}`);
-						item.phase = 'importing';
-						await importFile(completedTask.physicalFileSlug, item.fileName, opts.getCurrentSlug() || undefined);
+						await importPhysicalFile(item, completedTask.physicalFileSlug);
 					}
 
 					item.phase = 'completed';

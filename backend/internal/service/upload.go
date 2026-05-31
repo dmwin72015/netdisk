@@ -23,10 +23,6 @@ import (
 	"github.com/netdisk/server/internal/storage"
 )
 
-const (
-	chunkSize = 4 * 1024 * 1024 // 4 MB
-)
-
 type UploadService struct {
 	queries *sqlc.Queries
 	pg      *pgxpool.Pool
@@ -243,7 +239,7 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 		}
 	}
 
-	totalChunks := int32(math.Ceil(float64(req.FileSize) / float64(chunkSize)))
+	totalChunks := int32(math.Ceil(float64(req.FileSize) / float64(s.cfg.Upload.ChunkSize)))
 
 	slug, err := gonanoid.New(21)
 	if err != nil {
@@ -260,9 +256,9 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 		MimeType:     req.MimeType,
 		OriginalName: req.FileName,
 		TotalChunks:  totalChunks,
-		ChunkSize:    chunkSize,
+		ChunkSize:    s.cfg.Upload.ChunkSize,
 		Status:       "uploading",
-		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(24 * 30 * time.Hour), Valid: true},
+		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(time.Duration(s.cfg.Upload.TaskExpiryDays) * 24 * time.Hour), Valid: true},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create upload task: %w", err)
@@ -271,7 +267,7 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 	return &InitResponse{
 		UploadSlug:      slug,
 		TotalChunks:     totalChunks,
-		ChunkSize:       chunkSize,
+		ChunkSize:       s.cfg.Upload.ChunkSize,
 		CompletedChunks: []int{},
 	}, nil
 }
@@ -427,14 +423,18 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 		}
 	}
 
-	_ = s.queries.UpdateUploadTaskPhysicalFile(ctx, sqlc.UpdateUploadTaskPhysicalFileParams{
+	if err := s.queries.UpdateUploadTaskPhysicalFile(ctx, sqlc.UpdateUploadTaskPhysicalFileParams{
 		ID:             task.ID,
 		PhysicalFileID: pgtype.Int8{Int64: pf.ID, Valid: true},
-	})
-	_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{
+	}); err != nil {
+		return nil, fmt.Errorf("link physical file to task: %w", err)
+	}
+	if err := s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{
 		ID:     task.ID,
 		Status: "done",
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("update task status: %w", err)
+	}
 
 	_ = s.cache.PreCache.Set(ctx, task.FileSize, task.PreHash, pf.Slug)
 	_ = s.store.CleanupUpload(uploadSlug)
@@ -621,7 +621,7 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 		return nil, model.ErrInvalidInput
 	}
 
-	totalChunks := int32(math.Ceil(float64(task.FileSize) / float64(chunkSize)))
+	totalChunks := int32(math.Ceil(float64(task.FileSize) / float64(s.cfg.Upload.ChunkSize)))
 
 	slug, err := gonanoid.New(21)
 	if err != nil {
@@ -638,9 +638,9 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 		MimeType:     task.MimeType,
 		OriginalName: task.OriginalName,
 		TotalChunks:  totalChunks,
-		ChunkSize:    chunkSize,
+		ChunkSize:    s.cfg.Upload.ChunkSize,
 		Status:       "uploading",
-		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(24 * 30 * time.Hour), Valid: true},
+		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(time.Duration(s.cfg.Upload.TaskExpiryDays) * 24 * time.Hour), Valid: true},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create upload task: %w", err)
@@ -649,7 +649,7 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 	return &InitResponse{
 		UploadSlug:      slug,
 		TotalChunks:     totalChunks,
-		ChunkSize:       chunkSize,
+		ChunkSize:       s.cfg.Upload.ChunkSize,
 		CompletedChunks: []int{},
 	}, nil
 }

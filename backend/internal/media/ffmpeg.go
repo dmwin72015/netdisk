@@ -17,6 +17,8 @@ func BuildFFmpegArgs(inputPath, outputDir string) []string {
 		"-preset", "fast",
 		"-crf", "22",
 		"-c:a", "aac",
+		"-ac", "2",
+		"-ar", "44100",
 		"-b:a", "128k",
 		"-vf", "scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease",
 		"-hls_time", "10",

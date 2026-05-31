@@ -2,9 +2,10 @@
 	import {
 		Upload, FolderPlus, FolderOpen, ChevronDown,
 		LayoutGrid, LayoutList, Search,
-		ArrowUpDown, ArrowUp, ArrowDown
+		ArrowUpDown, ArrowUp, ArrowDown, Settings
 	} from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
+	import { Drawer } from '$lib/ui/drawer';
 	import { Popover } from '$lib/ui/popover';
 	import * as m from '$lib/paraglide/messages';
 
@@ -29,6 +30,8 @@
 		onUploadFiles,
 		onUploadFolder,
 		onCreateDir,
+		showSystemDirs,
+		onShowSystemDirsChange,
 	}: {
 		searchQuery?: string;
 		sortBy: SortField;
@@ -40,9 +43,12 @@
 		onUploadFiles: () => void;
 		onUploadFolder: () => void;
 		onCreateDir: () => void;
+		showSystemDirs: boolean;
+		onShowSystemDirsChange: (value: boolean) => void;
 	} = $props();
 
 	let showUploadMenu = $state(false);
+	let settingsOpen = $state(false);
 	let menuTimeout: ReturnType<typeof setTimeout>;
 
 	function onMenuEnter() {
@@ -104,6 +110,43 @@
 				<LayoutGrid size={15} />
 			</button>
 		</div>
+
+		<Drawer
+			bind:open={settingsOpen}
+			title={m.file_settings()}
+			description={m.file_settings_desc()}
+			class="w-[86vw] max-w-[380px]"
+		>
+			{#snippet trigger()}
+				<button
+					type="button"
+					class="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+					aria-label={m.file_settings()}
+				>
+					<Settings size={15} />
+				</button>
+			{/snippet}
+
+			<div class="space-y-5 px-4 py-4">
+				<section>
+					<h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">{m.display_settings()}</h3>
+					<div class="mt-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+						<label class="flex items-start justify-between gap-4">
+							<span class="min-w-0">
+								<span class="block text-sm font-medium text-gray-800">{m.show_system_dirs()}</span>
+								<span class="mt-1 block text-xs leading-5 text-gray-500">{m.show_system_dirs_desc()}</span>
+							</span>
+							<input
+								type="checkbox"
+								checked={showSystemDirs}
+								onchange={(e) => onShowSystemDirsChange((e.currentTarget as HTMLInputElement).checked)}
+								class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+							/>
+						</label>
+					</div>
+				</section>
+			</div>
+		</Drawer>
 
 		<!-- Upload split button -->
 		<div class="relative"

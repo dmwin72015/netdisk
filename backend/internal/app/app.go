@@ -80,9 +80,9 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 
 	// Start media worker
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
-	c := cache.New(rdb)
+	c := cache.New(rdb, cfg)
 	a.worker = media.NewWorker(queries, pg, cfg, store, c, logger)
-	a.trashWorker = service.NewTrashWorker(queries, pg, store, logger)
+	a.trashWorker = service.NewTrashWorker(queries, pg, store, logger, cfg)
 
 	a.echo = echo.New()
 	a.echo.HideBanner = true
@@ -222,11 +222,11 @@ func buildHandlers(
 	userSvc := service.NewUserService(queries, pg, cfg)
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
-	c := cache.New(rdb)
+	c := cache.New(rdb, cfg)
 
 	filesSvc := service.NewFilesService(queries, pg, cfg, store)
 	uploadSvc := service.NewUploadService(queries, pg, cfg, store, c)
-	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c)
+	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c, filesSvc)
 
 	return &handlers{
 		Auth:   handler.NewAuthHandler(authSvc),

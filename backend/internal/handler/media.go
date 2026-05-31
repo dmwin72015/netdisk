@@ -38,6 +38,20 @@ func (h *MediaHandler) AddToLibrary(c echo.Context) error {
 	return Created(c, resp)
 }
 
+func (h *MediaHandler) EnsureUploadDir(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	item, err := h.svc.EnsureUploadDir(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, item)
+}
+
 func (h *MediaHandler) ListMediaItems(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

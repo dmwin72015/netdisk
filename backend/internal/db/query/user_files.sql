@@ -1,6 +1,19 @@
 -- name: CreateFile :one
-INSERT INTO user_files (slug, user_id, physical_file_id, parent_id, parent_slug, file_name, is_dir, file_size, mime_type, file_category)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO user_files (
+    slug,
+    user_id,
+    physical_file_id,
+    parent_id,
+    parent_slug,
+    file_name,
+    is_dir,
+    file_size,
+    mime_type,
+    file_category,
+    is_system,
+    system_kind
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: GetFileBySlug :one
@@ -45,6 +58,21 @@ SELECT id, slug, file_name, is_dir, file_size FROM user_files
 WHERE user_id = sqlc.arg(user_id)
   AND is_trashed = FALSE
   AND file_name = sqlc.arg(file_name)
+  AND is_system = sqlc.arg(is_system)
+  AND (
+    (sqlc.narg(parent_id)::bigint IS NULL AND parent_id IS NULL)
+    OR
+    (sqlc.narg(parent_id)::bigint IS NOT NULL AND parent_id = sqlc.narg(parent_id)::bigint)
+  )
+LIMIT 1;
+
+-- name: GetSystemDirByKind :one
+SELECT * FROM user_files
+WHERE user_id = sqlc.arg(user_id)
+  AND is_trashed = FALSE
+  AND is_dir = TRUE
+  AND is_system = TRUE
+  AND system_kind = sqlc.arg(system_kind)
   AND (
     (sqlc.narg(parent_id)::bigint IS NULL AND parent_id IS NULL)
     OR
@@ -71,4 +99,6 @@ LIMIT 5;
 -- name: GetExpiredTrashedFiles :many
 SELECT uf.id, uf.user_id, uf.is_dir, uf.physical_file_id, uf.file_size
 FROM user_files uf
-WHERE uf.is_trashed = TRUE AND uf.trashed_at < NOW() - INTERVAL '30 days';
+WHERE uf.is_trashed = TRUE
+  AND uf.is_system = FALSE
+  AND uf.trashed_at < NOW() - INTERVAL '30 days';

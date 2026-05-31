@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { FileItem } from './files';
 
 export type MediaItem = {
 	mediaSlug: string;
@@ -36,6 +37,10 @@ export async function getMediaItem(mediaSlug: string) {
 
 export async function removeFromLibrary(mediaSlug: string) {
 	return api(`/api/v1/media/items/${mediaSlug}`, { method: 'DELETE' });
+}
+
+export async function ensureMediaUploadDir() {
+	return api<FileItem>('/api/v1/media/upload-dir');
 }
 
 export function getHLSUrl(mediaSlug: string, fileName: string) {

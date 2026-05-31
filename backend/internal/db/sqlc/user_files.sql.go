@@ -16,10 +16,11 @@ SELECT id, slug, file_name, is_dir, file_size FROM user_files
 WHERE user_id = $1
   AND is_trashed = FALSE
   AND file_name = $2
+  AND is_system = $3
   AND (
-    ($3::bigint IS NULL AND parent_id IS NULL)
+    ($4::bigint IS NULL AND parent_id IS NULL)
     OR
-    ($3::bigint IS NOT NULL AND parent_id = $3::bigint)
+    ($4::bigint IS NOT NULL AND parent_id = $4::bigint)
   )
 LIMIT 1
 `
@@ -27,6 +28,7 @@ LIMIT 1
 type CheckNameConflictParams struct {
 	UserID   int64       `json:"userId"`
 	FileName string      `json:"fileName"`
+	IsSystem bool        `json:"isSystem"`
 	ParentID pgtype.Int8 `json:"parentId"`
 }
 
@@ -39,7 +41,12 @@ type CheckNameConflictRow struct {
 }
 
 func (q *Queries) CheckNameConflict(ctx context.Context, arg CheckNameConflictParams) (CheckNameConflictRow, error) {
-	row := q.db.QueryRow(ctx, checkNameConflict, arg.UserID, arg.FileName, arg.ParentID)
+	row := q.db.QueryRow(ctx, checkNameConflict,
+		arg.UserID,
+		arg.FileName,
+		arg.IsSystem,
+		arg.ParentID,
+	)
 	var i CheckNameConflictRow
 	err := row.Scan(
 		&i.ID,
@@ -52,9 +59,22 @@ func (q *Queries) CheckNameConflict(ctx context.Context, arg CheckNameConflictPa
 }
 
 const createFile = `-- name: CreateFile :one
-INSERT INTO user_files (slug, user_id, physical_file_id, parent_id, parent_slug, file_name, is_dir, file_size, mime_type, file_category)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug
+INSERT INTO user_files (
+    slug,
+    user_id,
+    physical_file_id,
+    parent_id,
+    parent_slug,
+    file_name,
+    is_dir,
+    file_size,
+    mime_type,
+    file_category,
+    is_system,
+    system_kind
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind
 `
 
 type CreateFileParams struct {
@@ -68,6 +88,8 @@ type CreateFileParams struct {
 	FileSize       int64       `json:"fileSize"`
 	MimeType       pgtype.Text `json:"mimeType"`
 	FileCategory   string      `json:"fileCategory"`
+	IsSystem       bool        `json:"isSystem"`
+	SystemKind     pgtype.Text `json:"systemKind"`
 }
 
 func (q *Queries) CreateFile(ctx context.Context, arg CreateFileParams) (UserFile, error) {
@@ -82,6 +104,8 @@ func (q *Queries) CreateFile(ctx context.Context, arg CreateFileParams) (UserFil
 		arg.FileSize,
 		arg.MimeType,
 		arg.FileCategory,
+		arg.IsSystem,
+		arg.SystemKind,
 	)
 	var i UserFile
 	err := row.Scan(
@@ -101,6 +125,8 @@ func (q *Queries) CreateFile(ctx context.Context, arg CreateFileParams) (UserFil
 		&i.UpdatedAt,
 		&i.FileCategory,
 		&i.ParentSlug,
+		&i.IsSystem,
+		&i.SystemKind,
 	)
 	return i, err
 }
@@ -163,7 +189,9 @@ func (q *Queries) GetAncestors(ctx context.Context, id int64) ([]GetAncestorsRow
 const getExpiredTrashedFiles = `-- name: GetExpiredTrashedFiles :many
 SELECT uf.id, uf.user_id, uf.is_dir, uf.physical_file_id, uf.file_size
 FROM user_files uf
-WHERE uf.is_trashed = TRUE AND uf.trashed_at < NOW() - INTERVAL '30 days'
+WHERE uf.is_trashed = TRUE
+  AND uf.is_system = FALSE
+  AND uf.trashed_at < NOW() - INTERVAL '30 days'
 `
 
 type GetExpiredTrashedFilesRow struct {
@@ -201,7 +229,7 @@ func (q *Queries) GetExpiredTrashedFiles(ctx context.Context) ([]GetExpiredTrash
 }
 
 const getFileByID = `-- name: GetFileByID :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug FROM user_files WHERE id = $1 LIMIT 1
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetFileByID(ctx context.Context, id int64) (UserFile, error) {
@@ -224,12 +252,14 @@ func (q *Queries) GetFileByID(ctx context.Context, id int64) (UserFile, error) {
 		&i.UpdatedAt,
 		&i.FileCategory,
 		&i.ParentSlug,
+		&i.IsSystem,
+		&i.SystemKind,
 	)
 	return i, err
 }
 
 const getFileBySlug = `-- name: GetFileBySlug :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug FROM user_files WHERE slug = $1 LIMIT 1
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetFileBySlug(ctx context.Context, slug string) (UserFile, error) {
@@ -252,12 +282,14 @@ func (q *Queries) GetFileBySlug(ctx context.Context, slug string) (UserFile, err
 		&i.UpdatedAt,
 		&i.FileCategory,
 		&i.ParentSlug,
+		&i.IsSystem,
+		&i.SystemKind,
 	)
 	return i, err
 }
 
 const getFileBySlugForUser = `-- name: GetFileBySlugForUser :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug FROM user_files WHERE slug = $1 AND user_id = $2 LIMIT 1
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files WHERE slug = $1 AND user_id = $2 LIMIT 1
 `
 
 type GetFileBySlugForUserParams struct {
@@ -285,6 +317,55 @@ func (q *Queries) GetFileBySlugForUser(ctx context.Context, arg GetFileBySlugFor
 		&i.UpdatedAt,
 		&i.FileCategory,
 		&i.ParentSlug,
+		&i.IsSystem,
+		&i.SystemKind,
+	)
+	return i, err
+}
+
+const getSystemDirByKind = `-- name: GetSystemDirByKind :one
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files
+WHERE user_id = $1
+  AND is_trashed = FALSE
+  AND is_dir = TRUE
+  AND is_system = TRUE
+  AND system_kind = $2
+  AND (
+    ($3::bigint IS NULL AND parent_id IS NULL)
+    OR
+    ($3::bigint IS NOT NULL AND parent_id = $3::bigint)
+  )
+LIMIT 1
+`
+
+type GetSystemDirByKindParams struct {
+	UserID     int64       `json:"userId"`
+	SystemKind pgtype.Text `json:"systemKind"`
+	ParentID   pgtype.Int8 `json:"parentId"`
+}
+
+func (q *Queries) GetSystemDirByKind(ctx context.Context, arg GetSystemDirByKindParams) (UserFile, error) {
+	row := q.db.QueryRow(ctx, getSystemDirByKind, arg.UserID, arg.SystemKind, arg.ParentID)
+	var i UserFile
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.UserID,
+		&i.PhysicalFileID,
+		&i.ParentID,
+		&i.FileName,
+		&i.IsDir,
+		&i.FileSize,
+		&i.MimeType,
+		&i.IsStarred,
+		&i.IsTrashed,
+		&i.TrashedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FileCategory,
+		&i.ParentSlug,
+		&i.IsSystem,
+		&i.SystemKind,
 	)
 	return i, err
 }
