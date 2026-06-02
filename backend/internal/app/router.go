@@ -1,8 +1,10 @@
 package app
 
 import (
+	"io/fs"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/netdisk/server/internal/config"
 	mw "github.com/netdisk/server/internal/middleware"
+	"github.com/netdisk/server/internal/web"
 	"github.com/netdisk/server/pkg/jwtutil"
 )
 
@@ -105,6 +108,22 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	media.DELETE("/items/:media_slug", h.Media.RemoveFromLibrary)
 	media.GET("/poster/:media_slug", h.Media.ServePoster)
 	media.GET("/hls/:media_slug/*", h.Media.ServeHLS)
+
+	serveFrontend(e)
+}
+
+func serveFrontend(e *echo.Echo) {
+	fileServer := http.FileServer(http.FS(web.BuildFS))
+	e.GET("/*", func(c echo.Context) error {
+		path := strings.TrimPrefix(c.Request().URL.Path, "/")
+		if path != "" {
+			if _, err := fs.Stat(web.BuildFS, path); err != nil {
+				c.Request().URL.Path = "/"
+			}
+		}
+		fileServer.ServeHTTP(c.Response(), c.Request())
+		return nil
+	})
 }
 
 func healthHandler(c echo.Context) error {

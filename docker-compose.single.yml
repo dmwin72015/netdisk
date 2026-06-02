@@ -1,0 +1,75 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.single
+    image: netdisk-server:local
+    container_name: netdisk_server
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${BACKEND_PORT:-8080}:8070"
+    volumes:
+      - netdiskdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8070/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: netdisk_migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/internal/db/migrations:/migrations:ro
+    command:
+      [
+        "-path=/migrations",
+        "-database=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-root1234}@postgres:5432/${POSTGRES_DB:-netdisk}?sslmode=disable",
+        "up"
+      ]
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: netdisk_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root1234}
+      POSTGRES_DB: ${POSTGRES_DB:-netdisk}
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: netdisk_redis
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:
+  netdiskdata:

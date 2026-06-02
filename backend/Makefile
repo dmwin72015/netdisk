@@ -56,6 +56,18 @@ else
 	$(MIGRATE_BIN) -path=internal/db/migrations -database "$(PG_DSN)" down 1
 endif
 
+# Build frontend with static adapter and copy to backend for embedding
+.PHONY: build-frontend-static
+build-frontend-static:
+	cd ../frontend && cp svelte.config.js svelte.config.js.bak && cp svelte.config.static.js svelte.config.js && pnpm build && mv svelte.config.js.bak svelte.config.js
+	rm -rf internal/web/build && mkdir -p internal/web/build
+	cp -r ../frontend/build/* internal/web/build/
+
+# Build single container image (frontend + backend)
+.PHONY: build-single
+build-single:
+	docker compose -f ../docker-compose.single.yml build
+
 sqlc-gen:
 ifeq ($(SQLC_BIN),)
 	docker run --rm -v $(PWD):/src -w /src $(SQLC_IMAGE) generate
