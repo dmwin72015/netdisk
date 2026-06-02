@@ -1,15 +1,24 @@
 package middleware
 
 import (
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 )
 
+var skipLogPrefixes = []string{"/api/v1/avatars/", "/_app/", "/favicon", "/robots.txt"}
+
 func RequestLogger(logger zerolog.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			path := c.Request().URL.Path
+			for _, p := range skipLogPrefixes {
+				if strings.HasPrefix(path, p) {
+					return next(c)
+				}
+			}
 			start := time.Now()
 			err := next(c)
 			if err != nil {
