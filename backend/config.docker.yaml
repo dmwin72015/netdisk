@@ -1,5 +1,5 @@
 server:
-  port: 8070
+  port: 8080
   read_timeout_sec: 300
   write_timeout_sec: 300
   cors_origins:
