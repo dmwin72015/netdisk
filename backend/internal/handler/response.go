@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 
+	"github.com/netdisk/server/internal/middleware"
 	"github.com/netdisk/server/internal/model"
 )
 
@@ -29,7 +30,11 @@ func EchoErrorHandler(logger zerolog.Logger) echo.HTTPErrorHandler {
 		}
 		status, code, msg := MapError(err)
 		if status >= 500 {
-			logger.Error().Err(err).Int("status", status).Str("path", c.Path()).Msg("handler error")
+			ev := logger.Error().Err(err).Int("status", status).Str("path", c.Path())
+			if uid, ok := middleware.UserID(c); ok && uid != 0 {
+				ev.Int64("user_id", uid)
+			}
+			ev.Msg("handler error")
 		}
 		_ = c.JSON(status, map[string]any{"error": msg, "errCode": code})
 	}
