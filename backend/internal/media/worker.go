@@ -129,7 +129,7 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 
 	// Probe duration
 	log.Debug().Msg("probing video duration")
-	duration, err := ProbeDuration(inputPath)
+	duration, err := ProbeDuration(w.cfg.FFmpeg.FFprobePath, inputPath)
 	if err != nil {
 		log.Warn().Err(err).Int32("duration_sec", duration).Msg("probe duration failed, continuing without duration")
 	} else {
@@ -140,7 +140,7 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 	args := BuildFFmpegArgs(inputPath, outputDir)
 	log.Debug().Strs("ffmpeg_args", args).Msg("running ffmpeg")
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	cmd := exec.CommandContext(ctx, w.cfg.FFmpeg.Path, args...)
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -193,7 +193,7 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 
 	// Extract poster image
 	posterPath := filepath.Join(outputDir, "poster.jpg")
-	if err := ExtractPoster(inputPath, posterPath, duration); err != nil {
+	if err := ExtractPoster(w.cfg.FFmpeg.Path, inputPath, posterPath, duration); err != nil {
 		log.Warn().Err(err).Msg("extract poster failed, continuing without poster")
 		posterPath = ""
 	}

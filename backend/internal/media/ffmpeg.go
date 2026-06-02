@@ -31,13 +31,13 @@ func BuildFFmpegArgs(inputPath, outputDir string) []string {
 
 // ExtractPoster extracts a single frame from the video as a JPEG poster image.
 // It seeks to 10% of the duration to avoid a black frame at the start.
-func ExtractPoster(inputPath, outputPath string, durationSec int32) error {
+func ExtractPoster(ffmpegPath, inputPath, outputPath string, durationSec int32) error {
 	seekSec := float64(durationSec) * 0.1
 	if seekSec < 1 {
 		seekSec = 1
 	}
 
-	cmd := exec.Command("ffmpeg",
+	cmd := exec.Command(ffmpegPath,
 		"-ss", fmt.Sprintf("%.1f", seekSec),
 		"-i", inputPath,
 		"-frames:v", "1",
@@ -53,8 +53,8 @@ func ExtractPoster(inputPath, outputPath string, durationSec int32) error {
 }
 
 // ProbeDuration returns the duration in seconds of a media file using ffprobe.
-func ProbeDuration(inputPath string) (int32, error) {
-	cmd := exec.Command("ffprobe",
+func ProbeDuration(ffprobePath, inputPath string) (int32, error) {
+	cmd := exec.Command(ffprobePath,
 		"-v", "quiet",
 		"-show_entries", "format=duration",
 		"-of", "csv=p=0",
