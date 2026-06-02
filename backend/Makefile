@@ -62,6 +62,8 @@ build-frontend-static:
 	cd ../frontend && cp svelte.config.js svelte.config.js.bak && cp svelte.config.static.js svelte.config.js && pnpm build && mv svelte.config.js.bak svelte.config.js
 	rm -rf internal/web/build && mkdir -p internal/web/build
 	cp -r ../frontend/build/* internal/web/build/
+	find internal/web/build -name '_*' -depth -exec sh -c 'for f; do d=$$(dirname "$$f"); b=$$(basename "$$f"); mv "$$f" "$$d/$${b#_}"; done' _ {} +
+	find internal/web/build -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' \) -exec sed -i 's|/_app/|/app/|g' {} +
 
 # Build single container image (frontend + backend)
 .PHONY: build-single

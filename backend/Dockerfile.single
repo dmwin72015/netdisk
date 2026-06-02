@@ -22,6 +22,8 @@ RUN go mod download
 
 COPY backend/ .
 COPY --from=frontend /frontend/build /src/internal/web/build
+RUN find /src/internal/web/build -name '_*' -depth -exec sh -c 'for f; do d=$(dirname "$f"); b=$(basename "$f"); mv "$f" "$d/${b#_}"; done' _ {} + \
+ && find /src/internal/web/build -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' \) -exec sed -i 's|/_app/|/app/|g' {} +
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/netdisk-server ./cmd/server
 
 # ---- Runtime ----
