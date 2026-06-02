@@ -12,7 +12,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (slug, username, email, password_hash, register_method)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, slug, username, email, password_hash, status, register_method, created_at, updated_at
+RETURNING id, slug, username, email, password_hash, status, role, register_method, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -39,6 +39,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
+		&i.Role,
 		&i.RegisterMethod,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -47,7 +48,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, slug, username, email, password_hash, status, register_method, created_at, updated_at FROM users WHERE email = $1 LIMIT 1
+SELECT id, slug, username, email, password_hash, status, role, register_method, created_at, updated_at FROM users WHERE email = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -60,6 +61,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
+		&i.Role,
 		&i.RegisterMethod,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -68,7 +70,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, slug, username, email, password_hash, status, register_method, created_at, updated_at FROM users WHERE id = $1 LIMIT 1
+SELECT id, slug, username, email, password_hash, status, role, register_method, created_at, updated_at FROM users WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
@@ -81,6 +83,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
+		&i.Role,
 		&i.RegisterMethod,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -89,7 +92,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const getUserBySlug = `-- name: GetUserBySlug :one
-SELECT id, slug, username, email, password_hash, status, register_method, created_at, updated_at FROM users WHERE slug = $1 LIMIT 1
+SELECT id, slug, username, email, password_hash, status, role, register_method, created_at, updated_at FROM users WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserBySlug(ctx context.Context, slug string) (User, error) {
@@ -102,6 +105,7 @@ func (q *Queries) GetUserBySlug(ctx context.Context, slug string) (User, error) 
 		&i.Email,
 		&i.PasswordHash,
 		&i.Status,
+		&i.Role,
 		&i.RegisterMethod,
 		&i.CreatedAt,
 		&i.UpdatedAt,

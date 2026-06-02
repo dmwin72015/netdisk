@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Trash2, Users, ChevronLeft, ChevronRight, LoaderCircle } from '@lucide/svelte';
+	import { Trash2, Eye, Users, ChevronLeft, ChevronRight, LoaderCircle } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { fmtSize } from '$lib/utils/format';
 	import {
@@ -28,10 +27,6 @@
 
 	onMount(() => {
 		if (!browser) return;
-		if (!$user || $user.role !== 'admin') {
-			void goto('/');
-			return;
-		}
 		loadUsers();
 	});
 
@@ -151,13 +146,22 @@
 							</td>
 							<td class="px-4 py-3 text-slate-500">{fmtDate(u.createdAt)}</td>
 							<td class="px-4 py-3">
-								<button
-									class="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-									onclick={() => handleDelete(u)}
-									title={m.delete_btn()}
-								>
-									<Trash2 size={15} />
-								</button>
+								<div class="flex items-center gap-1">
+									<button
+										class="rounded p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+										onclick={() => goto(`/admin/users/${u.id}`)}
+										title="View Details"
+									>
+										<Eye size={15} />
+									</button>
+									<button
+										class="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+										onclick={() => handleDelete(u)}
+										title={m.delete_btn()}
+									>
+										<Trash2 size={15} />
+									</button>
+								</div>
 							</td>
 						</tr>
 					{/each}

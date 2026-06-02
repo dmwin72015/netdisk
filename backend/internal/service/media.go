@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/rs/zerolog"
 
 	"github.com/netdisk/server/internal/cache"
 	"github.com/netdisk/server/internal/config"
@@ -24,6 +25,7 @@ type MediaService struct {
 	store   *storage.Local
 	cache   *cache.Cache
 	files   *FilesService
+	logger  zerolog.Logger
 }
 
 func NewMediaService(
@@ -33,6 +35,7 @@ func NewMediaService(
 	store *storage.Local,
 	c *cache.Cache,
 	files *FilesService,
+	logger zerolog.Logger,
 ) *MediaService {
 	return &MediaService{
 		queries: queries,
@@ -41,6 +44,7 @@ func NewMediaService(
 		store:   store,
 		cache:   c,
 		files:   files,
+		logger:  logger,
 	}
 }
 
@@ -77,9 +81,13 @@ func (s *MediaService) EnsureUploadDir(ctx context.Context, userID int64) (*File
 }
 
 func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddToLibraryRequest) (*AddToLibraryResponse, error) {
+	log := s.logger.With().Int64("user_id", userID).Str("file_slug", req.FileSlug).Logger()
+
 	if req.FileSlug == "" {
+		log.Warn().Msg("add to library: empty file slug")
 		return nil, model.ErrInvalidInput
 	}
+	log.Info().Msg("add to library")
 
 	// Get the user file
 	uf, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
@@ -88,11 +96,15 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			log.Warn().Msg("add to library: file not found")
 			return nil, model.ErrNotFound
 		}
 		return nil, fmt.Errorf("get file: %w", err)
 	}
+	log.Debug().Str("file_name", uf.FileName).Msg("file loaded")
+
 	if uf.IsDir || uf.IsTrashed || !uf.PhysicalFileID.Valid {
+		log.Warn().Bool("is_dir", uf.IsDir).Bool("is_trashed", uf.IsTrashed).Bool("has_physical_file", uf.PhysicalFileID.Valid).Msg("add to library: invalid file state")
 		return nil, model.ErrInvalidInput
 	}
 
@@ -102,7 +114,6 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		UserFileID: uf.ID,
 	})
 	if err == nil && existing.ID != 0 {
-		// Already in library, get transcode status
 		status := "unknown"
 		if existing.TranscodeID.Valid {
 			tc, tcErr := s.queries.GetTranscodeByID(ctx, existing.TranscodeID.Int64)
@@ -110,6 +121,7 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 				status = tc.Status
 			}
 		}
+		log.Info().Str("media_slug", existing.Slug).Str("transcode_status", status).Msg("media already in library")
 		return &AddToLibraryResponse{
 			MediaSlug:       existing.Slug,
 			TranscodeStatus: status,
@@ -127,7 +139,8 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 	var transcodeSlug string
 
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		// Create new transcode
+		log.Debug().Msg("creating new transcode")
+
 		tcSlug, err := gonanoid.New(21)
 		if err != nil {
 			return nil, fmt.Errorf("generate slug: %w", err)
@@ -142,6 +155,7 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		if err != nil {
 			return nil, fmt.Errorf("create transcode: %w", err)
 		}
+		log.Debug().Str("transcode_slug", tc.Slug).Msg("transcode created")
 
 		// Create media job
 		jobSlug, err := gonanoid.New(21)
@@ -156,14 +170,15 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		if err != nil {
 			return nil, fmt.Errorf("create media job: %w", err)
 		}
+		log.Debug().Str("job_slug", jobSlug).Msg("media job created")
 
 		transcodeSlug = tc.Slug
 	} else if err != nil {
 		return nil, fmt.Errorf("get transcode: %w", err)
 	} else {
-		// Reuse existing transcode
 		transcodeReused = true
 		transcodeSlug = tc.Slug
+		log.Debug().Str("transcode_slug", tc.Slug).Str("status", tc.Status).Msg("existing transcode reused")
 	}
 
 	// Create media item
@@ -188,6 +203,8 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 	if err != nil {
 		return nil, fmt.Errorf("create media item: %w", err)
 	}
+
+	log.Info().Str("media_slug", mediaSlug).Str("transcode_slug", transcodeSlug).Bool("reused", transcodeReused).Msg("media added to library")
 
 	return &AddToLibraryResponse{
 		MediaSlug:       mediaSlug,

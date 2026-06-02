@@ -94,6 +94,7 @@ type User struct {
 	Email          string             `json:"email"`
 	PasswordHash   string             `json:"passwordHash"`
 	Status         int16              `json:"status"`
+	Role           string             `json:"role"`
 	RegisterMethod string             `json:"registerMethod"`
 	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`

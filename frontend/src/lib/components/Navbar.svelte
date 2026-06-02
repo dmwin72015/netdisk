@@ -3,7 +3,7 @@
 	import { logout } from '$lib/api/auth';
 	import { goto } from '$app/navigation';
 	import { setUser } from '$lib/stores/auth';
-	import { HardDrive, Folder, Star, Trash2, Film, User, ChevronDown, LogOut, Settings, ListRestart } from '@lucide/svelte';
+	import { HardDrive, Folder, Star, Trash2, Film, User, ChevronDown, LogOut, Settings, ListRestart, Shield } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import LanguageDropdown from '$lib/components/LanguageDropdown.svelte';
 	import { page } from '$app/state';
@@ -81,6 +81,15 @@
 							{m.nav_trash()}
 						</DropdownBase.Item>
 						<DropdownBase.Separator />
+						{#if $user.role === 'admin'}
+							<DropdownBase.Item onSelect={() => goto('/admin')}>
+								{#snippet icon()}
+									<Shield size={14} class="text-amber-500" />
+								{/snippet}
+								{m.admin_panel()}
+							</DropdownBase.Item>
+							<DropdownBase.Separator />
+						{/if}
 						<DropdownBase.Item onSelect={() => goto('/tasks')}>
 							{#snippet icon()}
 								<ListRestart size={14} class="text-gray-400" />

@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/netdisk/server/internal/config"
+	"github.com/netdisk/server/internal/db/sqlc"
 	mw "github.com/netdisk/server/internal/middleware"
 	"github.com/netdisk/server/internal/web"
 	"github.com/netdisk/server/pkg/jwtutil"
@@ -31,7 +32,7 @@ func installMiddleware(e *echo.Echo, cfg *config.Config, logger zerolog.Logger) 
 	}
 }
 
-func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h *handlers, cfg *config.Config) {
+func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h *handlers, cfg *config.Config, queries *sqlc.Queries) {
 	e.GET("/healthz", healthHandler)
 
 	api := e.Group("/api/v1")
@@ -100,6 +101,15 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// Config route
 	authed.GET("/config", h.Config.Get)
+
+	// Admin routes
+	admin := authed.Group("/admin", mw.AdminRequired(queries))
+	admin.GET("/users", h.Admin.ListUsers)
+	admin.GET("/users/:id", h.Admin.GetUser)
+	admin.PATCH("/users/:id", h.Admin.UpdateUser)
+	admin.PATCH("/users/:id/storage-base", h.Admin.UpdateStorageBase)
+	admin.DELETE("/users/:id", h.Admin.DeleteUser)
+	admin.GET("/files", h.Admin.ListFiles)
 
 	// Media routes
 	media := authed.Group("/media")

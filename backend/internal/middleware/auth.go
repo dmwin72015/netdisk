@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/pkg/jwtutil"
 )
 
@@ -49,4 +50,20 @@ func extractToken(c echo.Context) string {
 func UserID(c echo.Context) (int64, bool) {
 	v, ok := c.Get(ctxKeyUserID).(int64)
 	return v, ok
+}
+
+func AdminRequired(queries *sqlc.Queries) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			userID, ok := UserID(c)
+			if !ok {
+				return echo.NewHTTPError(http.StatusUnauthorized)
+			}
+			user, err := queries.GetUserByID(c.Request().Context(), userID)
+			if err != nil || user.Role != "admin" {
+				return echo.NewHTTPError(http.StatusForbidden, "admin required")
+			}
+			return next(c)
+		}
+	}
 }

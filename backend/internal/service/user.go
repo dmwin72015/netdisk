@@ -31,14 +31,16 @@ func NewUserService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config)
 }
 
 type UserMeResponse struct {
-	Slug      string      `json:"slug"`
-	Username  string      `json:"username"`
-	Email     string      `json:"email"`
-	Status    int16       `json:"status"`
-	Profile   ProfileData `json:"profile"`
-	Storage   StorageData `json:"storage"`
-	Level     LevelData   `json:"level"`
-	CreatedAt string      `json:"createdAt"`
+	Slug           string      `json:"slug"`
+	Username       string      `json:"username"`
+	Email          string      `json:"email"`
+	Status         int16       `json:"status"`
+	Role           string      `json:"role"`
+	RegisterMethod string      `json:"registerMethod"`
+	Profile        ProfileData `json:"profile"`
+	Storage        StorageData `json:"storage"`
+	Level          LevelData   `json:"level"`
+	CreatedAt      string      `json:"createdAt"`
 }
 
 type ProfileData struct {
@@ -83,11 +85,13 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 	}
 
 	resp := &UserMeResponse{
-		Slug:      user.Slug,
-		Username:  user.Username,
-		Email:     user.Email,
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+		Slug:           user.Slug,
+		Username:       user.Username,
+		Email:          user.Email,
+		Status:         user.Status,
+		Role:           user.Role,
+		RegisterMethod: user.RegisterMethod,
+		CreatedAt:      user.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
 	}
 
 	if profile.ID != 0 {

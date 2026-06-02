@@ -71,60 +71,83 @@ func (w *Worker) processJobs(ctx context.Context) {
 
 func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 	log := w.logger.With().Str("job_slug", job.Slug).Int64("job_id", job.ID).Logger()
+	log.Info().Msg("processing job")
 
 	// Mark job as processing
 	if err := w.queries.UpdateJobStatus(ctx, sqlc.UpdateJobStatusParams{
 		ID:     job.ID,
 		Status: "processing",
 	}); err != nil {
-		log.Error().Err(err).Msg("update job status")
+		log.Error().Err(err).Msg("update job status to processing")
 		return
 	}
+	log.Debug().Msg("job status set to processing")
 
 	// Get transcode info
 	tc, err := w.queries.GetTranscodeByID(ctx, job.TranscodeID)
 	if err != nil {
-		log.Error().Err(err).Msg("get transcode")
+		log.Error().Err(err).Int64("transcode_id", job.TranscodeID).Msg("get transcode")
 		w.failJob(ctx, job.ID, "transcode not found")
 		return
 	}
+	log.Debug().Str("transcode_slug", tc.Slug).Str("profile", tc.Profile).Msg("transcode loaded")
 
 	// Mark transcode as processing
 	if err := w.queries.UpdateTranscodeStatus(ctx, sqlc.UpdateTranscodeStatusParams{
 		ID:     tc.ID,
 		Status: "processing",
 	}); err != nil {
-		log.Error().Err(err).Msg("update transcode status")
+		log.Error().Err(err).Msg("update transcode status to processing")
 		return
 	}
 
 	// Get physical file
 	pf, err := w.queries.GetPhysicalFileByID(ctx, tc.PhysicalFileID)
 	if err != nil {
-		log.Error().Err(err).Msg("get physical file")
+		log.Error().Err(err).Int64("physical_file_id", tc.PhysicalFileID).Msg("get physical file")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "physical file not found")
 		return
 	}
+	log.Debug().Str("file_hash", pf.FileHash).Int64("file_size", pf.FileSize).Msg("physical file loaded")
 
 	// Build paths
 	inputPath := w.store.AbsPath(pf.FileHash)
 	outputDir := filepath.Join(w.cfg.Storage.Root, w.cfg.Storage.HLSDir, tc.Slug)
+	log.Debug().Str("input_path", inputPath).Str("output_dir", outputDir).Msg("paths resolved")
+
+	if _, err := os.Stat(inputPath); err != nil {
+		log.Error().Err(err).Str("input_path", inputPath).Msg("input file not accessible")
+		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "input file not accessible")
+		return
+	}
 
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		log.Error().Err(err).Msg("create output dir")
+		log.Error().Err(err).Str("output_dir", outputDir).Msg("create output dir")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "create output dir failed")
 		return
 	}
 
 	// Probe duration
+	log.Debug().Msg("probing video duration")
 	duration, err := ProbeDuration(inputPath)
 	if err != nil {
-		log.Warn().Err(err).Msg("probe duration failed, continuing without duration")
+		log.Warn().Err(err).Int32("duration_sec", duration).Msg("probe duration failed, continuing without duration")
+	} else {
+		log.Debug().Int32("duration_sec", duration).Msg("duration probed")
 	}
 
 	// Build and run FFmpeg
 	args := BuildFFmpegArgs(inputPath, outputDir)
+	log.Debug().Strs("ffmpeg_args", args).Msg("running ffmpeg")
+
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Error().Err(err).Msg("create stderr pipe")
+		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "stderr pipe failed")
+		return
+	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -138,19 +161,35 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "ffmpeg start failed")
 		return
 	}
+	log.Debug().Int("pid", cmd.Process.Pid).Msg("ffmpeg started")
+
+	// Capture stderr to log on failure
+	go func() {
+		stderrLog := w.logger.With().Str("job_slug", job.Slug).Str("stream", "stderr").Logger()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			stderrLog.Debug().Str("line", scanner.Text()).Msg("ffmpeg")
+		}
+	}()
 
 	// Parse progress
 	scanner := bufio.NewScanner(stdout)
+	nextLogPct := 0
 	ParseProgress(scanner, duration, func(pct int) {
 		_ = w.cache.MediaProgress.SetProgress(ctx, tc.Slug, pct)
+		if pct >= nextLogPct {
+			log.Debug().Int("progress_pct", pct).Msg("transcode progress")
+			nextLogPct = pct + 25
+		}
 	})
 
 	if err := cmd.Wait(); err != nil {
-		log.Error().Err(err).Msg("ffmpeg failed")
+		log.Error().Err(err).Msg("ffmpeg exited with error")
 		_ = os.RemoveAll(outputDir)
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, fmt.Sprintf("ffmpeg failed: %v", err))
 		return
 	}
+	log.Debug().Msg("ffmpeg completed successfully")
 
 	// Extract poster image
 	posterPath := filepath.Join(outputDir, "poster.jpg")

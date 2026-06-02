@@ -89,7 +89,7 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 	a.echo.HTTPErrorHandler = handler.EchoErrorHandler(logger)
 
 	installMiddleware(a.echo, cfg, logger)
-	registerRoutes(a.echo, rdb, a.jwtMgr, handlers, cfg)
+	registerRoutes(a.echo, rdb, a.jwtMgr, handlers, cfg, queries)
 
 	a.srv = &http.Server{
 		Addr:         ":" + strconv.Itoa(cfg.Server.Port),
@@ -209,6 +209,7 @@ type handlers struct {
 	Upload *handler.UploadHandler
 	Media  *handler.MediaHandler
 	Config *handler.ConfigHandler
+	Admin  *handler.AdminHandler
 }
 
 func buildHandlers(
@@ -221,13 +222,14 @@ func buildHandlers(
 ) *handlers {
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb)
 	userSvc := service.NewUserService(queries, pg, cfg)
+	adminSvc := service.NewAdminService(queries, pg, logger)
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb, cfg)
 
 	filesSvc := service.NewFilesService(queries, pg, cfg, store)
 	uploadSvc := service.NewUploadService(queries, pg, cfg, store, c, logger)
-	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c, filesSvc)
+	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c, filesSvc, logger)
 
 	return &handlers{
 		Auth:   handler.NewAuthHandler(authSvc),
@@ -236,5 +238,6 @@ func buildHandlers(
 		Upload: handler.NewUploadHandler(uploadSvc, logger),
 		Media:  handler.NewMediaHandler(mediaSvc),
 		Config: handler.NewConfigHandler(cfg),
+		Admin:  handler.NewAdminHandler(adminSvc),
 	}
 }

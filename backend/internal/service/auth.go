@@ -72,6 +72,7 @@ type UserResponse struct {
 	Username       string      `json:"username"`
 	Email          string      `json:"email"`
 	Status         int16       `json:"status"`
+	Role           string      `json:"role"`
 	RegisterMethod string      `json:"registerMethod"`
 	Profile        ProfileData `json:"profile"`
 	Storage        StorageData `json:"storage"`
@@ -154,6 +155,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 		Username:      user.Username,
 		Email:         user.Email,
 		Status:        user.Status,
+		Role:          user.Role,
 		RegisterMethod: user.RegisterMethod,
 		Profile: ProfileData{
 			DisplayName: user.Username,
@@ -196,6 +198,7 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*UserRespons
 		Username:       user.Username,
 		Email:          user.Email,
 		Status:         user.Status,
+		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
 		CreatedAt:      user.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -527,6 +530,7 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		Username:       user.Username,
 		Email:          user.Email,
 		Status:         user.Status,
+		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
 		CreatedAt:      user.CreatedAt.Time.Format(time.RFC3339),
 	}
