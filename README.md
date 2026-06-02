@@ -23,6 +23,78 @@ NetDisk 是一个单机部署的网盘系统，面向个人和小团队使用。
 | 客户端配置 | 前端从 `/api/v1/config` 获取分片大小、最大上传大小、头像大小限制 |
 | 日志/限流 | zerolog 请求日志、可选滚动文件日志、Redis API/认证限流 |
 
+## 后端部署（非 Docker）
+
+### 1. 编译
+
+```bash
+cd backend
+make build
+# 产物：bin/netdisk-server
+```
+
+### 2. 配置
+
+```bash
+cp config.example.yaml /etc/netdisk/config.yaml
+# 按需修改端口、数据库、JWT secret、存储路径等
+```
+
+### 3. 数据库迁移
+
+```bash
+make migrate-up
+```
+
+### 4. 运行
+
+```bash
+./bin/netdisk-server --config /etc/netdisk/config.yaml
+```
+
+后端支持以下命令行参数：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--config` | `./config.yaml` | 配置文件路径 |
+| `--port` | 配置文件中的 `server.port` | 监听端口，优先级高于配置文件 |
+
+环境变量（优先级高于配置文件）：
+
+- `NETDISK_SERVER_PORT` — 监听端口
+- `NETDISK_DB_DSN` — PostgreSQL 连接串
+- `NETDISK_REDIS_ADDR` — Redis 地址
+- `NETDISK_JWT_SECRET` — JWT 签名密钥
+- `NETDISK_STORAGE_ROOT` — 文件存储根目录
+
+### 5. Systemd 服务（可选）
+
+```ini
+[Unit]
+Description=NetDisk Server
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=netdisk
+ExecStart=/usr/local/bin/netdisk-server --config /etc/netdisk/config.yaml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 6. 生产注意事项
+
+- **JWT secret**：部署前务必修改 `jwt.secret` 为足够长的随机字符串
+- **数据库密码**：修改 `db.dsn` 中的密码，并使用强密码
+- **日志**：生产环境建议 `log.output: file`，配合日志轮转（如 logrotate）
+- **存储路径**：确保 `storage.root` 指向有足够磁盘空间的目录
+- **反向代理**：生产环境建议在前置 nginx 或 Caddy 中配置 HTTPS，后端仅监听内网端口
+- **健康检查**：`GET /healthz` 返回 `{"status":"ok"}`，可用于容器/负载均衡探活
+
 ## 技术栈
 
 | 层 | 技术 |
