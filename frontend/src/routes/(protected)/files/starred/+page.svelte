@@ -77,7 +77,7 @@
 							<tr class="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80">
 								<td class="px-4 py-2.5">
 									<div class="flex items-center gap-2.5">
-										<span class="shrink-0"><MimeIcon mimeType={f.mimeType} isDir={f.isDir} size={18} /></span>
+										<span class="shrink-0"><MimeIcon mimeType={f.mimeType} name={f.fileName} isDir={f.isDir} size={18} /></span>
 										<span class="truncate text-gray-700" title={f.fileName}>{f.fileName}</span>
 									</div>
 								</td>

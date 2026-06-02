@@ -133,6 +133,7 @@
             </span>
             <MimeIcon
               mimeType={getMimeTypeFromName(item.file.name)}
+              name={item.file.name}
               isDir={false}
               category={getCategoryFromName(item.file.name)}
               size={18}

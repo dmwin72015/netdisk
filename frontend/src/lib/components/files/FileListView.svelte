@@ -11,6 +11,7 @@
   import { toast } from "svelte-sonner";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
   import MoveDialog from "./MoveDialog.svelte";
+  import { isTextPreviewFile } from "$lib/utils/code-files";
 
   type FolderSummary = {
     fileCount: number;
@@ -201,14 +202,14 @@
     }
   });
 
-  function canPreview(mimeType: string | null): boolean {
-    if (!mimeType) return false;
+  function canPreview(file: NormalizedFile): boolean {
+    const mimeType = file.mimeType ?? '';
     return (
       mimeType.startsWith("image/") ||
       mimeType.startsWith("video/") ||
       mimeType.startsWith("audio/") ||
       mimeType === "application/pdf" ||
-      mimeType.startsWith("text/")
+      isTextPreviewFile(file.name, mimeType)
     );
   }
 
@@ -250,21 +251,21 @@
     {#each files as f, i (f.id)}
       <div
         class="group relative flex flex-col items-center rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-gray-200 hover:shadow-md {f.isDir ||
-        canPreview(f.mimeType)
+        canPreview(f)
           ? 'cursor-pointer'
           : ''}"
         role="button"
         tabindex="0"
         onclick={f.isDir
           ? () => onNavigateDir(f.id)
-          : !f.isDir && canPreview(f.mimeType)
+          : !f.isDir && canPreview(f)
             ? () => onPreview(f)
             : undefined}
         onkeydown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && (f.isDir || canPreview(f.mimeType))) {
+          if ((e.key === 'Enter' || e.key === ' ') && (f.isDir || canPreview(f))) {
             e.preventDefault();
             if (f.isDir) onNavigateDir(f.id);
-            else if (canPreview(f.mimeType)) onPreview(f);
+            else if (canPreview(f)) onPreview(f);
           }
         }}
       >
@@ -291,6 +292,7 @@
         </div>
         <MimeIcon
           mimeType={f.mimeType}
+          name={f.name}
           isDir={f.isDir}
           category={f.fileCategory}
           size={36}
@@ -344,12 +346,12 @@
           {@const isSelected = selected.has(f.id)}
           <tr
             class="group border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80 {f.isDir ||
-            canPreview(f.mimeType)
+            canPreview(f)
               ? 'cursor-pointer'
               : ''} {isSelected ? 'bg-blue-50/50' : ''}"
             onclick={f.isDir
               ? () => onNavigateDir(f.id)
-              : canPreview(f.mimeType)
+              : canPreview(f)
                 ? () => onPreview(f)
                 : undefined}
           >
@@ -368,6 +370,7 @@
                 <span class="shrink-0">
                   <MimeIcon
                     mimeType={f.mimeType}
+                    name={f.name}
                     isDir={f.isDir}
                     category={f.fileCategory}
                     size={18}
@@ -528,6 +531,7 @@
         {:else}
           <MimeIcon
             mimeType={detailFile.mimeType}
+            name={detailFile.name}
             isDir={detailFile.isDir}
             category={detailFile.fileCategory}
             size={88}

@@ -178,6 +178,7 @@
                     <span class="shrink-0"
                       ><MimeIcon
                         mimeType={f.mimeType}
+                        name={f.fileName}
                         isDir={f.isDir}
                         size={18}
                       /></span

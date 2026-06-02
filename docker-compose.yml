@@ -1,4 +1,43 @@
 services:
+  backend:
+    build:
+      context: ./backend
+    image: netdisk-backend:local
+    container_name: netdisk_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - netdiskdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: netdisk_migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/internal/db/migrations:/migrations:ro
+    command:
+      [
+        "-path=/migrations",
+        "-database=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-root1234}@postgres:5432/${POSTGRES_DB:-netdisk}?sslmode=disable",
+        "up"
+      ]
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     container_name: netdisk_postgres
@@ -32,3 +71,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  netdiskdata:

@@ -3,6 +3,7 @@
 	import { downloadUrl } from '$lib/api/files';
 	import { getAccessToken } from '$lib/api/client';
 	import { fmtSize } from '$lib/utils/format';
+	import { isCodeLikeFile, isJsonFile, isTextPreviewFile } from '$lib/utils/code-files';
 	import { Dialog } from '$lib/ui/dialog';
 	import * as m from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
@@ -39,14 +40,16 @@
 		url.searchParams.set('access_token', token);
 		return `${url.pathname}?${url.searchParams.toString()}`;
 	});
+	let isJson = $derived(isJsonFile(name, mimeType));
+	let isCode = $derived(isCodeLikeFile(name, mimeType));
+	let isText = $derived(isTextPreviewFile(name, mimeType));
 	let canPreview = $derived(
 		mimeType.startsWith('image/') ||
 			mimeType.startsWith('video/') ||
 			mimeType.startsWith('audio/') ||
 			mimeType === 'application/pdf' ||
-			mimeType.startsWith('text/')
+			isText
 	);
-	let isText = $derived(mimeType.startsWith('text/'));
 	let isImage = $derived(mimeType.startsWith('image/'));
 	let isVideo = $derived(mimeType.startsWith('video/'));
 	let isAudio = $derived(mimeType.startsWith('audio/'));
@@ -104,6 +107,15 @@
 			toast.success(m.copied());
 		} catch {
 			toast.error(m.copy_failed());
+		}
+	}
+
+	function formatTextContent(content: string) {
+		if (!isJson) return content;
+		try {
+			return JSON.stringify(JSON.parse(content), null, 2);
+		} catch {
+			return content;
 		}
 	}
 </script>
@@ -216,7 +228,7 @@
 				<p class="text-sm text-red-500">{textError}</p>
 			</div>
 		{:else if textContent !== null}
-			<pre class="overflow-x-auto p-5 text-sm leading-relaxed text-gray-700"><code>{textContent}</code></pre>
+			<pre class="max-h-[80vh] overflow-auto p-5 text-sm leading-relaxed text-gray-700"><code>{formatTextContent(textContent)}</code></pre>
 		{/if}
 	{/if}
 </Dialog>

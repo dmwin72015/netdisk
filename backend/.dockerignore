@@ -1,0 +1,10 @@
+.cache/
+bin/
+tmp/
+logs/
+*.log
+server.pid
+server-start.log
+server.log
+config.yaml
+.claude/

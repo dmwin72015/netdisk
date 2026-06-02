@@ -46,22 +46,25 @@ NetDisk 是一个单机部署的网盘系统，面向个人和小团队使用。
 
 ## 快速启动
 
-### 1. 启动数据库和 Redis
+### 1. 一键启动后端依赖和后端服务
 
-可以使用本地已有服务，也可以通过项目根目录的 Docker Compose 启动：
+推荐通过项目根目录的 Docker Compose 启动 PostgreSQL、Redis、数据库迁移和后端服务：
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 默认服务地址：
 
 - PostgreSQL：`postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable`
 - Redis：`localhost:16379`
+- 后端：`http://localhost:8080`
 
-### 2. 准备后端配置
+Compose 会构建 `backend/Dockerfile`，使用 `backend/config.docker.yaml` 作为容器内配置，并将网盘数据保存在 `netdiskdata` 卷中。
 
-`backend/config.yaml` 已作为本地开发配置存在；如需重新生成：
+### 2. 准备本地开发配置
+
+如果不使用 Docker Compose，而是在本机直接运行后端，需准备 `backend/config.yaml`。如需重新生成：
 
 ```bash
 cp backend/config.example.yaml backend/config.yaml
@@ -77,6 +80,8 @@ make migrate-up
 ```
 
 ### 4. 启动后端
+
+如果已经使用 Docker Compose 启动，可以跳过这一步。需要本地开发运行时：
 
 ```bash
 cd backend
@@ -138,7 +143,9 @@ frontend/
     routes/
       (public)/               # 登录、注册
       (protected)/            # 登录后页面：主页、文件、媒体、任务、账号等
-docker-compose.yml            # PostgreSQL + Redis
+docker-compose.yml            # 后端 + 数据库迁移 + PostgreSQL + Redis
+backend/Dockerfile             # 后端容器构建
+backend/config.docker.yaml     # 后端容器配置
 data/                         # 默认本地存储根目录
 ```
 

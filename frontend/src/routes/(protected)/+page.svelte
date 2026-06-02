@@ -160,7 +160,7 @@
 							href={getFileUrl(file)}
 							class="group flex flex-col items-center rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
 						>
-							<MimeIcon mimeType={file.mimeType} isDir={file.isDir} category={file.fileCategory} size={36} />
+								<MimeIcon mimeType={file.mimeType} name={file.fileName} isDir={file.isDir} category={file.fileCategory} size={36} />
 							<p class="mt-3 w-full truncate text-center text-sm font-medium text-gray-700" title={file.fileName}>{file.fileName}</p>
 							{#if file.parentName}
 								<p class="mt-0.5 w-full truncate text-center text-xs text-gray-400" title={file.parentName}>{file.parentName}</p>
