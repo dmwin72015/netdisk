@@ -46,65 +46,76 @@ NetDisk 是一个单机部署的网盘系统，面向个人和小团队使用。
 
 ## 快速启动
 
-### 1. 一键启动后端依赖和后端服务
+系统提供两种部署方案：
 
-推荐通过项目根目录的 Docker Compose 启动 PostgreSQL、Redis、数据库迁移和后端服务：
+### 方案一：三容器部署（推荐，nginx 反代）
+
+前后端分离，nginx 统一入口：
 
 ```bash
 docker compose up -d --build
 ```
 
-默认服务地址：
+访问 `http://localhost:8080`。
 
+架构：`nginx:80` → `frontend:8090`（Node） / `backend:8070`（Go）
+
+### 方案二：单容器部署（前端嵌入 Go 二进制）
+
+前端使用 `adapter-static` 构建为 SPA，通过 `go:embed` 编译进后端，无需 nginx：
+
+```bash
+docker compose -f docker-compose.single.yml up -d --build
+```
+
+访问 `http://localhost:8080`。
+
+### 本地开发
+
+#### 1. 启动基础设施
+
+```bash
+docker compose up -d postgres redis
+```
+
+默认地址：
 - PostgreSQL：`postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable`
 - Redis：`localhost:16379`
-- 后端：`http://localhost:8080`
 
-Compose 会构建 `backend/Dockerfile`，使用 `backend/config.docker.yaml` 作为容器内配置，并将网盘数据保存在 `netdiskdata` 卷中。
-
-### 2. 准备本地开发配置
-
-如果不使用 Docker Compose，而是在本机直接运行后端，需准备 `backend/config.yaml`。如需重新生成：
+#### 2. 配置后端
 
 ```bash
 cp backend/config.example.yaml backend/config.yaml
 ```
 
-按需修改数据库、Redis、存储根目录、JWT secret、FFmpeg 路径等配置。
+按需修改数据库、Redis、JWT secret、存储根目录等。
 
-### 3. 运行数据库迁移
-
-```bash
-cd backend
-make migrate-up
-```
-
-### 4. 启动后端
-
-如果已经使用 Docker Compose 启动，可以跳过这一步。需要本地开发运行时：
+#### 3. 运行数据库迁移
 
 ```bash
-cd backend
-make run
-# 或：go run ./cmd/server
+cd backend && make migrate-up
 ```
 
-后端监听 `:8080`，健康检查：
+#### 4. 启动后端
+
+```bash
+cd backend && make run
+```
+
+健康检查：
 
 ```bash
 curl http://localhost:8080/healthz
 # {"status":"ok"}
 ```
 
-### 5. 启动前端
+#### 5. 启动前端
 
 ```bash
-cd frontend
-pnpm install
-pnpm dev
+cd frontend && pnpm install && pnpm dev
 ```
 
-前端开发服务默认运行在 `http://localhost:5173`，Vite 会将 `/api` 反代到 `http://localhost:8080`。
+前端开发服务运行在 `http://localhost:5173`，Vite 将 `/api` 反代到 `http://localhost:8080`。
 
 ## 项目结构
 
@@ -127,11 +138,14 @@ backend/
     service/                  # 认证、文件、上传、媒体、用户、回收站 worker
     storage/                  # 本地物理文件/分片存储
     store/                    # PostgreSQL 连接
+    web/                      # go:embed 前端静态文件（方案二）
   pkg/
     fileutil/                 # MIME/分类等文件工具
     jwtutil/                  # JWT 生成与校验
 frontend/
-  messages/                   # Paraglide 源消息
+  svelte.config.js             # adapter-node 配置（方案一）
+  svelte.config.static.js      # adapter-static 配置（方案二）
+  messages/                    # Paraglide 源消息
   src/
     lib/
       api/                    # 当前/遗留 API 客户端
@@ -143,10 +157,13 @@ frontend/
     routes/
       (public)/               # 登录、注册
       (protected)/            # 登录后页面：主页、文件、媒体、任务、账号等
-docker-compose.yml            # 后端 + 数据库迁移 + PostgreSQL + Redis
-backend/Dockerfile             # 后端容器构建
-backend/config.docker.yaml     # 后端容器配置
-data/                         # 默认本地存储根目录
+docker-compose.yml             # 方案一：nginx + frontend + backend + PostgreSQL + Redis
+docker-compose.single.yml      # 方案二：单容器（前端嵌入 Go 二进制）+ PostgreSQL + Redis
+backend/Dockerfile              # 后端容器构建（独立）
+backend/Dockerfile.single       # 单容器构建（前端 + 后端）
+backend/config.docker.yaml      # 后端容器配置
+nginx/default.conf              # nginx 反代配置（方案一，HTTP 80）
+data/                           # 默认本地存储根目录
 ```
 
 ## 前端路由
@@ -299,7 +316,7 @@ Base URL：`/api/v1`。除注册、登录、刷新 token、健康检查和静态
 
 ```text
 data/
-├── files/ab/cd/<sha256>       # 物理文件，按 SHA-256 前 4 位拆分目录
+├── files/ab/cd/<sha256>       # 物理文件，按 SHA-256 前 2 字节拆分目录
 ├── tmp/                       # 上传临时分片
 ├── avatars/                   # 用户头像
 └── hls/                       # HLS 转码产物和封面
@@ -383,13 +400,15 @@ rate_limit:
 
 ```bash
 cd backend
-make run          # 启动服务
-make build        # 构建 bin/server
-make migrate-up   # 执行迁移
-make migrate-down # 回滚一次迁移
-make sqlc-gen     # 重新生成 sqlc 代码
-make test         # Go 测试
-make tidy         # go mod tidy
+make run                  # 启动服务
+make build                # 构建 bin/server
+make migrate-up           # 执行迁移
+make migrate-down         # 回滚一次迁移
+make sqlc-gen             # 重新生成 sqlc 代码
+make build-frontend-static # 构建前端静态文件到 internal/web/build（方案二用）
+make build-single         # 构建单容器镜像
+make test                 # Go 测试
+make tidy                 # go mod tidy
 ```
 
 ### 前端
