@@ -219,7 +219,7 @@ func buildHandlers(
 	rdb *redis.Client,
 	jwtMgr *jwtutil.Manager,
 ) *handlers {
-	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg)
+	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb)
 	userSvc := service.NewUserService(queries, pg, cfg)
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)

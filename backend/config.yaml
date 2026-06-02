@@ -64,3 +64,15 @@ media:
 rate_limit:
   api_requests_per_min: 600
   auth_requests_per_min: 20
+
+oauth2:
+  redirect_base_url: "http://localhost:8080"  # 后端地址，代码会自动追加 /api/v1/auth/oauth/{provider}/callback
+  frontend_url: "http://localhost:5173"       # 前端地址，代码会自动追加 /oauth/callback
+  providers:
+    "2libra":
+      client_id: "e6f4d72c30cb420488cc5619e34dea64"
+      client_secret: "2045782b195cf83c8568de8fec4c1fda4ca4db8c7ba713052162d49cc79f2c4d"
+      auth_url: "https://2libra.com/oauth/authorize"
+      token_url: "https://2libra.com/api/oauth/token"
+      user_info_url: "https://2libra.com/api/oauth/me"
+      scope: "profile"

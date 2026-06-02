@@ -88,14 +88,27 @@ type UploadTask struct {
 }
 
 type User struct {
-	ID           int64              `json:"id"`
-	Slug         string             `json:"slug"`
-	Username     string             `json:"username"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"passwordHash"`
-	Status       int16              `json:"status"`
-	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+	ID             int64              `json:"id"`
+	Slug           string             `json:"slug"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	PasswordHash   string             `json:"passwordHash"`
+	Status         int16              `json:"status"`
+	RegisterMethod string             `json:"registerMethod"`
+	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`
+}
+
+type UserOauthAccount struct {
+	ID                int64              `json:"id"`
+	UserID            int64              `json:"userId"`
+	Provider          string             `json:"provider"`
+	ProviderAccountID string             `json:"providerAccountId"`
+	AccessToken       string             `json:"accessToken"`
+	RefreshToken      string             `json:"refreshToken"`
+	TokenExpiresAt    pgtype.Timestamptz `json:"tokenExpiresAt"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt         pgtype.Timestamptz `json:"updatedAt"`
 }
 
 type UserFile struct {

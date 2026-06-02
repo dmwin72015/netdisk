@@ -2,15 +2,16 @@
 	import { goto } from '$app/navigation';
 	import { login } from '$lib/api/auth';
 	import { setUser } from '$lib/stores/auth';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError, api, updateTokens, type UserInfo } from '$lib/api/client';
 	import AuthShell from '$lib/components/AuthShell.svelte';
-	import { Cloud, LockKeyhole, Mail, ShieldCheck, Sparkles } from '@lucide/svelte';
+	import { Cloud, LockKeyhole, Mail, ShieldCheck, Sparkles, ExternalLink } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let email = $state('');
 	let password = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
+	let oauthBusy = $state(false);
 
 	async function submit(e: Event) {
 		e.preventDefault();
@@ -25,6 +26,48 @@
 		} finally {
 			busy = false;
 		}
+	}
+
+	function oauthLogin() {
+		const width = 520;
+		const height = 600;
+		const left = (screen.width - width) / 2;
+		const top = (screen.height - height) / 2;
+		const popup = window.open(
+			'/api/v1/auth/oauth/2libra/authorize',
+			'oauth-popup',
+			`width=${width},height=${height},left=${left},top=${top},popup=1`,
+		);
+
+		if (!popup) {
+			error = 'Popup was blocked. Please allow popups for this site.';
+			return;
+		}
+
+		oauthBusy = true;
+
+		function onMessage(event: MessageEvent) {
+			if (event.origin !== location.origin) return;
+			const { accessToken, refreshToken } = event.data ?? {};
+			if (!accessToken || !refreshToken) return;
+
+			window.removeEventListener('message', onMessage);
+			updateTokens({ accessToken, refreshToken, expiresIn: 3600 });
+
+			api<UserInfo>('/api/v1/user/me', { method: 'GET' })
+				.then((data) => {
+					setUser(data);
+					goto('/');
+				})
+				.catch(() => {
+					error = 'Failed to complete login';
+				})
+				.finally(() => {
+					oauthBusy = false;
+				});
+		}
+
+		window.addEventListener('message', onMessage);
 	}
 </script>
 
@@ -114,6 +157,28 @@
 						{busy ? m.logging_in() : m.login_btn()}
 					</button>
 				</form>
+
+				<div class="relative mt-6">
+					<div class="absolute inset-0 flex items-center">
+						<div class="w-full border-t border-slate-200"></div>
+					</div>
+					<div class="relative flex justify-center text-xs">
+						<span class="bg-white/90 px-2 text-slate-400">or continue with</span>
+					</div>
+				</div>
+
+				<button
+					onclick={oauthLogin}
+					disabled={oauthBusy}
+					class="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+				>
+					{#if oauthBusy}
+						<ExternalLink size={16} class="animate-pulse" />
+					{:else}
+						<img src="/2libra.png" alt="" class="h-4 w-4" />
+					{/if}
+					2libra
+				</button>
 			</div>
 		</div>
 	</section>

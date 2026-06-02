@@ -66,3 +66,15 @@ media:
 rate_limit:
   api_requests_per_min: 600
   auth_requests_per_min: 20
+
+oauth2:
+  redirect_base_url: "http://localhost"
+  frontend_url: "http://localhost"
+  providers:
+    "2libra":
+      client_id: ""
+      client_secret: ""
+      auth_url: "https://2libra.com/oauth/authorize"
+      token_url: "https://2libra.com/api/oauth/token"
+      user_info_url: "https://2libra.com/api/oauth/me"
+      scope: "profile"

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, getContext } from 'svelte';
 	import { user, authReady } from '$lib/stores/auth';
 	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
 	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown } from '@lucide/svelte';
@@ -8,8 +8,8 @@
 	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
 	import { Popover } from '$lib/ui/popover';
-	import UploadPanel from '$lib/components/files/UploadPanel.svelte';
-	import { createUploadManager } from '$lib/upload-manager.svelte';
+	import type { createUploadManager as UploadMgrFn } from '$lib/upload-manager.svelte';
+	type UploadManager = ReturnType<typeof UploadMgrFn>;
 	import * as m from '$lib/paraglide/messages';
 
 	let items = $state<MediaItem[]>([]);
@@ -20,8 +20,6 @@
 	let menuTimer: ReturnType<typeof setTimeout> | undefined;
 	let groupWidth = $state(0);
 	let videoInput: HTMLInputElement | undefined = $state();
-	let retryInput: HTMLInputElement | undefined = $state();
-	let retryUid = $state<string | null>(null);
 	let pollTimer: ReturnType<typeof setInterval> | undefined;
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -30,17 +28,18 @@
 		return /\.(mp4|mov|webm|mkv|avi|flv|wmv|ogv|ogg|mpeg|mpg|m4v)$/i.test(file.name);
 	}
 
-	const upload = createUploadManager({
-		getCurrentSlug: async () => {
+	const upload = getContext<UploadManager>('upload');
+
+	$effect(() => {
+		upload.setAcceptFile(isVideoFile);
+		upload.setGetCurrentSlug(async () => {
 			const dir = await ensureMediaUploadDir();
 			return dir.slug;
-		},
-		acceptFile: isVideoFile,
-		storageKey: 'nd.media.uploads',
-		onRejected: (files) => {
+		});
+		upload.setOnRejected((files) => {
 			toast.error(m.media_upload_rejected({ count: files.length }));
-		},
-		onFileImported: async ({ fileSlug }) => {
+		});
+		upload.setOnFileImported(async ({ fileSlug }) => {
 			try {
 				const resp = await addToLibrary(fileSlug);
 				if (resp.transcodeStatus === 'existing') {
@@ -54,10 +53,10 @@
 				toast.error(e instanceof Error ? e.message : m.media_add_failed());
 				throw e;
 			}
-		},
-		onCompleted: async () => {
+		});
+		upload.setOnCompleted(async () => {
 			await refresh(false);
-		},
+		});
 	});
 
 	function startPolling() {
@@ -122,22 +121,7 @@
 		}
 	}
 
-	function handleRetry(uid: string) {
-		retryUid = uid;
-		retryInput?.click();
-	}
-
-	function onRetryPick(e: Event) {
-		const el = e.currentTarget as HTMLInputElement;
-		const file = el?.files?.[0];
-		el.value = '';
-		if (!file || !retryUid) return;
-		upload.retryItem(retryUid, file);
-		retryUid = null;
-	}
-
 	onMount(() => {
-		upload.restore();
 		void refresh();
 	});
 </script>
@@ -194,14 +178,6 @@
 			class="hidden"
 			onchange={upload.onPick}
 		/>
-		<input
-			bind:this={retryInput}
-			type="file"
-			accept="video/*,.mkv,.avi,.flv,.wmv,.ogv,.ogg,.mpeg,.mpg,.m4v"
-			class="hidden"
-			onchange={onRetryPick}
-		/>
-
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
 				<LoaderCircle size={24} class="animate-spin text-gray-300" />
@@ -283,14 +259,5 @@
 		open={showAddDialog}
 		onClose={() => (showAddDialog = false)}
 		onDone={refresh}
-	/>
-
-	<UploadPanel
-		items={upload.items}
-		onPause={upload.pauseUpload}
-		onResume={upload.resumeUpload}
-		onDelete={upload.deleteUpload}
-		onClear={upload.clearCompleted}
-		onRetry={handleRetry}
 	/>
 {/if}

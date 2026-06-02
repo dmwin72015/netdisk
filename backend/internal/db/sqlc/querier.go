@@ -28,8 +28,11 @@ type Querier interface {
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (UserTransaction, error)
 	CreateTranscode(ctx context.Context, arg CreateTranscodeParams) (MediaTranscode, error)
 	CreateUploadTask(ctx context.Context, arg CreateUploadTaskParams) (UploadTask, error)
+	CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccountParams) (UserOauthAccount, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteExpiredTasks(ctx context.Context) error
+	GetOAuthAccountByProviderAndID(ctx context.Context, arg GetOAuthAccountByProviderAndIDParams) (UserOauthAccount, error)
+	GetOAuthAccountsByUserID(ctx context.Context, userID int64) ([]UserOauthAccount, error)
 	DeleteFile(ctx context.Context, id int64) error
 	DeleteMediaItem(ctx context.Context, id int64) error
 	DeletePhysicalFile(ctx context.Context, id int64) error

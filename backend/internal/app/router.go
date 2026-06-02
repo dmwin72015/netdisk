@@ -44,6 +44,8 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	auth.POST("/login", h.Auth.Login)
 	auth.POST("/refresh", h.Auth.Refresh)
 	auth.POST("/logout", h.Auth.Logout, mw.JWT(jwtMgr))
+	auth.GET("/oauth/:provider/authorize", h.Auth.OAuthRedirect)
+	auth.GET("/oauth/:provider/callback", h.Auth.OAuthCallback)
 
 	// Authenticated routes
 	authed := api.Group("", mw.JWT(jwtMgr))

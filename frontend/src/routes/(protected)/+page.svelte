@@ -64,7 +64,7 @@
 	<div class="space-y-6">
 		<!-- Welcome -->
 		<div>
-			<h1 class="text-2xl font-semibold text-gray-900">{m.home_welcome({ name: $user.username })}</h1>
+			<h1 class="text-2xl font-semibold text-gray-900">{m.home_welcome({ name: $user.profile.displayName || $user.username })}</h1>
 		</div>
 
 		<!-- Quick links -->

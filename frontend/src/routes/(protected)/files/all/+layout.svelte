@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, getContext } from 'svelte';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
@@ -16,13 +16,13 @@
 	import DrivePreview from '$lib/components/DrivePreview.svelte';
 	import FileListView from '$lib/components/files/FileListView.svelte';
 	import FolderUploadDialog from '$lib/components/files/FolderUploadDialog.svelte';
-	import UploadPanel from '$lib/components/files/UploadPanel.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FilesToolbar, { type SortField, type ViewMode } from '$lib/components/files/FilesToolbar.svelte';
 	import { confirmDelete, promptInput } from '$lib/dialog';
 	import { FileQuestionMark, LoaderCircle } from '@lucide/svelte';
-	import { createUploadManager } from '$lib/upload-manager.svelte';
 	import { UPLOAD_FILE_CONCURRENCY } from '$lib/upload-concurrency';
+	import type { createUploadManager as UploadMgrFn } from '$lib/upload-manager.svelte';
+	type UploadManager = ReturnType<typeof UploadMgrFn>;
 	import * as m from '$lib/paraglide/messages';
 
 	let { children } = $props();
@@ -75,19 +75,17 @@
 		;
 		let uploadConcurrency = $state(initialUploadConcurrency);
 
-	// --- Upload manager ---
-	let fileInput: HTMLInputElement | undefined = $state();
-	let folderInput: HTMLInputElement | undefined = $state();
-
-		const upload = createUploadManager({
-			getCurrentSlug: () => currentSlug,
-			onCompleted: () => refresh(),
-			maxConcurrent: initialUploadConcurrency,
-		});
+	// --- Upload manager (shared via context) ---
+	const upload = getContext<UploadManager>('upload');
 
 	$effect(() => {
 		upload.updateMaxConcurrent(uploadConcurrency);
+		upload.setGetCurrentSlug(() => currentSlug);
+		upload.setOnCompleted(() => refresh());
 	});
+
+	let fileInput: HTMLInputElement | undefined = $state();
+	let folderInput: HTMLInputElement | undefined = $state();
 
 	function setUploadConcurrency(value: number) {
 		uploadConcurrency = normalizeUploadConcurrency(value);
@@ -435,14 +433,6 @@
 	loading={upload.folderDialogLoading}
 	onConfirm={upload.onFolderConfirm}
 	onCancel={() => { upload.folderDialogOpen = false; }}
-/>
-
-<UploadPanel
-	items={upload.items}
-	onPause={upload.pauseUpload}
-	onResume={upload.resumeUpload}
-	onDelete={upload.deleteUpload}
-	onClear={upload.clearCompleted}
 />
 
 {@render children()}

@@ -36,8 +36,8 @@ type SnapshotItem = {
 };
 
 export function createUploadManager(opts: {
-	getCurrentSlug: () => string | null | Promise<string | null>;
-	onCompleted: () => void | Promise<void>;
+	getCurrentSlug?: () => string | null | Promise<string | null>;
+	onCompleted?: () => void | Promise<void>;
 	acceptFile?: (file: File) => boolean;
 	onRejected?: (files: File[]) => void;
 	onFileImported?: (result: ImportedUploadFile) => void | Promise<void>;
@@ -45,6 +45,28 @@ export function createUploadManager(opts: {
 	maxConcurrent?: number;
 }) {
 	const STORAGE_KEY = opts.storageKey || '';
+
+	let _getCurrentSlug = opts.getCurrentSlug ?? (() => null);
+	let _onCompleted = opts.onCompleted ?? (() => {});
+	let _acceptFile = opts.acceptFile;
+	let _onRejected = opts.onRejected;
+	let _onFileImported = opts.onFileImported;
+
+	function setGetCurrentSlug(fn: () => string | null | Promise<string | null>) {
+		_getCurrentSlug = fn;
+	}
+	function setOnCompleted(fn: () => void | Promise<void>) {
+		_onCompleted = fn;
+	}
+	function setAcceptFile(fn?: (file: File) => boolean) {
+		_acceptFile = fn;
+	}
+	function setOnRejected(fn?: (files: File[]) => void) {
+		_onRejected = fn;
+	}
+	function setOnFileImported(fn?: (result: ImportedUploadFile) => void | Promise<void>) {
+		_onFileImported = fn;
+	}
 
 	function saveSnapshot() {
 		if (!STORAGE_KEY) return;
@@ -140,26 +162,26 @@ export function createUploadManager(opts: {
 	}
 
 	function filterAcceptedFiles(files: File[]) {
-		if (!opts.acceptFile) return files;
+		if (!_acceptFile) return files;
 
 		const accepted: File[] = [];
 		const rejected: File[] = [];
 		for (const file of files) {
-			if (opts.acceptFile(file)) accepted.push(file);
+			if (_acceptFile(file)) accepted.push(file);
 			else rejected.push(file);
 		}
 
 		if (rejected.length > 0) {
-			opts.onRejected?.(rejected);
+			_onRejected?.(rejected);
 		}
 		return accepted;
 	}
 
 	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string) {
 		item.phase = 'importing';
-		const parentSlug = await opts.getCurrentSlug();
+		const parentSlug = await _getCurrentSlug();
 		const imported = await importFile(physicalFileSlug, item.fileName, parentSlug || undefined);
-		await opts.onFileImported?.({
+		await _onFileImported?.({
 			fileSlug: imported.fileSlug,
 			fileName: imported.fileName,
 			physicalFileSlug,
@@ -384,7 +406,7 @@ export function createUploadManager(opts: {
 									item.phase = 'completed';
 									item.uploadedBytes = item.fileSize;
 									log(item.uid, null, 'completed (dedup)');
-									try { await opts.onCompleted(); } catch (e) { warn(item.uid, null, 'onCompleted threw', e); }
+									try { await _onCompleted(); } catch (e) { warn(item.uid, null, 'onCompleted threw', e); }
 									return;
 								}
 								log(item.uid, null, 'verify MISS, falling through to upload');
@@ -404,7 +426,7 @@ export function createUploadManager(opts: {
 			item.phase = 'uploading';
 			log(item.uid, null, 'phase → uploading, init session...');
 			const mimeType = item.file.type || 'application/octet-stream';
-			const parentSlug = await opts.getCurrentSlug();
+			const parentSlug = await _getCurrentSlug();
 			const task = await initUpload(item.fileHash, item.preHash, item.fileSize, mimeType, item.file.name, parentSlug || undefined);
 			item.uploadSlug = task.uploadSlug;
 			let hashSynced = Boolean(item.fileHash);
@@ -530,7 +552,7 @@ export function createUploadManager(opts: {
 			item.uploadedBytes = item.fileSize;
 			item.speed = 0;
 			log(item.uid, task.uploadSlug, `completed in ${Date.now() - tStart}ms`);
-			try { await opts.onCompleted(); } catch (e) { warn(item.uid, task.uploadSlug, 'onCompleted threw', e); }
+			try { await _onCompleted(); } catch (e) { warn(item.uid, task.uploadSlug, 'onCompleted threw', e); }
 		} catch (e) {
 			if (item.phase === 'paused') {
 				log(item.uid, item.uploadSlug, 'paused during operation, skipping');
@@ -647,6 +669,11 @@ export function createUploadManager(opts: {
 		clearCompleted,
 		restore,
 		retryItem,
+		setGetCurrentSlug,
+		setOnCompleted,
+		setAcceptFile,
+		setOnRejected,
+		setOnFileImported,
 		updateMaxConcurrent(n: number) {
 			maxConcurrent = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, n));
 			pumpQueue();

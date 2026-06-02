@@ -23,6 +23,7 @@ type Config struct {
 	Cache     CacheConfig     `mapstructure:"cache"`
 	Media     MediaConfig     `mapstructure:"media"`
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
+	OAuth2    OAuth2Config    `mapstructure:"oauth2"`
 }
 
 type ServerConfig struct {
@@ -103,6 +104,21 @@ type MediaConfig struct {
 type RateLimitConfig struct {
 	APIRequestsPerMin  int `mapstructure:"api_requests_per_min"`
 	AuthRequestsPerMin int `mapstructure:"auth_requests_per_min"`
+}
+
+type OAuth2Config struct {
+	RedirectBaseURL string                     `mapstructure:"redirect_base_url"`
+	FrontendURL     string                     `mapstructure:"frontend_url"`
+	Providers       map[string]OAuth2ProviderConfig `mapstructure:"providers"`
+}
+
+type OAuth2ProviderConfig struct {
+	ClientID     string `mapstructure:"client_id"`
+	ClientSecret string `mapstructure:"client_secret"`
+	AuthURL      string `mapstructure:"auth_url"`
+	TokenURL     string `mapstructure:"token_url"`
+	UserInfoURL  string `mapstructure:"user_info_url"`
+	Scope        string `mapstructure:"scope"`
 }
 
 func Load(path string) (*Config, error) {
