@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, ChevronLeft, Folder, FolderOpen, Loader2, MoveRight } from '@lucide/svelte';
+	import { Check, ChevronLeft, Folder, FolderOpen, LoaderCircle, MoveRight } from '@lucide/svelte';
 	import { listFiles, type FileItem } from '$lib/api/files';
 	import { Dialog } from '$lib/ui/dialog';
 	import * as m from '$lib/paraglide/messages';
@@ -196,7 +196,7 @@
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<Loader2 size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-gray-300" />
 			</div>
 		{:else if selectableDirs.length === 0}
 			<div class="flex flex-col items-center justify-center py-14 text-center">
@@ -266,7 +266,7 @@
 				class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
 			>
 				{#if submitting}
-					<Loader2 size={14} class="animate-spin" />
+					<LoaderCircle size={14} class="animate-spin" />
 				{:else}
 					<MoveRight size={14} />
 				{/if}

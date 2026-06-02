@@ -80,6 +80,7 @@ type UploadTask struct {
 	Status         string             `json:"status"`
 	PhysicalFileID pgtype.Int8        `json:"physicalFileId"`
 	ErrorMsg       pgtype.Text        `json:"errorMsg"`
+	ParentSlug     pgtype.Text        `json:"parentSlug"`
 	ExpiresAt      pgtype.Timestamptz `json:"expiresAt"`
 	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`

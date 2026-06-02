@@ -1,8 +1,11 @@
 # Build artifacts
 backend/bin/
 backend/tmp/
+backend/.cache/
+backend/server.pid
 backend/data
 backend/data/*
+data
 
 # Frontend
 frontend/node_modules/
@@ -13,6 +16,7 @@ frontend/.env
 # Env / secrets
 .env
 *.local
+backend/config.yaml
 
 # Editor
 .vscode/
@@ -26,4 +30,3 @@ frontend/.env
 # .agents
 # .claude
 # .kiro
-backend/netdisk

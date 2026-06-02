@@ -150,6 +150,11 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
 		const fresh = await tryRefresh();
 		if (fresh) {
 			res = await rawRequest(path, init, fresh);
+		} else if (browser) {
+			// Redirect to login instead of throwing 401 ApiError
+			// (which callers would show as a toast).
+			window.location.href = '/login';
+			return new Promise<never>(() => {});
 		}
 	}
 

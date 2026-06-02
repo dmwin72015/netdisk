@@ -110,6 +110,10 @@ func BuildListFilesQuery(p ListFilesParams) (sql string, args []any, countSql st
 	where := buildWhere(p)
 
 	orderBy := fmt.Sprintf("f.%s %s", p.SortBy, p.SortDir)
+	// System directories always appear first
+	if !p.ExcludeSystem {
+		orderBy = fmt.Sprintf("f.is_system DESC, %s", orderBy)
+	}
 	// Directory browsing: always show folders first
 	if !p.IsTrashed && p.ParentID != nil {
 		orderBy = fmt.Sprintf("is_dir DESC, %s", orderBy)

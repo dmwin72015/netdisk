@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listRecentFiles, type FileItem } from '$lib/api/files';
 	import { listUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
-	import { Folder, Film, Star, Trash2, Loader2, File, AlertCircle, RefreshCw, Upload, CheckCircle2 } from '@lucide/svelte';
+	import { Folder, Film, Star, Trash2, LoaderCircle, File, CircleAlert, RefreshCw, Upload, CircleCheck } from '@lucide/svelte';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -17,11 +15,6 @@
 	const activeStatus = new Set(['created', 'uploading', 'merging', 'failed']);
 
 	onMount(() => {
-		if (!browser) return;
-		if (!$user) {
-			void goto('/login');
-			return;
-		}
 		loadRecentFiles();
 		loadIncompleteTasks();
 	});
@@ -51,7 +44,7 @@
 		created:   { label: 'Pending',     icon: Upload,      class: 'text-blue-600' },
 		uploading: { label: 'Uploading',   icon: Upload,      class: 'text-blue-600' },
 		merging:   { label: 'Merging',     icon: RefreshCw,   class: 'text-amber-600' },
-		failed:    { label: 'Failed',      icon: AlertCircle, class: 'text-red-600' },
+		failed:    { label: 'Failed',      icon: CircleAlert, class: 'text-red-600' },
 	};
 
 	function taskProgress(task: UploadTaskItem): number {
@@ -67,8 +60,7 @@
 	}
 </script>
 
-{#if !$authReady}
-{:else if $user}
+{#if $authReady && $user}
 	<div class="space-y-6">
 		<!-- Welcome -->
 		<div>
@@ -121,7 +113,7 @@
 						<div class="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm" style={showProgress ? `background:linear-gradient(to right, #dbeafe ${progress}%, white ${progress}%)` : ''}>
 							<div class="relative flex items-center gap-3 px-4 py-3">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80 {cfg.class}">
-									<svelte:component this={cfg.icon} size={14} />
+									<cfg.icon size={14} />
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm font-medium text-gray-900">{task.fileName || 'Unknown'}</p>
@@ -154,7 +146,7 @@
 
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
-					<Loader2 size={24} class="animate-spin text-gray-300" />
+					<LoaderCircle size={24} class="animate-spin text-gray-300" />
 				</div>
 			{:else if recentFiles.length === 0}
 				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
@@ -170,7 +162,10 @@
 						>
 							<MimeIcon mimeType={file.mimeType} isDir={file.isDir} category={file.fileCategory} size={36} />
 							<p class="mt-3 w-full truncate text-center text-sm font-medium text-gray-700" title={file.fileName}>{file.fileName}</p>
-							<div class="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+							{#if file.parentName}
+								<p class="mt-0.5 w-full truncate text-center text-xs text-gray-400" title={file.parentName}>{file.parentName}</p>
+							{/if}
+							<div class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
 								<span>{fmtSize(file.fileSize)}</span>
 								<span>·</span>
 								<span>{fmtTime(file.createdAt)}</span>
@@ -181,6 +176,4 @@
 			{/if}
 		</div>
 	</div>
-{:else}
-	<p class="text-gray-600">{@html m.please_login({ link: '<a href="/login" class="underline">' + m.login_link_text() + '</a>' })}</p>
 {/if}

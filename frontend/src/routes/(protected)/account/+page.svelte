@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import { user, setUser, authReady } from '$lib/stores/auth';
 	import { getProfile, type ProfileData } from '$lib/api/profile';
 	import ProfileCard from '$lib/components/account/ProfileCard.svelte';
@@ -13,11 +11,6 @@
 	let loading = $state(true);
 
 	onMount(() => {
-		if (!browser) return;
-		if (!$user) {
-			void goto('/login');
-			return;
-		}
 		getProfile()
 			.then((p) => {
 				profile = p;
@@ -57,8 +50,7 @@
 	let quotaBytes = $derived(profile?.storage?.storageQuota ?? 0);
 </script>
 
-{#if !$authReady}
-{:else if $user}
+{#if $authReady && $user}
 	<div class="space-y-6">
 		<h1 class="text-xl font-semibold">{m.account_center()}</h1>
 
@@ -84,6 +76,4 @@
 			{loading}
 		/>
 	</div>
-{:else}
-	<p class="text-gray-600">{@html m.please_login({ link: '<a href="/login" class="underline">' + m.login_link_text() + '</a>' })}</p>
 {/if}

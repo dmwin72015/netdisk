@@ -93,6 +93,9 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	upload.DELETE("/tasks/:slug", h.Upload.DeleteTask)
 	upload.GET("/:upload_slug/status", h.Upload.GetStatus)
 
+	// Config route
+	authed.GET("/config", h.Config.Get)
+
 	// Media routes
 	media := authed.Group("/media")
 	media.GET("/upload-dir", h.Media.EnsureUploadDir)

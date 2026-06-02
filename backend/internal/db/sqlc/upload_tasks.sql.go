@@ -39,9 +39,9 @@ func (q *Queries) CountUploadTasksByUser(ctx context.Context, arg CountUploadTas
 }
 
 const createUploadTask = `-- name: CreateUploadTask :one
-INSERT INTO upload_tasks (slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, original_name, total_chunks, chunk_size, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name
+INSERT INTO upload_tasks (slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, original_name, total_chunks, chunk_size, status, expires_at, parent_slug)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, parent_slug, expires_at, created_at, updated_at, original_name
 `
 
 type CreateUploadTaskParams struct {
@@ -57,6 +57,7 @@ type CreateUploadTaskParams struct {
 	ChunkSize    int32              `json:"chunkSize"`
 	Status       string             `json:"status"`
 	ExpiresAt    pgtype.Timestamptz `json:"expiresAt"`
+	ParentSlug   pgtype.Text        `json:"parentSlug"`
 }
 
 func (q *Queries) CreateUploadTask(ctx context.Context, arg CreateUploadTaskParams) (UploadTask, error) {
@@ -73,6 +74,7 @@ func (q *Queries) CreateUploadTask(ctx context.Context, arg CreateUploadTaskPara
 		arg.ChunkSize,
 		arg.Status,
 		arg.ExpiresAt,
+		arg.ParentSlug,
 	)
 	var i UploadTask
 	err := row.Scan(
@@ -89,6 +91,7 @@ func (q *Queries) CreateUploadTask(ctx context.Context, arg CreateUploadTaskPara
 		&i.Status,
 		&i.PhysicalFileID,
 		&i.ErrorMsg,
+		&i.ParentSlug,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -136,7 +139,7 @@ func (q *Queries) DeleteUploadTasksBySlugs(ctx context.Context, arg DeleteUpload
 }
 
 const getUploadTaskByHashForUser = `-- name: GetUploadTaskByHashForUser :one
-SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name FROM upload_tasks
+SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, parent_slug, expires_at, created_at, updated_at, original_name FROM upload_tasks
 WHERE owner_user_id = $1 AND file_hash = $2 AND status IN ('created', 'uploading')
 LIMIT 1
 `
@@ -163,6 +166,7 @@ func (q *Queries) GetUploadTaskByHashForUser(ctx context.Context, arg GetUploadT
 		&i.Status,
 		&i.PhysicalFileID,
 		&i.ErrorMsg,
+		&i.ParentSlug,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -172,7 +176,7 @@ func (q *Queries) GetUploadTaskByHashForUser(ctx context.Context, arg GetUploadT
 }
 
 const getUploadTaskBySlug = `-- name: GetUploadTaskBySlug :one
-SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name FROM upload_tasks WHERE slug = $1 LIMIT 1
+SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, parent_slug, expires_at, created_at, updated_at, original_name FROM upload_tasks WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetUploadTaskBySlug(ctx context.Context, slug string) (UploadTask, error) {
@@ -192,6 +196,7 @@ func (q *Queries) GetUploadTaskBySlug(ctx context.Context, slug string) (UploadT
 		&i.Status,
 		&i.PhysicalFileID,
 		&i.ErrorMsg,
+		&i.ParentSlug,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -201,7 +206,7 @@ func (q *Queries) GetUploadTaskBySlug(ctx context.Context, slug string) (UploadT
 }
 
 const listUploadTasksByUser = `-- name: ListUploadTasksByUser :many
-SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, expires_at, created_at, updated_at, original_name FROM upload_tasks
+SELECT id, slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, total_chunks, chunk_size, status, physical_file_id, error_msg, parent_slug, expires_at, created_at, updated_at, original_name FROM upload_tasks
 WHERE owner_user_id = $1
   AND ($4::timestamptz IS NULL OR created_at >= $4::timestamptz)
   AND ($5::timestamptz IS NULL OR created_at <= $5::timestamptz)
@@ -249,6 +254,7 @@ func (q *Queries) ListUploadTasksByUser(ctx context.Context, arg ListUploadTasks
 			&i.Status,
 			&i.PhysicalFileID,
 			&i.ErrorMsg,
+			&i.ParentSlug,
 			&i.ExpiresAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,

@@ -5,6 +5,7 @@
 	let {
 		children,
 		class: className = '',
+		style = '',
 		side = 'bottom',
 		sideOffset = 4,
 		align = 'center',
@@ -12,6 +13,7 @@
 	}: {
 		children: Snippet;
 		class?: string;
+		style?: string;
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		sideOffset?: number;
 		align?: 'start' | 'center' | 'end';
@@ -30,6 +32,7 @@
 			data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2
 			data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2
 			{className}"
+		{style}
 		{...restProps}
 	>
 		{@render children()}

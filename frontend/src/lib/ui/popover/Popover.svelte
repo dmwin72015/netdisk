@@ -9,6 +9,7 @@
 		children,
 		triggerClass = '',
 		contentClass = '',
+		contentStyle = '',
 		side = 'bottom',
 		sideOffset = 4,
 		align = 'center',
@@ -19,6 +20,7 @@
 		children: Snippet;
 		triggerClass?: string;
 		contentClass?: string;
+		contentStyle?: string;
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		sideOffset?: number;
 		align?: 'start' | 'center' | 'end';
@@ -30,7 +32,7 @@
 		{@render trigger()}
 	</PopoverBase.Trigger>
 
-	<PopoverBase.Content class={contentClass} {side} {sideOffset} {align}>
+	<PopoverBase.Content class={contentClass} style={contentStyle} {side} {sideOffset} {align}>
 		{@render children()}
 	</PopoverBase.Content>
 </PopoverBase.Root>

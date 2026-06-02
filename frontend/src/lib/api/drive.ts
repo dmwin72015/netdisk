@@ -1,6 +1,8 @@
 import { api, getAccessToken } from './client';
 import { computeSHA256 } from '$lib/upload-hash';
 import * as m from '$lib/paraglide/messages';
+import { getChunkSize, configError } from '$lib/stores/config';
+import { get } from 'svelte/store';
 
 export type DriveFile = {
 	id: string;
@@ -41,8 +43,6 @@ export type DriveClaimResult = {
 };
 
 export { computeSHA256 };
-
-const DRIVE_CHUNK_SIZE = 8 * 1024 * 1024;
 
 /** Files larger than this skip client-side SHA-256 to avoid OOM in the browser.
  *  The server computes the hash during Complete() for all files regardless. */
@@ -259,7 +259,9 @@ export async function uploadChunks(
 	startOffset: number,
 	opts: DriveUploadOptions = {},
 ): Promise<{ fileId: string }> {
-	const chunkSize = DRIVE_CHUNK_SIZE;
+	if (get(configError)) throw new Error(m.config_unavailable());
+	const chunkSize = getChunkSize();
+	if (chunkSize === null) throw new Error('config not loaded');
 	let offset = startOffset;
 
 	opts.onProgress?.({ uploaded: offset, total: file.size });

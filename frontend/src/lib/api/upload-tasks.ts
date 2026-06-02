@@ -9,6 +9,8 @@ export type UploadTaskItem = {
 	errorMsg: string;
 	totalChunks: number;
 	receivedBytes: number;
+	parentSlug?: string;
+	parentName?: string;
 	createdAt: string;
 	updatedAt: string;
 };

@@ -12,6 +12,9 @@ func RequestLogger(logger zerolog.Logger) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
 			err := next(c)
+			if err != nil {
+				c.Error(err)
+			}
 			latency := time.Since(start)
 
 			req := c.Request()
@@ -35,7 +38,7 @@ func RequestLogger(logger zerolog.Logger) echo.MiddlewareFunc {
 				ev.Err(err)
 			}
 			ev.Msg("http_request")
-			return err
+			return nil
 		}
 	}
 }

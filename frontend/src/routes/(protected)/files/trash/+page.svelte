@@ -10,7 +10,7 @@
     restoreAll,
     type FileItem,
   } from "$lib/api/files";
-  import { Trash2, RotateCcw, LoaderCircle, FolderPlus, AlertCircle } from "@lucide/svelte";
+  import { Trash2, RotateCcw, LoaderCircle, FolderPlus, CircleAlert } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
   import MimeIcon from "$lib/components/MimeIcon.svelte";
   import { confirmDelete, confirmAction } from "$lib/dialog";
@@ -131,7 +131,7 @@
     </div>
 
     <div class="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-700">
-      <AlertCircle size={16} class="shrink-0" />
+      <CircleAlert size={16} class="shrink-0" />
       <span>{m.trash_retention_hint()}</span>
     </div>
 
@@ -222,10 +222,4 @@
       </div>
     {/if}
   </div>
-{:else}
-  <p class="text-gray-600">
-    {@html m.please_login({
-      link: `<a href="/login" class="text-blue-600 underline hover:text-blue-700">${m.login_link_text()}</a>`,
-    })}
-  </p>
 {/if}

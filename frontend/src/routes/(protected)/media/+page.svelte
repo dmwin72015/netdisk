@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
-	import { Film, Trash2, Loader2, Play, AlertCircle, Clock, Plus, Upload } from '@lucide/svelte';
+	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { confirmDelete } from '$lib/dialog';
 	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
+	import { Popover } from '$lib/ui/popover';
 	import UploadPanel from '$lib/components/files/UploadPanel.svelte';
 	import { createUploadManager } from '$lib/upload-manager.svelte';
 	import * as m from '$lib/paraglide/messages';
@@ -17,7 +16,12 @@
 	let total = $state(0);
 	let loading = $state(true);
 	let showAddDialog = $state(false);
+	let showMenu = $state(false);
+	let menuTimer: ReturnType<typeof setTimeout> | undefined;
+	let groupWidth = $state(0);
 	let videoInput: HTMLInputElement | undefined = $state();
+	let retryInput: HTMLInputElement | undefined = $state();
+	let retryUid = $state<string | null>(null);
 	let pollTimer: ReturnType<typeof setInterval> | undefined;
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -32,6 +36,7 @@
 			return dir.slug;
 		},
 		acceptFile: isVideoFile,
+		storageKey: 'nd.media.uploads',
 		onRejected: (files) => {
 			toast.error(m.media_upload_rejected({ count: files.length }));
 		},
@@ -117,14 +122,27 @@
 		}
 	}
 
+	function handleRetry(uid: string) {
+		retryUid = uid;
+		retryInput?.click();
+	}
+
+	function onRetryPick(e: Event) {
+		const el = e.currentTarget as HTMLInputElement;
+		const file = el?.files?.[0];
+		el.value = '';
+		if (!file || !retryUid) return;
+		upload.retryItem(retryUid, file);
+		retryUid = null;
+	}
+
 	onMount(() => {
-		if (!$user) void goto('/login');
-		else void refresh();
+		upload.restore();
+		void refresh();
 	});
 </script>
 
-{#if !$authReady}
-{:else if $user}
+{#if $authReady && $user}
 	<div class="space-y-4">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-2">
@@ -132,21 +150,40 @@
 				<h1 class="text-lg font-semibold text-gray-900">{m.media_title()}</h1>
 				<span class="text-sm text-gray-400">{m.total_items({ total })}</span>
 			</div>
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-				<button
-					type="button"
-					onclick={() => videoInput?.click()}
-					class="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800"
-				>
-					<Upload size={15} /> {m.upload_video()}
-				</button>
-				<button
-					type="button"
-					onclick={() => (showAddDialog = true)}
-					class="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-				>
-					<Plus size={15} /> {m.add_to_media_library()}
-				</button>
+			<div class="relative" role="region"
+				onmouseenter={() => { clearTimeout(menuTimer); showMenu = true; }}
+				onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
+			>
+				<div class="flex h-8 items-center overflow-hidden rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition-colors" bind:clientWidth={groupWidth}>
+					<button type="button" onclick={() => videoInput?.click()}
+						class="flex h-full items-center gap-1.5 bg-blue-600 px-3.5 hover:bg-blue-700 active:bg-blue-800"
+					>
+						<Upload size={15} /> {m.upload_video()}
+					</button>
+					<Popover
+						bind:open={showMenu}
+						triggerClass="flex h-full items-center px-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+						contentClass="w-auto max-w-44 p-1.5"
+						contentStyle="min-width: {groupWidth}px"
+						sideOffset={4}
+						align="end"
+						onOpenChange={(o) => { if (!o) showMenu = false; }}
+					>
+						{#snippet trigger()}
+							<ChevronDown size={14} />
+						{/snippet}
+						<div role="region"
+							onmouseenter={() => clearTimeout(menuTimer)}
+							onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
+						>
+							<button type="button" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+								onclick={() => { showMenu = false; showAddDialog = true; }}
+							>
+								<Plus size={15} class="shrink-0 text-gray-500" /> <span class="truncate">{m.add_to_media_library()}</span>
+							</button>
+						</div>
+					</Popover>
+				</div>
 			</div>
 		</div>
 		<input
@@ -157,10 +194,17 @@
 			class="hidden"
 			onchange={upload.onPick}
 		/>
+		<input
+			bind:this={retryInput}
+			type="file"
+			accept="video/*,.mkv,.avi,.flv,.wmv,.ogv,.ogg,.mpeg,.mpg,.m4v"
+			class="hidden"
+			onchange={onRetryPick}
+		/>
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<Loader2 size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-gray-300" />
 			</div>
 		{:else if items.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
@@ -192,13 +236,13 @@
 							{:else}
 								<div class="flex h-full flex-col items-center justify-center gap-2">
 									{#if item.status === 'processing'}
-										<Loader2 size={24} class="animate-spin text-blue-400" />
+										<LoaderCircle size={24} class="animate-spin text-blue-400" />
 										<span class="text-xs text-blue-500">{item.progress}%</span>
 									{:else if item.status === 'pending'}
 										<Clock size={24} class="text-gray-300" />
 										<span class="text-xs text-gray-400">{m.queued()}</span>
 									{:else if item.status === 'failed'}
-										<AlertCircle size={24} class="text-red-300" />
+										<CircleAlert size={24} class="text-red-300" />
 										<span class="text-xs text-red-400">{m.failed()}</span>
 									{/if}
 								</div>
@@ -247,7 +291,6 @@
 		onResume={upload.resumeUpload}
 		onDelete={upload.deleteUpload}
 		onClear={upload.clearCompleted}
+		onRetry={handleRetry}
 	/>
-{:else}
-	<p class="text-gray-600">{@html m.please_login({ link: `<a href="/login" class="text-blue-600 underline hover:text-blue-700">${m.login_link_text()}</a>` })}</p>
 {/if}

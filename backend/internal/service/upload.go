@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/rs/zerolog"
 
 	"github.com/netdisk/server/internal/cache"
 	"github.com/netdisk/server/internal/config"
@@ -29,10 +30,11 @@ type UploadService struct {
 	cfg     *config.Config
 	store   *storage.Local
 	cache   *cache.Cache
+	logger  zerolog.Logger
 }
 
-func NewUploadService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config, store *storage.Local, c *cache.Cache) *UploadService {
-	return &UploadService{queries: queries, pg: pg, cfg: cfg, store: store, cache: c}
+func NewUploadService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config, store *storage.Local, c *cache.Cache, logger zerolog.Logger) *UploadService {
+	return &UploadService{queries: queries, pg: pg, cfg: cfg, store: store, cache: c, logger: logger}
 }
 
 type PreCheckRequest struct {
@@ -71,11 +73,12 @@ type VerifyResponse struct {
 }
 
 type InitRequest struct {
-	FileHash string `json:"fileHash"`
-	PreHash  string `json:"preHash"`
-	FileSize int64  `json:"fileSize"`
-	MimeType string `json:"mimeType"`
-	FileName string `json:"fileName"`
+	FileHash   string `json:"fileHash"`
+	PreHash    string `json:"preHash"`
+	FileSize   int64  `json:"fileSize"`
+	MimeType   string `json:"mimeType"`
+	FileName   string `json:"fileName"`
+	ParentSlug string `json:"parentSlug"`
 }
 
 type InitResponse struct {
@@ -105,21 +108,24 @@ func (s *UploadService) PreCheck(ctx context.Context, userID int64, req PreCheck
 	}
 
 	// Check Redis pre-cache
-	_, err := s.cache.PreCache.Get(ctx, req.FileSize, req.PreHash)
+	slug, err := s.cache.PreCache.Get(ctx, req.FileSize, req.PreHash)
 	if err == nil {
+		s.logger.Debug().Int64("userID", userID).Str("preHash", req.PreHash[:8]+"...").Int64("fileSize", req.FileSize).Str("cachedSlug", slug).Msg("pre-check cache hit")
 		return &PreCheckResponse{Status: "SUSPECT_HIT"}, nil
 	}
 
 	// Check DB
-	_, err = s.queries.GetPhysicalFileByPreHash(ctx, sqlc.GetPhysicalFileByPreHashParams{
+	pf, err := s.queries.GetPhysicalFileByPreHash(ctx, sqlc.GetPhysicalFileByPreHashParams{
 		PreHash:  req.PreHash,
 		FileSize: req.FileSize,
 	})
 	if err == nil {
+		s.logger.Debug().Int64("userID", userID).Str("preHash", req.PreHash[:8]+"...").Int64("fileSize", req.FileSize).Int64("physicalID", pf.ID).Msg("pre-check db hit")
 		_ = s.cache.PreCache.Set(ctx, req.FileSize, req.PreHash, "")
 		return &PreCheckResponse{Status: "SUSPECT_HIT"}, nil
 	}
 
+	s.logger.Debug().Int64("userID", userID).Str("preHash", req.PreHash[:8]+"...").Int64("fileSize", req.FileSize).Msg("pre-check miss")
 	return &PreCheckResponse{Status: "NOT_FOUND"}, nil
 }
 
@@ -134,6 +140,7 @@ func (s *UploadService) RequestChallenge(ctx context.Context, userID int64, req 
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Msg("request challenge: file not found")
 			return &RequestChallengeResponse{Status: "NOT_FOUND"}, nil
 		}
 		return nil, fmt.Errorf("get physical file: %w", err)
@@ -146,9 +153,11 @@ func (s *UploadService) RequestChallenge(ctx context.Context, userID int64, req 
 	}
 
 	if err := s.cache.Challenge.SetChallenge(ctx, userID, req.FileHash, offset, token); err != nil {
+		s.logger.Error().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("request challenge: set challenge failed")
 		return nil, fmt.Errorf("set challenge: %w", err)
 	}
 
+	s.logger.Info().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("offset", offset).Int64("fileSize", pf.FileSize).Msg("request challenge: issued")
 	return &RequestChallengeResponse{
 		Status:          "CHALLENGE",
 		ChallengeOffset: int64(offset),
@@ -163,11 +172,13 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 
 	offset, token, err := s.cache.Challenge.ConsumeChallenge(ctx, userID, req.FileHash)
 	if err != nil {
+		s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("verify: consume challenge failed")
 		return nil, model.ErrChallengeExpired
 	}
 
 	diskBytes, err := s.store.ReadAt(req.FileHash, int64(offset), 1024)
 	if err != nil {
+		s.logger.Error().Str("fileHash", req.FileHash[:8]+"...").Int("offset", offset).Err(err).Msg("verify: read file for challenge failed")
 		return nil, fmt.Errorf("read file: %w", err)
 	}
 
@@ -177,6 +188,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 	expected := hex.EncodeToString(h.Sum(nil))
 
 	if expected != req.ProofCode {
+		s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("offset", offset).Msg("verify: proof mismatch")
 		return &VerifyResponse{Status: "MISS"}, nil
 	}
 
@@ -185,6 +197,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 		FileHash: req.FileHash,
 	})
 	if err != nil {
+		s.logger.Error().Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("verify: get physical file after proof match failed")
 		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
@@ -207,6 +220,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 		}
 	}
 
+	s.logger.Info().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("existingFiles", len(existingFiles)).Msg("verify: hit")
 	return &VerifyResponse{
 		Status:           "HIT",
 		PhysicalFileSlug: pf.Slug,
@@ -230,11 +244,25 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 		})
 		if err == nil && existing.ID != 0 && existing.Status != "done" && existing.Status != "failed" {
 			chunks, _ := s.cache.Chunks.ListChunks(ctx, existing.Slug)
+			validChunks, err := s.store.ValidChunkSet(existing.Slug, int(existing.TotalChunks), int64(existing.ChunkSize), existing.FileSize)
+			if err != nil {
+				s.logger.Warn().Str("slug", existing.Slug).Err(err).Msg("init: validate resume chunks failed")
+				validChunks = map[int]bool{}
+			}
+			filteredChunks := make([]int, 0, len(chunks))
+			seen := make(map[int]bool, len(chunks))
+			for _, chunk := range chunks {
+				if validChunks[chunk] && !seen[chunk] {
+					filteredChunks = append(filteredChunks, chunk)
+					seen[chunk] = true
+				}
+			}
+			s.logger.Info().Str("slug", existing.Slug).Str("status", existing.Status).Int("cachedChunks", len(chunks)).Int("validChunks", len(filteredChunks)).Msg("init: resuming existing upload")
 			return &InitResponse{
 				UploadSlug:      existing.Slug,
 				TotalChunks:     existing.TotalChunks,
 				ChunkSize:       existing.ChunkSize,
-				CompletedChunks: chunks,
+				CompletedChunks: filteredChunks,
 			}, nil
 		}
 	}
@@ -259,11 +287,13 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 		ChunkSize:    s.cfg.Upload.ChunkSize,
 		Status:       "uploading",
 		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(time.Duration(s.cfg.Upload.TaskExpiryDays) * 24 * time.Hour), Valid: true},
+		ParentSlug:   pgtype.Text{String: req.ParentSlug, Valid: req.ParentSlug != ""},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create upload task: %w", err)
 	}
 
+	s.logger.Info().Str("slug", slug).Int64("userID", userID).Str("fileName", req.FileName).Int64("fileSize", req.FileSize).Int32("totalChunks", totalChunks).Msg("init: new upload task created")
 	return &InitResponse{
 		UploadSlug:      slug,
 		TotalChunks:     totalChunks,
@@ -285,9 +315,11 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 		return model.ErrUnauthorized
 	}
 	if task.Status != "uploading" {
+		s.logger.Warn().Str("slug", uploadSlug).Str("status", task.Status).Int32("chunkIndex", chunkIndex).Msg("append chunk on non-uploading task")
 		return model.ErrInvalidInput
 	}
 	if chunkIndex < 0 || chunkIndex >= task.TotalChunks {
+		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int32("totalChunks", task.TotalChunks).Msg("append chunk invalid index")
 		return model.ErrInvalidInput
 	}
 
@@ -298,17 +330,21 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 		expectedSize = remaining
 	}
 	if len(data) != expectedSize {
+		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("expected", expectedSize).Int("got", len(data)).Msg("append chunk size mismatch")
 		return model.ErrInvalidInput
 	}
 
 	if err := s.store.WriteChunk(uploadSlug, int(chunkIndex), bytes.NewReader(data)); err != nil {
+		s.logger.Error().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Err(err).Msg("write chunk failed")
 		return fmt.Errorf("write chunk: %w", err)
 	}
 
 	if err := s.cache.Chunks.AddChunk(ctx, uploadSlug, int(chunkIndex)); err != nil {
+		s.logger.Error().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Err(err).Msg("track chunk failed")
 		return fmt.Errorf("track chunk: %w", err)
 	}
 
+	s.logger.Debug().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("size", len(data)).Msg("chunk appended")
 	return nil
 }
 
@@ -333,12 +369,14 @@ func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req Update
 		return model.ErrUnauthorized
 	}
 	if task.FileHash != "" {
+		s.logger.Debug().Str("slug", req.UploadSlug).Str("existingHash", task.FileHash[:8]+"...").Msg("update-hash: already set, skipping")
 		return nil // already set
 	}
 	if err := s.queries.UpdateUploadTaskFileHash(ctx, sqlc.UpdateUploadTaskFileHashParams{
 		ID:       task.ID,
 		FileHash: req.FileHash,
 	}); err != nil {
+		s.logger.Error().Str("slug", req.UploadSlug).Err(err).Msg("update-hash: db update failed")
 		return fmt.Errorf("update hash: %w", err)
 	}
 	if req.PreHash != "" {
@@ -347,6 +385,7 @@ func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req Update
 			PreHash: req.PreHash,
 		})
 	}
+	s.logger.Info().Str("slug", req.UploadSlug).Str("fileHash", req.FileHash[:8]+"...").Msg("update-hash: done")
 	return nil
 }
 
@@ -363,6 +402,21 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 		return nil, model.ErrUnauthorized
 	}
 	if task.Status != "uploading" {
+		s.logger.Warn().Str("slug", uploadSlug).Str("status", task.Status).Int64("userID", userID).Msg("complete called on non-uploading task")
+		return nil, model.ErrInvalidInput
+	}
+	chunkIssues, err := s.store.ValidateChunks(uploadSlug, int(task.TotalChunks), int64(task.ChunkSize), task.FileSize)
+	if err != nil {
+		s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("complete: validate chunks failed")
+		return nil, fmt.Errorf("validate chunks: %w", err)
+	}
+	if len(chunkIssues) > 0 {
+		issue := chunkIssues[0]
+		issueEvent := s.logger.Warn().Str("slug", uploadSlug).Int("issueCount", len(chunkIssues)).Int("chunkIndex", issue.Index).Int64("expected", issue.Expected).Bool("missing", issue.Missing)
+		if !issue.Missing {
+			issueEvent = issueEvent.Int64("actual", issue.Actual)
+		}
+		issueEvent.Msg("complete: chunks incomplete")
 		return nil, model.ErrInvalidInput
 	}
 
@@ -377,21 +431,26 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 	var storagePath string
 
 	if fileHash == "" {
-		// Hash not known yet — merge chunks and compute hash.
+		s.logger.Info().Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: hash not known, merging and computing hash")
 		computedHash, sp, err := s.store.MergeChunksAndHash(uploadSlug, int(task.TotalChunks))
 		if err != nil {
 			_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{ID: task.ID, Status: "failed"})
+			s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("merge and hash failed")
 			return nil, fmt.Errorf("merge and hash: %w", err)
 		}
 		fileHash = computedHash
 		storagePath = sp
 		_ = s.queries.UpdateUploadTaskFileHash(ctx, sqlc.UpdateUploadTaskFileHashParams{ID: task.ID, FileHash: fileHash})
+		s.logger.Info().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: hash computed")
 	} else {
+		s.logger.Info().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: merging known hash")
 		acquired, err := s.cache.Lock.AcquireMergeLock(ctx, fileHash)
 		if err != nil {
+			s.logger.Error().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Err(err).Msg("acquire merge lock error")
 			return nil, fmt.Errorf("acquire lock: %w", err)
 		}
 		if !acquired {
+			s.logger.Info().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: merge lock not acquired, another instance merging")
 			return &CompleteResponse{Status: "MERGING"}, nil
 		}
 		defer s.cache.Lock.ReleaseMergeLock(ctx, fileHash)
@@ -399,10 +458,12 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 		sp, err := s.store.MergeChunks(uploadSlug, fileHash, int(task.TotalChunks))
 		if err != nil {
 			_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{ID: task.ID, Status: "failed"})
+			s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("merge chunks failed")
 			return nil, fmt.Errorf("merge chunks: %w", err)
 		}
 		storagePath = sp
 	}
+
 	pf, err := s.queries.CreatePhysicalFile(ctx, sqlc.CreatePhysicalFileParams{
 		Slug:        task.Slug,
 		HashAlgo:    "sha256",
@@ -414,11 +475,13 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 		Status:      "completed",
 	})
 	if err != nil {
+		s.logger.Warn().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Err(err).Msg("create physical file failed (race?), trying to get existing")
 		pf, err = s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
 			HashAlgo: "sha256",
 			FileHash: fileHash,
 		})
 		if err != nil {
+			s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("get physical file after create conflict also failed")
 			return nil, fmt.Errorf("get physical file: %w", err)
 		}
 	}
@@ -440,6 +503,7 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 	_ = s.store.CleanupUpload(uploadSlug)
 	_ = s.cache.Chunks.DeleteChunks(ctx, uploadSlug)
 
+	s.logger.Info().Str("slug", uploadSlug).Str("physicalFileSlug", pf.Slug).Int64("fileSize", task.FileSize).Msg("complete: done")
 	return &CompleteResponse{
 		Status:           "DONE",
 		PhysicalFileSlug: pf.Slug,
@@ -472,20 +536,23 @@ func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug 
 		resp.Error = &task.ErrorMsg.String
 	}
 
+	s.logger.Debug().Str("slug", uploadSlug).Str("status", task.Status).Msg("get-status")
 	return resp, nil
 }
 
 type TaskItem struct {
-	Slug          string `json:"slug"`
-	FileName      string `json:"fileName"`
-	FileSize      int64  `json:"fileSize"`
-	MimeType      string `json:"mimeType"`
-	Status        string `json:"status"`
-	ErrorMsg      string `json:"errorMsg,omitempty"`
-	TotalChunks   int32  `json:"totalChunks"`
-	ReceivedBytes int64  `json:"receivedBytes"`
-	CreatedAt     string `json:"createdAt"`
-	UpdatedAt     string `json:"updatedAt"`
+	Slug          string  `json:"slug"`
+	FileName      string  `json:"fileName"`
+	FileSize      int64   `json:"fileSize"`
+	MimeType      string  `json:"mimeType"`
+	Status        string  `json:"status"`
+	ErrorMsg      string  `json:"errorMsg,omitempty"`
+	TotalChunks   int32   `json:"totalChunks"`
+	ReceivedBytes int64   `json:"receivedBytes"`
+	ParentSlug    *string `json:"parentSlug,omitempty"`
+	ParentName    *string `json:"parentName,omitempty"`
+	CreatedAt     string  `json:"createdAt"`
+	UpdatedAt     string  `json:"updatedAt"`
 }
 
 type ListTasksResponse struct {
@@ -524,6 +591,7 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 	}
 
 	items := make([]TaskItem, len(tasks))
+	parentNameBySlug := make(map[string]*string)
 	for i, t := range tasks {
 		items[i] = TaskItem{
 			Slug:        t.Slug,
@@ -538,6 +606,25 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 		if t.ErrorMsg.Valid {
 			items[i].ErrorMsg = t.ErrorMsg.String
 		}
+		if t.ParentSlug.Valid {
+			items[i].ParentSlug = &t.ParentSlug.String
+			parentName, ok := parentNameBySlug[t.ParentSlug.String]
+			if !ok {
+				parentName = nil
+				parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+					Slug:   t.ParentSlug.String,
+					UserID: userID,
+				})
+				if err == nil && parent.IsDir {
+					name := parent.FileName
+					parentName = &name
+				} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					s.logger.Warn().Err(err).Str("parentSlug", t.ParentSlug.String).Msg("resolve task parent name")
+				}
+				parentNameBySlug[t.ParentSlug.String] = parentName
+			}
+			items[i].ParentName = parentName
+		}
 		// Query chunk progress for interrupted tasks
 		if t.Status == "uploading" || t.Status == "created" {
 			chunkCount, err := s.cache.Chunks.ChunkCount(ctx, t.Slug)
@@ -551,6 +638,7 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 		}
 	}
 
+	s.logger.Debug().Int64("userID", userID).Int64("total", total).Int("limit", limit).Int("offset", offset).Str("statusFilter", status).Msg("list-tasks")
 	return &ListTasksResponse{
 		Items:  items,
 		Total:  total,
@@ -571,10 +659,8 @@ func (s *UploadService) DeleteTask(ctx context.Context, userID int64, taskSlug s
 		return model.ErrNotFound
 	}
 
-	// Clean up Redis chunk tracking
 	_ = s.cache.Chunks.DeleteChunks(ctx, taskSlug)
 
-	// Delete the task row
 	if err := s.queries.DeleteUploadTaskBySlug(ctx, sqlc.DeleteUploadTaskBySlugParams{
 		Slug:        taskSlug,
 		OwnerUserID: userID,
@@ -582,6 +668,7 @@ func (s *UploadService) DeleteTask(ctx context.Context, userID int64, taskSlug s
 		return fmt.Errorf("delete task: %w", err)
 	}
 
+	s.logger.Info().Str("slug", taskSlug).Str("status", task.Status).Msg("delete-task")
 	return nil
 }
 
@@ -590,12 +677,10 @@ func (s *UploadService) DeleteTasks(ctx context.Context, userID int64, slugs []s
 		return nil
 	}
 
-	// Clean up Redis chunk tracking for each task
 	for _, slug := range slugs {
 		_ = s.cache.Chunks.DeleteChunks(ctx, slug)
 	}
 
-	// Batch delete
 	if err := s.queries.DeleteUploadTasksBySlugs(ctx, sqlc.DeleteUploadTasksBySlugsParams{
 		Column1:     slugs,
 		OwnerUserID: userID,
@@ -603,6 +688,7 @@ func (s *UploadService) DeleteTasks(ctx context.Context, userID int64, slugs []s
 		return fmt.Errorf("delete tasks: %w", err)
 	}
 
+	s.logger.Info().Int64("userID", userID).Int("count", len(slugs)).Msg("delete-tasks")
 	return nil
 }
 
@@ -618,6 +704,7 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 		return nil, model.ErrUnauthorized
 	}
 	if task.Status != "failed" {
+		s.logger.Warn().Str("slug", taskSlug).Str("status", task.Status).Msg("retry-task: task not in failed status")
 		return nil, model.ErrInvalidInput
 	}
 
@@ -641,11 +728,13 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 		ChunkSize:    s.cfg.Upload.ChunkSize,
 		Status:       "uploading",
 		ExpiresAt:    pgtype.Timestamptz{Time: time.Now().Add(time.Duration(s.cfg.Upload.TaskExpiryDays) * 24 * time.Hour), Valid: true},
+		ParentSlug:   task.ParentSlug,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create upload task: %w", err)
 	}
 
+	s.logger.Info().Str("oldSlug", taskSlug).Str("newSlug", slug).Str("fileName", task.OriginalName).Msg("retry-task")
 	return &InitResponse{
 		UploadSlug:      slug,
 		TotalChunks:     totalChunks,

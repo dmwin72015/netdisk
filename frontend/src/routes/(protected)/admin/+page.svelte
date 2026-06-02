@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Trash2, Users, ChevronLeft, ChevronRight, Loader2 } from '@lucide/svelte';
+	import { Trash2, Users, ChevronLeft, ChevronRight, LoaderCircle } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { fmtSize } from '$lib/utils/format';
 	import {
@@ -117,7 +117,7 @@
 				{#if loading}
 					<tr>
 						<td colspan="6" class="px-4 py-10 text-center text-slate-400">
-							<Loader2 size={20} class="mx-auto animate-spin" />
+							<LoaderCircle size={20} class="mx-auto animate-spin" />
 						</td>
 					</tr>
 				{:else if users.length === 0}

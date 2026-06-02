@@ -18,6 +18,7 @@
 	let categories = $state<CategoryStat[]>([]);
 	let loadingBreakdown = $state(false);
 	let percent = $derived(quotaBytes > 0 ? Math.min((usedBytes / quotaBytes) * 100, 100) : 0);
+	let categoryBaseBytes = $derived(Math.max(usedBytes, 0));
 
 	const categoryColors: Record<string, string> = {
 		video:    '#8b5cf6',
@@ -26,6 +27,7 @@
 		document: '#f59e0b',
 		archive:  '#6b7280',
 		other:    '#9ca3af',
+		trash:    '#dc2626',
 	};
 
 	const categoryLabels: Record<string, string> = {
@@ -35,6 +37,7 @@
 		document: m.category_document(),
 		archive:  m.category_archive(),
 		other:    m.category_other(),
+		trash:    m.category_trash(),
 	};
 
 	function getColor(cat: string) {
@@ -46,12 +49,12 @@
 	}
 
 	let barSegments = $derived.by(() => {
-		if (categories.length === 0 || quotaBytes <= 0) return [];
+		if (categories.length === 0 || categoryBaseBytes <= 0) return [];
 		return categories
 			.filter((cat) => cat.bytes > 0)
 			.map((cat) => ({
 				cat,
-				width: Math.max((cat.bytes / quotaBytes) * 100, 0.5),
+				width: Math.max((cat.bytes / categoryBaseBytes) * 100, 0.5),
 				color: getColor(cat.category),
 			}));
 	});
@@ -112,10 +115,10 @@
 				<!-- GitHub-style compact legend -->
 				<div class="flex flex-wrap gap-x-5 gap-y-1.5">
 					{#each categories as cat (cat.category)}
-						{@const pct = quotaBytes > 0 ? ((cat.bytes / quotaBytes) * 100).toFixed(1) : '0.0'}
+						{@const pct = categoryBaseBytes > 0 ? ((cat.bytes / categoryBaseBytes) * 100).toFixed(2) : '0.00'}
 						<div class="group relative flex items-center gap-1.5 text-sm">
 							<span
-								class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+								class="inline-block h-2.5 w-2.5 rounded-full shrink-0"
 								style="background-color:{getColor(cat.category)}"
 							></span>
 							<span class="cursor-default text-gray-900 underline decoration-dotted decoration-gray-300 underline-offset-2">{getLabel(cat.category)}</span>

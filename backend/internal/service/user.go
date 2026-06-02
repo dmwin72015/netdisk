@@ -156,11 +156,24 @@ func (s *UserService) GetStorageBreakdown(ctx context.Context, userID int64) ([]
 		return nil, err
 	}
 
-	allCategories := []string{"video", "audio", "image", "document", "archive", "other"}
+	// Query trashed files separately
+	var trashBytes, trashCount int64
+	_ = s.pg.QueryRow(ctx,
+		`SELECT COALESCE(SUM(file_size), 0), COUNT(*)
+		 FROM user_files
+		 WHERE user_id = $1 AND is_dir = FALSE AND is_trashed = TRUE`,
+		userID,
+	).Scan(&trashBytes, &trashCount)
+
+	allCategories := []string{"video", "audio", "image", "document", "archive", "other", "trash"}
 	stats := make([]CategoryStat, 0, len(allCategories))
 	for _, cat := range allCategories {
-		cs, ok := statMap[cat]
-		if !ok {
+		var cs CategoryStat
+		if cat == "trash" {
+			cs = CategoryStat{Category: "trash", Bytes: trashBytes, Count: trashCount}
+		} else if c, ok := statMap[cat]; ok {
+			cs = c
+		} else {
 			cs = CategoryStat{Category: cat}
 		}
 		stats = append(stats, cs)

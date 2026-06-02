@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronRight, Home } from '@lucide/svelte';
+	import { ChevronRight, House } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	export type Crumb = {
@@ -44,7 +44,7 @@
 			class="shrink-0 rounded p-1 text-gray-500 transition-colors hover:text-gray-900"
 			title={m.all_files()}
 		>
-			<Home size={16} />
+			<House size={16} />
 		</button>
 	{/if}
 

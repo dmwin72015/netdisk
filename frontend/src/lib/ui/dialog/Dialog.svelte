@@ -21,6 +21,7 @@
 		showCancel,
 		showConfirm,
 		headerClass = '',
+		contentStyle = '',
 		titleClass = '',
 		descriptionClass = '',
 		bodyClass = '',
@@ -46,6 +47,7 @@
 		showCancel?: boolean;
 		showConfirm?: boolean;
 		headerClass?: string;
+		contentStyle?: string;
 		titleClass?: string;
 		descriptionClass?: string;
 		bodyClass?: string;
@@ -74,7 +76,7 @@
 </script>
 
 <DialogBase.Root bind:open {onOpenChange}>
-	<DialogBase.Content class="max-h-[90vh] max-w-lg p-0! flex flex-col overflow-hidden {className}">
+	<DialogBase.Content class="max-h-[90vh] p-0! flex flex-col overflow-hidden {className}" style={contentStyle}>
 		<div class="flex {description ? 'items-start' : 'items-center'} gap-3 border-b border-gray-100 px-5 py-3 {headerClass}">
 			<DialogBase.Header class="min-w-0 flex-1 space-y-1">
 				{#if title}

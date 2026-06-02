@@ -21,7 +21,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := logging.New(cfg.Log.Level)
+	logger, closer, err := logging.NewWithOptions(logging.Options{
+		Level:     cfg.Log.Level,
+		Output:    cfg.Log.Output,
+		FilePath:  cfg.Log.FilePath,
+		MaxSizeMB: cfg.Log.MaxSizeMB,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
+		os.Exit(1)
+	}
+	if closer != nil {
+		defer closer.Close()
+	}
 
 	a, err := app.New(context.Background(), cfg, logger)
 	if err != nil {

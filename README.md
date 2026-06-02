@@ -1,308 +1,423 @@
-# NetDisk - 小型网盘系统
+# NetDisk - 个人/小团队网盘
 
-单机部署的个人/小团队网盘，支持文件管理、分片上传、秒传、断点续传、视频媒体库与 HLS 在线播放。
+NetDisk 是一个单机部署的网盘系统，面向个人和小团队使用。当前版本提供文件管理、分片上传、秒传/断点续传、上传任务管理、回收站、收藏、媒体库与 HLS 在线播放等能力。
 
-## 功能特性
+> 本文档按当前工作区代码整理。历史遗留的 `drive`、`tasks`、`videos`、`admin` 前端 API/页面仍保留在代码中，但当前后端未注册对应路由，已在下文单独标注。
 
-| 功能 | 说明 |
-|------|------|
-| 文件管理 | 目录树、列表/网格视图、排序、搜索、重命名、移动 |
-| 分片上传 | 4MB 分片，支持暂停/恢复/重试/并发队列 |
-| 秒传 (SHA-256) | 预检 → 挑战 → 验证，服务端存量文件直接导入 |
-| 上传任务 | 历史记录、状态追踪、失败重试 |
-| 回收站 | 单文件还原、全部还原、清空（原子存储回收） |
-| 收藏 | 星标文件快速访问 |
-| 媒体库 | 添加视频到媒体库，自动 HLS 转码 + 在线播放 |
-| 个人中心 | 头像、资料编辑、密码修改、存储用量（按类别细分） |
-| 管理后台 | 用户管理、角色分配、存储配额配置 |
-| 国际化 | 英文 / 中文（Paraglide） |
-| 存储分类 | 文件自动归类：视频/音频/图片/文档/压缩包/其他 |
+## 当前功能
+
+| 模块 | 当前能力 |
+|------|----------|
+| 认证 | 注册、登录、刷新 token、登出；JWT access token + refresh token 哈希存储 |
+| 文件管理 | 根目录/子目录浏览、面包屑、创建目录、重命名、移动、下载、列表/网格视图、排序、按名称前端搜索 |
+| 文件过滤 | 支持按父目录、MIME 前缀、文件分类、仅目录、是否显示系统目录过滤 |
+| 上传 | 4 MiB 分片上传、并发上传队列、暂停/恢复/重试、断点续传、上传速度和进度展示 |
+| 秒传/去重 | `pre_hash` 预检、完整 SHA-256 挑战验证、物理文件去重、导入到当前目录 |
+| 上传任务 | 上传历史分页、状态过滤、日期过滤、失败任务重试、单条/批量删除 |
+| 冲突处理 | 上传前同名/疑似重复/完整重复检测，支持用户确认后继续上传或导入 |
+| 回收站 | 移入回收站、恢复、永久删除、清空回收站、全部恢复；后台定期清理过期项目 |
+| 收藏 | 文件星标/取消星标，收藏页快速访问 |
+| 媒体库 | 将视频文件加入媒体库、创建系统上传目录、后台 FFmpeg HLS 转码、封面生成、在线播放 |
+| 个人中心 | 资料编辑、头像上传、密码修改、总用量/配额展示、分类用量统计、交易记录 |
+| 国际化 | 中文/英文，基于 Paraglide，语言偏好通过 cookie 管理 |
+| 客户端配置 | 前端从 `/api/v1/config` 获取分片大小、最大上传大小、头像大小限制 |
+| 日志/限流 | zerolog 请求日志、可选滚动文件日志、Redis API/认证限流 |
 
 ## 技术栈
 
 | 层 | 技术 |
 |----|------|
-| 后端 | Go 1.22+ / Echo v4 / sqlc / pgx |
+| 后端 | Go 1.25+、Echo v4、pgx、sqlc、Viper、zerolog |
 | 数据库 | PostgreSQL 16 |
 | 缓存 | Redis 7 |
-| 前端 | SvelteKit + Svelte 5 + Tailwind v4 |
-| 媒体处理 | FFmpeg (HLS 转码 + 封面图提取) |
-| 认证 | JWT (access 15min + refresh 7d)，前端自动刷新 |
+| 前端 | SvelteKit 2、Svelte 5、TypeScript、Tailwind CSS v4、Bits UI |
+| 上传 | Web Worker SHA-256、分片上传、Redis 分片状态/锁 |
+| 媒体 | FFmpeg / FFprobe、HLS、hls.js |
+| 测试 | Go test、Vitest、Svelte Check |
 
 ## 环境要求
 
-- Go 1.22+
-- Node 22 + pnpm
-- PostgreSQL 16
-- Redis 7
-- FFmpeg / FFprobe （需在 PATH 中）
-- 可选: golang-migrate、sqlc （本地二进制，否则回落到 Docker）
+- Go 1.25+（以 `backend/go.mod` 为准）
+- Node 22+ 与 pnpm
+- PostgreSQL 16（默认映射到 `localhost:15432`）
+- Redis 7（默认映射到 `localhost:16379`）
+- FFmpeg / FFprobe（媒体转码需要，需在 `PATH` 中）
+- 可选：`migrate`、`sqlc`；未安装时 Makefile 部分命令会回退到 Docker 镜像
 
 ## 快速启动
 
-### 1. 启动数据库和缓存
+### 1. 启动数据库和 Redis
 
-使用本地已有的 PostgreSQL （端口 15432） 和 Redis （端口 16379），或通过 Docker：
+可以使用本地已有服务，也可以通过项目根目录的 Docker Compose 启动：
 
 ```bash
 docker compose up -d
 ```
 
-### 2. 运行数据库迁移
+默认服务地址：
+
+- PostgreSQL：`postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable`
+- Redis：`localhost:16379`
+
+### 2. 准备后端配置
+
+`backend/config.yaml` 已作为本地开发配置存在；如需重新生成：
+
+```bash
+cp backend/config.example.yaml backend/config.yaml
+```
+
+按需修改数据库、Redis、存储根目录、JWT secret、FFmpeg 路径等配置。
+
+### 3. 运行数据库迁移
 
 ```bash
 cd backend
 make migrate-up
 ```
 
-### 3. 启动后端
+### 4. 启动后端
 
 ```bash
 cd backend
-make run          # 或: go run ./cmd/server
+make run
+# 或：go run ./cmd/server
 ```
 
-监听 `:8080`，健康检查 `GET /healthz`。
+后端监听 `:8080`，健康检查：
 
-### 4. 启动前端
+```bash
+curl http://localhost:8080/healthz
+# {"status":"ok"}
+```
+
+### 5. 启动前端
 
 ```bash
 cd frontend
 pnpm install
-pnpm dev          # http://localhost:5173
+pnpm dev
 ```
 
-Vite 将 `/api` 反代到 `:8080`。
+前端开发服务默认运行在 `http://localhost:5173`，Vite 会将 `/api` 反代到 `http://localhost:8080`。
 
 ## 项目结构
 
-```
+```text
 backend/
-  cmd/server/              # 入口
+  cmd/server/                 # 后端入口
   internal/
-    app/                   # Echo 初始化、路由注册
-    cache/                 # Redis 缓存 (预判、challenge、分片、锁、限流、进度)
-    config/                # 配置加载
+    app/                      # 应用初始化、路由、中间件注册
+    cache/                    # Redis 封装：challenge、分片、锁、预检、转码进度
+    config/                   # YAML 配置加载
     db/
-      migrations/          # SQL 迁移文件
-      query/               # sqlc 查询源文件
-      sqlc/                # sqlc 生成代码
-    handler/               # HTTP 处理器
-    logging/               # 日志
-    media/                 # FFmpeg 转码 worker
-    middleware/            # JWT 鉴权、限流、日志
-    model/                 # 错误定义
-    repo/                  # 数据仓库层
-    service/               # 业务逻辑
-    storage/               # 本地文件存储
-    store/                 # 数据库连接
+      migrations/             # 数据库迁移
+      query/                  # sqlc 查询源文件
+      sqlc/                   # sqlc 生成代码
+    handler/                  # HTTP handler
+    logging/                  # 控制台/文件日志与滚动写入
+    media/                    # FFmpeg 转码 worker
+    middleware/               # JWT、请求日志、Redis 限流
+    model/                    # 统一错误与客户端配置模型
+    service/                  # 认证、文件、上传、媒体、用户、回收站 worker
+    storage/                  # 本地物理文件/分片存储
+    store/                    # PostgreSQL 连接
   pkg/
-    fileutil/              # 文件工具
-    jwtutil/               # JWT 管理
+    fileutil/                 # MIME/分类等文件工具
+    jwtutil/                  # JWT 生成与校验
 frontend/
+  messages/                   # Paraglide 源消息
   src/
     lib/
-      api/                 # API 客户端
-      components/          # UI 组件
-      stores/              # 状态管理
-      workers/             # Web Worker (SHA-256 哈希)
+      api/                    # 当前/遗留 API 客户端
+      components/             # Navbar、文件、媒体、账号等业务组件
+      stores/                 # auth/config store
+      ui/                     # Dialog、Drawer、Dropdown、Popover 等 UI 基础组件
+      workers/                # SHA-256 Web Worker
+      upload-*.ts             # 上传队列、策略、并发、断点续传工具
     routes/
-      +page.svelte         # 仪表盘首页
-      login/               # 登录
-      register/            # 注册
-      files/               # 文件列表
-      files/starred/       # 收藏
-      files/trash/         # 回收站
-      drive/               # 网盘主页（旧版，待迁移）
-      media/               # 媒体库
-      media/[slug]/        # 媒体播放
-      tasks/               # 上传任务管理
-      account/             # 个人中心
-      admin/               # 管理后台
-      videos/              # 视频库（旧版，待迁移）
-docker-compose.yml         # PostgreSQL + Redis
+      (public)/               # 登录、注册
+      (protected)/            # 登录后页面：主页、文件、媒体、任务、账号等
+docker-compose.yml            # PostgreSQL + Redis
+data/                         # 默认本地存储根目录
 ```
 
-## API 接口
+## 前端路由
 
-Base URL: `/api/v1`。除 `/auth/*` 外所有写接口需 `Authorization: Bearer <access_token>`。
-
-### 认证 `/api/v1/auth`
-
-| 方法 | 路径 | 说明 |
+| 路径 | 状态 | 说明 |
 |------|------|------|
-| POST | `/auth/register` | 注册 |
-| POST | `/auth/login` | 登录 |
-| POST | `/auth/refresh` | 刷新 token |
-| POST | `/auth/logout` | 登出 （吊销 refresh token） |
+| `/login` | 可用 | 登录页 |
+| `/register` | 可用 | 注册页，注册成功后自动登录 |
+| `/` | 可用 | 仪表盘：欢迎卡片、存储概览、快捷入口、最近文件 |
+| `/files/all` | 可用 | 文件浏览器根目录 |
+| `/files/all/[slug]` | 可用 | 文件浏览器子目录，由同一个布局统一渲染 |
+| `/files/starred` | 可用 | 收藏文件列表 |
+| `/files/trash` | 可用 | 回收站列表、恢复/删除/清空 |
+| `/media` | 可用 | 媒体库列表、添加视频到媒体库 |
+| `/media/[slug]` | 可用 | HLS 播放页与转码状态展示 |
+| `/tasks` | 可用 | 上传任务历史、筛选、重试、删除 |
+| `/account` | 可用 | 个人资料、头像、密码、存储统计 |
+| `/admin` | 前端存在，后端未接通 | 管理用户/角色/配额 UI 存在，但当前后端未注册 `/api/v1/admin/*` |
+| `/videos`、`/videos/[id]` | 遗留 | 依赖旧 `/api/v1/videos/*`，当前后端未注册 |
 
-### 用户 `/api/v1/user`
+## API 概览
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/user/me` | 个人信息 （含 profile、storage、level） |
-| PATCH | `/user/profile` | 更新展示资料 |
-| POST | `/user/me/password` | 修改密码 |
-| POST | `/user/me/avatar` | 上传头像 |
-| GET | `/user/avatar/:slug` | 获取头像 （公开） |
-| GET | `/user/storage-breakdown` | 存储用量按类别细分 |
-| GET | `/user/transactions` | 交易记录 （分页） |
+Base URL：`/api/v1`。除注册、登录、刷新 token、健康检查和静态头像文件外，请求均需要 `Authorization: Bearer <access_token>`。
 
-### 文件 `/api/v1/files`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/files` | 文件列表 （支持排序、按 mimeType/类别过滤、parentSlug、分页） |
-| GET | `/files/recent` | 最近文件（跨目录） |
-| GET | `/files/trash` | 回收站列表 |
-| GET | `/files/starred` | 收藏列表 |
-| GET | `/files/:slug/breadcrumb` | 面包屑路径 |
-| GET | `/files/:slug/download` | 下载 （支持 Range） |
-| POST | `/files/mkdir` | 创建目录 |
-| POST | `/files/check-conflict` | 上传前冲突检测 |
-| POST | `/files/check-duplicate` | 完整哈希重复检测 |
-| POST | `/files/import` | 导入物理文件到网盘 |
-| POST | `/files/trash/empty` | 清空回收站 |
-| POST | `/files/trash/restore-all` | 恢复全部 |
-| DELETE | `/files/:slug` | 移入回收站 |
-| POST | `/files/:slug/restore` | 从回收站恢复 |
-| DELETE | `/files/:slug/permanent` | 永久删除 |
-| POST | `/files/:slug/rename` | 重命名 |
-| POST | `/files/:slug/move` | 移动 |
-| POST | `/files/:slug/star` | 收藏/取消收藏 |
-
-### 上传 `/api/v1/upload`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/upload/pre-check` | 低成本预判 （pre_hash） |
-| POST | `/upload/request-challenge` | 秒传挑战 |
-| POST | `/upload/verify` | 验证秒传 |
-| POST | `/upload/init` | 创建/恢复上传任务 |
-| POST | `/upload/chunk` | 上传分片 |
-| POST | `/upload/complete` | 触发合并 |
-| POST | `/upload/update-hash` | 上传完成后更新哈希 |
-| GET | `/upload/:slug/status` | 查询上传状态 |
-| GET | `/upload/tasks` | 上传历史任务列表 （分页） |
-| POST | `/upload/tasks/:slug/retry` | 重试失败任务 |
-
-### 媒体库 `/api/v1/media`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/media/items` | 加入媒体库 |
-| GET | `/media/items` | 媒体库列表 （分页） |
-| GET | `/media/items/:slug` | 媒体详情 （含转码进度） |
-| DELETE | `/media/items/:slug` | 从媒体库移除 |
-| GET | `/media/poster/:slug` | 封面图 |
-| GET | `/media/hls/:slug/*` | HLS 流 （鉴权） |
+响应统一包裹在 `data` 字段中；错误响应由 `code`、`message` 等字段描述。
 
 ### 健康检查
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/healthz` | 健康检查 |
+| GET | `/healthz` | 服务健康检查 |
 
-### 前端页面路由
+### 认证 `/api/v1/auth`
 
-| 路径 | 说明 |
-|------|------|
-| `/` | 仪表盘：欢迎 + 存储概览 + 快捷入口 + 最近文件 |
-| `/files/all` | 文件浏览器：面包屑、搜索、排序、列表/网格、上传、预览 |
-| `/files/starred` | 收藏文件 |
-| `/files/trash` | 回收站管理 |
-| `/media` | 媒体库：封面网格、状态标识、播放入口 |
-| `/media/[slug]` | HLS 视频播放器 |
-| `/tasks` | 上传任务：状态追踪、失败重试 |
-| `/account` | 个人中心：资料、头像、密码、存储用量 |
-| `/admin` | 管理后台：用户管理、配额配置 （仅 admin） |
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/auth/register` | 注册用户 |
+| POST | `/auth/login` | 登录，返回用户信息与 access/refresh token |
+| POST | `/auth/refresh` | 使用 refresh token 刷新 token |
+| POST | `/auth/logout` | 登出并吊销 refresh token，需要 JWT |
 
-## 核心设计
+### 用户 `/api/v1/user` 与头像
 
-### 上传流程
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/user/me` | 当前用户信息、profile、storage、level |
+| PATCH | `/user/profile` | 更新 `displayName`、`bio`、`avatarUrl` |
+| POST | `/user/me/password` | 修改密码 |
+| POST | `/user/me/avatar` | 上传头像，支持 JPEG/PNG/WebP |
+| GET | `/user/storage-breakdown` | 按文件分类统计存储占用 |
+| GET | `/user/transactions` | 用户交易/配额记录，支持分页 |
+| GET | `/avatars/*` | 静态头像文件服务 |
 
+### 文件 `/api/v1/files`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/files` | 文件列表；支持 `page`、`pageSize`、`parentSlug`、`mimeType`、`fileCategory`、`sortBy`、`sortDir`、`onlyDirs`、`includeSystem` |
+| GET | `/files/recent` | 最近文件，支持 `limit` |
+| GET | `/files/trash` | 回收站列表，支持分页 |
+| GET | `/files/starred` | 收藏文件列表，支持分页 |
+| GET | `/files/:slug/breadcrumb` | 文件/目录面包屑 |
+| GET | `/files/:slug/download` | 下载文件，支持 Range |
+| POST | `/files/mkdir` | 创建目录 |
+| POST | `/files/check-conflict` | 上传前同名/疑似重复检测 |
+| POST | `/files/check-duplicate` | 完整 SHA-256 重复检测 |
+| POST | `/files/import` | 将物理文件导入为用户文件 |
+| DELETE | `/files/:slug` | 移入回收站 |
+| POST | `/files/:slug/restore` | 从回收站恢复 |
+| DELETE | `/files/:slug/permanent` | 永久删除 |
+| POST | `/files/:slug/rename` | 重命名 |
+| POST | `/files/:slug/move` | 移动到目标目录 |
+| POST | `/files/:slug/star` | 收藏/取消收藏 |
+| POST | `/files/trash/empty` | 清空回收站 |
+| POST | `/files/trash/restore-all` | 恢复全部回收站文件 |
+
+### 上传 `/api/v1/upload`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/upload/pre-check` | 使用 `preHash` 和文件大小做低成本预检 |
+| POST | `/upload/request-challenge` | 为完整 SHA-256 申请秒传挑战 |
+| POST | `/upload/verify` | 验证挑战并返回可秒传的物理文件引用 |
+| POST | `/upload/init` | 创建/恢复上传任务 |
+| POST | `/upload/chunk` | 上传分片，使用 multipart/form-data |
+| POST | `/upload/complete` | 合并分片、校验 SHA-256、生成物理文件 |
+| POST | `/upload/update-hash` | 为上传任务补充/更新完整哈希 |
+| GET | `/upload/:upload_slug/status` | 查询上传任务状态 |
+| GET | `/upload/tasks` | 上传任务历史；支持 `limit`、`offset`、`startDate`、`endDate`、`status` |
+| POST | `/upload/tasks/:slug/retry` | 重试失败上传任务 |
+| DELETE | `/upload/tasks/:slug` | 删除单条上传任务 |
+| DELETE | `/upload/tasks` | 批量删除上传任务 |
+
+### 客户端配置 `/api/v1/config`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/config` | 获取 `upload.chunkSize`、`upload.maxUploadSize`、`avatar.maxSize` |
+
+### 媒体库 `/api/v1/media`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/media/upload-dir` | 确保并返回“媒体上传”系统目录 |
+| POST | `/media/items` | 将视频文件加入媒体库并触发/复用转码任务 |
+| GET | `/media/items` | 媒体库列表，支持分页 |
+| GET | `/media/items/:media_slug` | 媒体详情、转码状态与进度 |
+| DELETE | `/media/items/:media_slug` | 从媒体库移除 |
+| GET | `/media/poster/:media_slug` | 获取封面图 |
+| GET | `/media/hls/:media_slug/*` | 获取 HLS playlist/segment，需鉴权 |
+
+### 当前未注册的历史 API
+
+以下前端客户端或页面仍在仓库中，但当前 `backend/internal/app/router.go` 没有注册对应后端路由：
+
+- `/api/v1/admin/*`
+- `/api/v1/drive/*`
+- `/api/v1/tasks/*`
+- `/api/v1/videos/*`
+- 旧的 `POST /api/v1/upload` 单接口上传
+
+如需恢复这些模块，需要补齐后端 handler/service/router，或删除/迁移对应前端遗留代码。
+
+## 上传与秒传流程
+
+```text
+选择文件
+  ↓
+计算 pre_hash → POST /upload/pre-check
+  ├─ SUSPECT_HIT
+  │   ↓
+  │ 计算完整 SHA-256 → request-challenge → verify
+  │   ├─ HIT  → POST /files/import                    # 秒传导入
+  │   └─ MISS → init → chunk* → complete → import      # 正常分片上传
+  └─ NOT_FOUND
+      ↓
+    计算完整 SHA-256 → init → chunk* → complete → import
 ```
-前端计算 pre_hash → /upload/pre-check
-  ├─ SUSPECT_HIT → 计算完整 SHA-256 → /upload/request-challenge → /upload/verify
-  │    ├─ HIT → 拿到 physical_file_slug → /files/import （秒传）
-  │    └─ MISS → /upload/init → 分片上传 → /upload/complete → /files/import
-  └─ NOT_FOUND → 计算完整 SHA-256 → /upload/init → 分片上传 → /upload/complete → /files/import
-```
 
-- 上传模块只负责产生 `physical_files`，不创建网盘文件条目
-- `/files/import` 负责配额检查、目录唯一约束、创建 `user_files`
+关键点：
 
-### 文件存储
+- 上传服务只负责生成/复用 `physical_files`，不会直接创建用户目录条目。
+- `/files/import` 负责配额检查、目录唯一性检查，并创建 `user_files`。
+- 前端上传队列支持文件级并发、分片级上传、暂停/恢复、失败重试和中断续传。
+- Redis 用于保存分片状态、challenge、pre-check 缓存和合并锁。
 
-SHA-256 前 4 位拆两级目录，文件名为完整哈希，无扩展名：
+## 文件存储
 
-```
+默认存储根目录为 `data/`，当前布局：
+
+```text
 data/
-├── ab/cd/abcdef1234...    # 物理文件
-├── tmp/                   # 上传临时分片
-├── avatars/               # 用户头像
-└── hls/                   # HLS 转码产物
+├── files/ab/cd/<sha256>       # 物理文件，按 SHA-256 前 4 位拆分目录
+├── tmp/                       # 上传临时分片
+├── avatars/                   # 用户头像
+└── hls/                       # HLS 转码产物和封面
 ```
 
-- 相同哈希的物理文件在服务端仅存一份，多用户共享
-- 合并后强制 SHA-256 校验
-- 分布式 Redis 锁防止并发合并
+- 相同 SHA-256 的物理文件只保存一份，可被多个用户文件引用。
+- 合并完成后会强制校验 SHA-256。
+- 启动时会自动创建存储目录，并兼容迁移旧布局 `data/ab/cd/<hash>` 到 `data/files/ab/cd/<hash>`。
+- 文件分类基于 MIME type 归类为 `video`、`audio`、`image`、`document`、`archive`、`other`。
 
-### 媒体库
+## 媒体库流程
 
-- 上传视频后**不自动转码**，用户主动加入媒体库才触发
-- 转码产物按物理文件哈希去重，多用户共享同一份 HLS
-- FFmpeg 提取封面图（视频 10% 位置）
-- 转码进度通过 Redis 实时推送，前端 3s 轮询
-- 后台 worker 每 5s 轮询待处理任务
+- 用户上传视频后，需要主动在前端加入媒体库才会触发转码。
+- 媒体库会为用户创建系统目录（可在文件设置中显示/隐藏）。
+- 转码产物按物理文件和 profile 去重，多个用户可复用同一份 HLS。
+- FFmpeg worker 后台轮询待处理任务，生成 HLS 与 poster。
+- 转码进度写入 Redis，媒体详情页轮询状态并在完成后播放。
 
-### 上传任务管理
+## 后台任务
 
-- 每次上传任务在 `upload_tasks` 表记录完整生命周期
-- 状态流转：`created` → `uploading` → `merging` → `done` / `failed`
-- 失败任务可一键重试（生成新 slug 跳转上传页）
-- 分页列表展示所有历史任务
-
-### 存储分类
-
-文件自动按 MIME type 归类为：video、audio、image、document、archive、other。
-个人中心展示按类别的用量占比条形图。
-
-## 测试
-
-```bash
-# 后端
-cd backend && make test
-
-# 前端
-cd frontend && pnpm test
-```
+- `media worker`：按 `media.poll_interval` 和 `media.batch_size` 处理转码队列。
+- `trash worker`：按 `trash.poll_interval` 扫描过期回收站项目，超过 `trash.retention_days` 后清理。
 
 ## 配置
 
-`backend/config.yaml`:
+主要配置在 `backend/config.yaml`，可参考 `backend/config.example.yaml`：
 
 ```yaml
 server:
   port: 8080
+  cors_origins:
+    - http://localhost:5173
+
 db:
   dsn: "postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable"
+
 redis:
   addr: "localhost:16379"
+
+jwt:
+  secret: "haliluya"
+  access_ttl_min: 60
+  refresh_ttl_hour: 168
+
 storage:
-  root: "./data"
-  max_upload_size: 2147483648  # 2 GiB
+  root: "../data"
+  max_upload_size: 4294967296  # 4 GiB
+  tmp_dir: "tmp"
+  files_dir: "files"
+  avatars_dir: "avatars"
+  hls_dir: "hls"
+
 ffmpeg:
   path: "ffmpeg"
+  ffprobe_path: "ffprobe"
+
+log:
+  level: "trace"
+  output: "console"           # console 或 file
+  file_path: "./logs/server.log"
+  max_size_mb: 5
+
+limits:
+  default_storage_quota: 536870912000  # 500 GB
+  bcrypt_cost: 12
+  avatar_max_size: 2097152             # 2 MiB
+
+upload:
+  chunk_size: 4194304                  # 4 MiB
+  task_expiry_days: 30
+  merge_lock_ttl: "10m"
+
+rate_limit:
+  api_requests_per_min: 600
+  auth_requests_per_min: 20
 ```
 
-## 安全
+## 常用命令
 
-- 随机数使用 `crypto/rand`
-- challenge 原子取删 （Lua 脚本）
-- 文件路径严格正则校验
-- 下载和 HLS 做资源归属校验
-- 配额原子更新，防止并发突破
-- 合并后强制 SHA-256 校验
-- refresh token 只存哈希
-- 头像上传限制 JPEG/PNG/WebP
+### 后端
+
+```bash
+cd backend
+make run          # 启动服务
+make build        # 构建 bin/server
+make migrate-up   # 执行迁移
+make migrate-down # 回滚一次迁移
+make sqlc-gen     # 重新生成 sqlc 代码
+make test         # Go 测试
+make tidy         # go mod tidy
+```
+
+### 前端
+
+```bash
+cd frontend
+pnpm dev          # 开发服务
+pnpm build        # 构建
+pnpm preview      # 预览构建产物
+pnpm check        # Svelte/TypeScript 检查
+pnpm test         # Vitest 测试
+```
+
+## 数据库迁移概览
+
+当前迁移包含：
+
+- 初始用户、资料、配额、文件、上传任务、refresh token、媒体转码和媒体库表。
+- 移除部分外键约束，便于异步清理/引用管理。
+- 添加文件分类、父目录 slug、上传任务文件名、上传任务父目录 slug。
+- 默认配额从 10 GiB 调整为 500 GiB，默认等级调整为 `VIP1`。
+- 添加系统目录标记与系统目录唯一约束。
+
+## 安全与一致性
+
+- JWT access token + refresh token，refresh token 仅保存哈希并支持吊销。
+- 上传 challenge 使用 Redis Lua 原子取删，减少重放风险。
+- 路径和存储 key 使用受控生成，下载、HLS、头像均做归属或类型校验。
+- 头像上传限制 MIME 与大小，支持 JPEG/PNG/WebP。
+- 上传合并后强制 SHA-256 校验，Redis 锁防止并发合并。
+- 配额更新通过数据库事务处理，避免并发突破。
+- API 与认证接口均有 Redis 限流。
+
+## 已知待办
+
+- 后端尚未注册 `/api/v1/admin/*`，但前端 `/admin` 页面和 `frontend/src/lib/api/admin.ts` 已存在。
+- `frontend/src/lib/api/drive.ts`、`tasks.ts`、`videos.ts` 以及 `/videos` 页面属于旧接口遗留，当前不可直接使用。
+- 根目录 `.gitignore` 或开发环境中可能会出现本地运行产物（如 `backend/server.pid`、Go build cache、日志文件），提交前应按团队约定清理。

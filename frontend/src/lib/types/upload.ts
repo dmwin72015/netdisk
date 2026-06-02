@@ -1,4 +1,4 @@
-export type UploadPhase = 'hashing' | 'pending' | 'verifying' | 'uploading' | 'paused' | 'importing' | 'completed' | 'failed';
+export type UploadPhase = 'hashing' | 'pending' | 'verifying' | 'uploading' | 'paused' | 'importing' | 'completed' | 'failed' | 'interrupted';
 
 export type UploadItem = {
 	uid: string;

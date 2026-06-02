@@ -12,6 +12,13 @@ import (
 	"strings"
 )
 
+type ChunkIssue struct {
+	Index    int
+	Expected int64
+	Actual   int64
+	Missing  bool
+}
+
 // Local implements the Storage interface using the local filesystem.
 type Local struct {
 	root     string
@@ -75,6 +82,50 @@ func (s *Local) ListChunks(uploadSlug string) ([]int, error) {
 	}
 	sort.Ints(indices)
 	return indices, nil
+}
+
+func (s *Local) ValidateChunks(uploadSlug string, totalChunks int, chunkSize int64, fileSize int64) ([]ChunkIssue, error) {
+	_, issues, err := s.inspectChunks(uploadSlug, totalChunks, chunkSize, fileSize)
+	return issues, err
+}
+
+func (s *Local) ValidChunkSet(uploadSlug string, totalChunks int, chunkSize int64, fileSize int64) (map[int]bool, error) {
+	valid, _, err := s.inspectChunks(uploadSlug, totalChunks, chunkSize, fileSize)
+	return valid, err
+}
+
+func (s *Local) inspectChunks(uploadSlug string, totalChunks int, chunkSize int64, fileSize int64) (map[int]bool, []ChunkIssue, error) {
+	if !ValidateSlug(uploadSlug) {
+		return nil, nil, fmt.Errorf("invalid upload slug")
+	}
+	if totalChunks <= 0 || chunkSize <= 0 || fileSize <= 0 {
+		return nil, nil, fmt.Errorf("invalid chunk metadata")
+	}
+
+	chunkDir := filepath.Join(s.root, s.tmpDir, uploadSlug)
+	valid := make(map[int]bool)
+	issues := make([]ChunkIssue, 0)
+	for i := 0; i < totalChunks; i++ {
+		expected := chunkSize
+		if i == totalChunks-1 {
+			expected = fileSize - int64(i)*chunkSize
+		}
+		chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%06d", i))
+		info, err := os.Stat(chunkPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				issues = append(issues, ChunkIssue{Index: i, Expected: expected, Missing: true})
+				continue
+			}
+			return nil, nil, fmt.Errorf("stat chunk %d: %w", i, err)
+		}
+		if info.Size() == expected {
+			valid[i] = true
+		} else {
+			issues = append(issues, ChunkIssue{Index: i, Expected: expected, Actual: info.Size()})
+		}
+	}
+	return valid, issues, nil
 }
 
 // MergeChunks combines all chunks into a single file, computes SHA-256,

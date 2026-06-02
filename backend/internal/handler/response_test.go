@@ -34,6 +34,7 @@ func TestMapError(t *testing.T) {
 		{name: "dir not empty", err: model.ErrDirNotEmpty, status: 409, code: 2007, msg: "directory is not empty"},
 		{name: "file required", err: model.ErrFileRequired, status: 400, code: 2008, msg: "file is required"},
 		{name: "unsupported image", err: model.ErrUnsupportedImage, status: 400, code: 2010, msg: "only JPEG, PNG and WebP are supported"},
+		{name: "system file locked", err: model.ErrSystemFileLocked, status: 403, code: 2011, msg: "system file cannot be modified"},
 
 		// Unknown error falls through to internal
 		{name: "unknown error", err: fmt.Errorf("something weird"), status: 500, code: 1005, msg: "internal error"},
@@ -55,6 +56,7 @@ func TestMapError(t *testing.T) {
 		{name: "wrapped dir not empty", err: fmt.Errorf("wrap: %w", model.ErrDirNotEmpty), status: 409, code: 2007, msg: "directory is not empty"},
 		{name: "wrapped file required", err: fmt.Errorf("wrap: %w", model.ErrFileRequired), status: 400, code: 2008, msg: "file is required"},
 		{name: "wrapped unsupported image", err: fmt.Errorf("wrap: %w", model.ErrUnsupportedImage), status: 400, code: 2010, msg: "only JPEG, PNG and WebP are supported"},
+		{name: "wrapped system file locked", err: fmt.Errorf("wrap: %w", model.ErrSystemFileLocked), status: 403, code: 2011, msg: "system file cannot be modified"},
 	}
 
 	for _, tt := range tests {

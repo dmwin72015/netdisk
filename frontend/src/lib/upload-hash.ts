@@ -1,5 +1,4 @@
 const HASH_CHUNK_SIZE = 16 * 1024 * 1024; // 16MB for hash I/O
-const UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024; // must match upload-manager
 
 export async function computeSHA256(file: File): Promise<string> {
 	const buf = await file.arrayBuffer();
@@ -11,9 +10,10 @@ export async function computeSHA256(file: File): Promise<string> {
 
 export async function computeSHA256Chunked(
 	file: File,
-	callbacks: { onPreHash?: (hash: string) => void; onProgress?: (percent: number) => void }
+	callbacks: { onPreHash?: (hash: string) => void; onProgress?: (percent: number) => void },
+	chunkSize?: number
 ): Promise<{ preHash: string; hash: string; totalChunks: number }> {
-	const totalChunks = Math.ceil(file.size / UPLOAD_CHUNK_SIZE);
+	const totalChunks = Math.ceil(file.size / (chunkSize ?? 4 * 1024 * 1024));
 
 	return new Promise((resolve, reject) => {
 		let preHash = '';

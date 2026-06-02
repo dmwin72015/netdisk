@@ -7,17 +7,19 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog"
 
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
 type UploadHandler struct {
-	svc *service.UploadService
+	svc    *service.UploadService
+	logger zerolog.Logger
 }
 
-func NewUploadHandler(svc *service.UploadService) *UploadHandler {
-	return &UploadHandler{svc: svc}
+func NewUploadHandler(svc *service.UploadService, logger zerolog.Logger) *UploadHandler {
+	return &UploadHandler{svc: svc, logger: logger}
 }
 
 func (h *UploadHandler) PreCheck(c echo.Context) error {
@@ -106,24 +108,30 @@ func (h *UploadHandler) UploadChunk(c echo.Context) error {
 	chunkIndexStr := c.FormValue("chunkIndex")
 	chunkIndex, err := strconv.Atoi(chunkIndexStr)
 	if err != nil {
+		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", uploadSlug).Str("chunkIndex", chunkIndexStr).Int64("contentLength", c.Request().ContentLength).Msg("upload chunk: invalid chunk index")
 		return model.ErrInvalidInput
 	}
 
 	file, err := c.FormFile("chunkData")
 	if err != nil {
+		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("contentLength", c.Request().ContentLength).Err(err).Msg("upload chunk: missing or invalid chunk data")
 		return model.ErrInvalidInput
 	}
 
 	f, err := file.Open()
 	if err != nil {
+		h.logger.Error().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("fileSize", file.Size).Err(err).Msg("upload chunk: open multipart file failed")
 		return model.ErrInternal
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
+		h.logger.Error().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("fileSize", file.Size).Err(err).Msg("upload chunk: read multipart file failed")
 		return model.ErrInternal
 	}
+
+	h.logger.Debug().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("declaredSize", file.Size).Int("readSize", len(data)).Msg("upload chunk: received")
 
 	if err := h.svc.AppendChunk(c.Request().Context(), userID, uploadSlug, int32(chunkIndex), data); err != nil {
 		return err

@@ -2,6 +2,7 @@
 	import { Camera, Save, User, Pencil, X } from '@lucide/svelte';
 	import { updateProfile, uploadAvatar } from '$lib/api/profile';
 	import * as m from '$lib/paraglide/messages';
+	import { getAvatarMaxSize, configError } from '$lib/stores/config';
 
 	let {
 		displayName,
@@ -45,6 +46,17 @@
 		const input = e.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
+		if ($configError) {
+			saveMsg = m.config_unavailable();
+			input.value = '';
+			return;
+		}
+		const maxSize = getAvatarMaxSize();
+		if (maxSize === null || file.size > maxSize) {
+			saveMsg = m.upload_failed();
+			input.value = '';
+			return;
+		}
 		avatarFile = file;
 		const reader = new FileReader();
 		reader.onload = () => (avatarPreview = reader.result as string);

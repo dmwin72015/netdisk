@@ -4,7 +4,7 @@
 	import { setUser } from '$lib/stores/auth';
 	import { ApiError } from '$lib/api/client';
 	import AuthShell from '$lib/components/AuthShell.svelte';
-	import { AtSign, CheckCircle2, KeyRound, Mail, ShieldCheck, Sparkles, UserRound } from '@lucide/svelte';
+	import { AtSign, CircleCheck, KeyRound, Mail, ShieldCheck, Sparkles, UserRound } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let username = $state('');
@@ -74,7 +74,7 @@
 					</div>
 					<div class="flex items-start gap-3 rounded-lg bg-white/80 p-3">
 						<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-							<CheckCircle2 size={18} />
+							<CircleCheck size={18} />
 						</span>
 						<div class="min-w-0 flex-1">
 							<p class="text-sm font-semibold text-slate-900">{m.register_feature_ready_title()}</p>

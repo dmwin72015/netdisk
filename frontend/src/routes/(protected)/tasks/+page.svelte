@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listUploadTasks, retryUploadTask, deleteUploadTask, deleteUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
-	import { ListRestart, CheckCircle2, XCircle, Clock, Upload, LoaderCircle, ArrowLeft, ArrowRight, Trash2, Check } from '@lucide/svelte';
+	import { ListRestart, CircleCheck, CircleX, Clock, Upload, LoaderCircle, ArrowLeft, ArrowRight, Trash2, Check } from '@lucide/svelte';
 	import { confirmDelete } from '$lib/dialog';
 	import { DatePicker } from '$lib/ui/date-picker';
 	import { toast } from 'svelte-sonner';
@@ -57,8 +57,8 @@
 
 	function statusIcon(status: string) {
 		switch (status) {
-			case 'done': return CheckCircle2;
-			case 'failed': return XCircle;
+			case 'done': return CircleCheck;
+			case 'failed': return CircleX;
 			case 'uploading':
 			case 'merging': return Upload;
 			default: return Clock;
@@ -155,11 +155,12 @@
 		}
 	}
 
-	onMount(refresh);
+	onMount(() => {
+		refresh();
+	});
 </script>
 
-{#if !$authReady}
-{:else if $user}
+{#if $authReady && $user}
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
 			<h1 class="flex items-center gap-2 text-xl font-semibold">
@@ -224,6 +225,7 @@
 							<th class="px-4 py-3">{m.col_filename()}</th>
 							<th class="px-4 py-3">{m.col_size()}</th>
 							<th class="px-4 py-3">{m.status()}</th>
+							<th class="px-4 py-3">{m.col_directory()}</th>
 							<th class="px-4 py-3">{m.col_upload_time()}</th>
 							<th class="px-4 py-3">{m.col_actions()}</th>
 						</tr>
@@ -255,6 +257,13 @@
 									</span>
 									{#if task.errorMsg}
 										<p class="mt-0.5 text-xs text-red-400">{task.errorMsg}</p>
+									{/if}
+								</td>
+								<td class="relative px-4 py-3 tabular-nums text-gray-400">
+									{#if task.parentSlug}
+											<a href="/files/all/{task.parentSlug}" class="text-blue-600 hover:underline" title={task.parentName ? `${task.parentName} (${task.parentSlug})` : task.parentSlug}>{task.parentName || task.parentSlug}</a>
+									{:else}
+										<span class="text-gray-300">/</span>
 									{/if}
 								</td>
 								<td class="relative px-4 py-3 tabular-nums text-gray-400">{fmtTime(task.createdAt)}</td>
@@ -316,6 +325,4 @@
 			{/if}
 		{/if}
 	</div>
-{:else}
-	<p class="text-gray-600">{@html m.please_login({ link: '<a href="/login" class="underline">' + m.login_link_text() + '</a>' })}</p>
 {/if}

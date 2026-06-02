@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -64,7 +65,10 @@ type FFmpegConfig struct {
 }
 
 type LogConfig struct {
-	Level string `mapstructure:"level"`
+	Level     string `mapstructure:"level"`
+	Output    string `mapstructure:"output"`
+	FilePath  string `mapstructure:"file_path"`
+	MaxSizeMB int    `mapstructure:"max_size_mb"`
 }
 
 type LimitsConfig struct {
@@ -80,20 +84,20 @@ type TrashConfig struct {
 }
 
 type UploadConfig struct {
-	ChunkSize       int32         `mapstructure:"chunk_size"`
-	TaskExpiryDays  int           `mapstructure:"task_expiry_days"`
-	MergeLockTTL    time.Duration `mapstructure:"merge_lock_ttl"`
+	ChunkSize      int32         `mapstructure:"chunk_size"`
+	TaskExpiryDays int           `mapstructure:"task_expiry_days"`
+	MergeLockTTL   time.Duration `mapstructure:"merge_lock_ttl"`
 }
 
 type CacheConfig struct {
-	ChallengeTTL   time.Duration `mapstructure:"challenge_ttl"`
-	ChunksTTL      time.Duration `mapstructure:"chunks_ttl"`
-	PreCacheTTL    time.Duration `mapstructure:"precache_ttl"`
+	ChallengeTTL time.Duration `mapstructure:"challenge_ttl"`
+	ChunksTTL    time.Duration `mapstructure:"chunks_ttl"`
+	PreCacheTTL  time.Duration `mapstructure:"precache_ttl"`
 }
 
 type MediaConfig struct {
-	PollInterval  time.Duration `mapstructure:"poll_interval"`
-	BatchSize     int           `mapstructure:"batch_size"`
+	PollInterval time.Duration `mapstructure:"poll_interval"`
+	BatchSize    int           `mapstructure:"batch_size"`
 }
 
 type RateLimitConfig struct {
@@ -109,6 +113,10 @@ func Load(path string) (*Config, error) {
 	v.SetEnvPrefix("NETDISK")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.output", "console")
+	v.SetDefault("log.file_path", "./logs/server.log")
+	v.SetDefault("log.max_size_mb", 5)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -118,6 +126,18 @@ func Load(path string) (*Config, error) {
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
+	normalizePaths(path, cfg)
 
 	return cfg, nil
+}
+
+func normalizePaths(configPath string, cfg *Config) {
+	if cfg.Storage.Root == "" || filepath.IsAbs(cfg.Storage.Root) {
+		return
+	}
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return
+	}
+	cfg.Storage.Root = filepath.Clean(filepath.Join(filepath.Dir(absConfigPath), cfg.Storage.Root))
 }

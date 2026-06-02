@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listStarred, setStarred, downloadUrl, type FileItem } from '$lib/api/files';
-	import { Star, Download, Eye, Loader2, FolderPlus } from '@lucide/svelte';
+	import { Star, Download, Eye, LoaderCircle, FolderPlus } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
@@ -41,13 +39,11 @@
 	}
 
 	onMount(() => {
-		if (!$user) void goto('/login');
-		else void refresh();
+		void refresh();
 	});
 </script>
 
-{#if !$authReady}
-{:else if $user}
+{#if $authReady && $user}
 	<div class="space-y-4">
 		<div class="flex items-center gap-2">
 			<Star size={20} class="text-amber-400" fill="currentColor" />
@@ -57,7 +53,7 @@
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<Loader2 size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-gray-300" />
 			</div>
 		{:else if files.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
@@ -112,8 +108,6 @@
 			</div>
 		{/if}
 	</div>
-{:else}
-	<p class="text-gray-600">{@html m.please_login({ link: `<a href="/login" class="text-blue-600 underline hover:text-blue-700">${m.login_link_text()}</a>` })}</p>
 {/if}
 
 {#if previewFile}

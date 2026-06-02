@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { CheckCircle2, XCircle, Loader2, Trash2, Copy, FileVideo, Play } from '@lucide/svelte';
+	import { CircleCheck, CircleX, LoaderCircle, Trash2, Copy, FileVideo, Play } from '@lucide/svelte';
 	import type { Task } from '$lib/api/tasks';
 	import { deleteTask } from '$lib/api/tasks';
 	import { confirmDelete } from '$lib/dialog';
@@ -75,12 +75,12 @@
 			{/if}
 		{:else if task.status === 'failed'}
 			<div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-red-50 text-red-700">
-				<XCircle size={32} />
+				<CircleX size={32} />
 				<span class="text-xs">{m.conversion_failed()}</span>
 			</div>
 		{:else if task.status === 'processing' || task.status === 'pending'}
 			<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-100 text-slate-600">
-				<Loader2 size={32} class="animate-spin" />
+				<LoaderCircle size={32} class="animate-spin" />
 				<span class="text-xs">{task.status === 'pending' ? m.queued() : m.converting_progress({ progress: task.progress })}</span>
 			</div>
 		{:else}
@@ -121,7 +121,7 @@
 		{:else if task.status === 'completed' && task.m3u8Url}
 			<div class="mt-2 flex items-center gap-3 text-xs">
 				<a href="/videos/{task.id}" class="flex items-center gap-1 text-slate-700 hover:text-slate-900">
-					<CheckCircle2 size={12} /> {m.play_label()}
+					<CircleCheck size={12} /> {m.play_label()}
 				</a>
 				<button
 					type="button"

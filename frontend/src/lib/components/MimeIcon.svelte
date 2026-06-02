@@ -45,7 +45,7 @@
 		other: 'text-gray-400'
 	};
 
-	let icon = $derived.by(() => {
+	let Icon = $derived.by(() => {
 		if (category) {
 			if (isDir) return Folder;
 			return categoryIconMap[category] ?? File;
@@ -74,4 +74,4 @@
 	});
 </script>
 
-<svelte:component this={icon} {size} class="{color} {className}" />
+<Icon {size} class="{color} {className}" />

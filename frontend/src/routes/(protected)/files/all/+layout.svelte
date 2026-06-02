@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
@@ -20,8 +20,9 @@
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FilesToolbar, { type SortField, type ViewMode } from '$lib/components/files/FilesToolbar.svelte';
 	import { confirmDelete, promptInput } from '$lib/dialog';
-	import { FileQuestion, LoaderCircle } from '@lucide/svelte';
+	import { FileQuestionMark, LoaderCircle } from '@lucide/svelte';
 	import { createUploadManager } from '$lib/upload-manager.svelte';
+	import { UPLOAD_FILE_CONCURRENCY } from '$lib/upload-concurrency';
 	import * as m from '$lib/paraglide/messages';
 
 	let { children } = $props();
@@ -36,15 +37,6 @@
 	let loadingMore = $state(false);
 	let notFound = $state(false);
 	let refreshId = 0;
-
-	// --- Upload manager ---
-	let fileInput: HTMLInputElement | undefined = $state();
-	let folderInput: HTMLInputElement | undefined = $state();
-
-	const upload = createUploadManager({
-		getCurrentSlug: () => currentSlug,
-		onCompleted: () => refresh(),
-	});
 
 	// --- Preferences ---
 	let searchQuery = $state('');
@@ -72,6 +64,34 @@
 		showSystemDirs = value;
 		if (browser) localStorage.setItem('nd.files.showSystemDirs', String(value));
 		void refresh(true);
+	}
+
+	function normalizeUploadConcurrency(value: number) {
+		return Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, value || UPLOAD_FILE_CONCURRENCY));
+	}
+
+		const initialUploadConcurrency =
+			browser ? normalizeUploadConcurrency(parseInt(localStorage.getItem('nd.files.uploadConcurrency') || String(UPLOAD_FILE_CONCURRENCY), 10)) : UPLOAD_FILE_CONCURRENCY
+		;
+		let uploadConcurrency = $state(initialUploadConcurrency);
+
+	// --- Upload manager ---
+	let fileInput: HTMLInputElement | undefined = $state();
+	let folderInput: HTMLInputElement | undefined = $state();
+
+		const upload = createUploadManager({
+			getCurrentSlug: () => currentSlug,
+			onCompleted: () => refresh(),
+			maxConcurrent: initialUploadConcurrency,
+		});
+
+	$effect(() => {
+		upload.updateMaxConcurrent(uploadConcurrency);
+	});
+
+	function setUploadConcurrency(value: number) {
+		uploadConcurrency = normalizeUploadConcurrency(value);
+		if (browser) localStorage.setItem('nd.files.uploadConcurrency', String(uploadConcurrency));
 	}
 
 	function setSort(field: SortField) {
@@ -246,6 +266,19 @@
 		}
 	}
 
+	async function batchRemove(ids: string[]) {
+		const files = ids.map(id => normalizedFiles.find(f => f.id === id)).filter(Boolean) as NormalizedFile[];
+		if (files.length === 0) return;
+		const names = files.map(f => f.name);
+		if (!(await confirmDelete(m.confirm_delete_multiple({ count: String(files.length), names: names.join('\n') })))) return;
+		try {
+			await Promise.all(files.map(f => trashFile(f.id)));
+			await refresh();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.delete_failed());
+		}
+	}
+
 	async function rename(slug: string, currentName: string) {
 		const newName = await promptInput(m.rename(), m.enter_new_name(), currentName, 100);
 		if (!newName || newName === currentName) return;
@@ -298,18 +331,14 @@
 		}
 	}
 
-	// --- Auth ---
-	onMount(() => {
-		if (!$user) void goto('/login');
-	});
+
 </script>
 
-{#if !$authReady}
-{:else if $user}
+{#if $authReady && $user}
 	<div class="space-y-4">
 		{#if notFound}
 			<div class="flex flex-col items-center justify-center py-24 text-center">
-				<FileQuestion size={48} class="mb-4 text-gray-300" />
+				<FileQuestionMark size={48} class="mb-4 text-gray-300" />
 				<p class="mb-4 text-lg text-gray-500">{m.file_not_found()}</p>
 				<button
 					type="button"
@@ -348,6 +377,8 @@
 			onCreateDir={createDir}
 			{showSystemDirs}
 			onShowSystemDirsChange={setShowSystemDirs}
+			{uploadConcurrency}
+			onUploadConcurrencyChange={setUploadConcurrency}
 		/>
 		<input bind:this={fileInput} type="file" multiple class="hidden" onchange={upload.onPick} />
 		<input bind:this={folderInput} type="file" webkitdirectory class="hidden" onchange={upload.onPickFolder} />
@@ -367,6 +398,7 @@
 			onPreview={onPreview}
 			onRename={rename}
 			onDelete={remove}
+			onBatchDelete={batchRemove}
 			onMove={move}
 			onAddToMedia={onAddToMedia}
 			{loadFolderSummary}
@@ -384,8 +416,6 @@
 		{/if}
 		{/if}
 	</div>
-{:else}
-	<p class="text-gray-600">{@html m.please_login({ link: `<a href="/login" class="text-blue-600 underline hover:text-blue-700">${m.login_link_text()}</a>` })}</p>
 {/if}
 
 {#if previewFile}

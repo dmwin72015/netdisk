@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fmtSize } from '$lib/utils/format';
-  import { Loader2, Check } from '@lucide/svelte';
+  import { LoaderCircle, Check } from '@lucide/svelte';
   import MimeIcon from '$lib/components/MimeIcon.svelte';
   import { Dialog } from '$lib/ui/dialog';
   import * as m from '$lib/paraglide/messages';
@@ -97,7 +97,7 @@
     {#if loading}
       <!-- Loading state -->
       <div class="flex flex-col items-center justify-center py-16">
-        <Loader2 size={32} class="mb-4 animate-spin text-blue-500" />
+        <LoaderCircle size={32} class="mb-4 animate-spin text-blue-500" />
         <p class="text-sm text-gray-500">{m.reading_files()}</p>
       </div>
     {:else}

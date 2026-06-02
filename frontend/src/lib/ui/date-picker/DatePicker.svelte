@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { DatePicker, type DateValue } from 'bits-ui';
-	import { CalendarDate, parseDate, today, getLocalTimeZone } from '@internationalized/date';
+	import { DatePicker } from 'bits-ui';
+	import { CalendarDate, parseDate, today, getLocalTimeZone, type DateValue } from '@internationalized/date';
 	import { ChevronLeft, ChevronRight, CalendarDays } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -119,7 +119,7 @@
 									{#each month.weeks as weekDates}
 										<DatePicker.GridRow class="flex">
 											{#each weekDates as date}
-												<DatePicker.Cell {date} class="p-0.5">
+														<DatePicker.Cell {date} month={month.value} class="p-0.5">
 													<DatePicker.Day
 														class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
 															hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500

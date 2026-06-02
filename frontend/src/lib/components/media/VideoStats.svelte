@@ -60,7 +60,7 @@
 		// Codecs
 		const videoCodec = level?.codecSet || level?.videoCodec || '-';
 		const audioTrack = hls.audioTracks[hls.audioTrack];
-		const audioCodec = audioTrack?.codec || audioTrack?.name || '-';
+		const audioCodec = audioTrack?.audioCodec || audioTrack?.name || '-';
 		r.push({ label: 'Codecs', value: `${videoCodec} / ${audioCodec}` });
 
 		// Color

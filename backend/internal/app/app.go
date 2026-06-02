@@ -208,6 +208,7 @@ type handlers struct {
 	Files  *handler.FilesHandler
 	Upload *handler.UploadHandler
 	Media  *handler.MediaHandler
+	Config *handler.ConfigHandler
 }
 
 func buildHandlers(
@@ -225,14 +226,15 @@ func buildHandlers(
 	c := cache.New(rdb, cfg)
 
 	filesSvc := service.NewFilesService(queries, pg, cfg, store)
-	uploadSvc := service.NewUploadService(queries, pg, cfg, store, c)
+	uploadSvc := service.NewUploadService(queries, pg, cfg, store, c, logger)
 	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c, filesSvc)
 
 	return &handlers{
 		Auth:   handler.NewAuthHandler(authSvc),
 		User:   handler.NewUserHandler(userSvc),
 		Files:  handler.NewFilesHandler(filesSvc),
-		Upload: handler.NewUploadHandler(uploadSvc),
+		Upload: handler.NewUploadHandler(uploadSvc, logger),
 		Media:  handler.NewMediaHandler(mediaSvc),
+		Config: handler.NewConfigHandler(cfg),
 	}
 }

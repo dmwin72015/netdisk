@@ -1,0 +1,66 @@
+server:
+  port: 8080
+  read_timeout_sec: 300
+  write_timeout_sec: 300
+  cors_origins:
+    - http://localhost:5173
+
+db:
+  dsn: "postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable"
+  max_conns: 20
+  min_conns: 2
+
+redis:
+  addr: "localhost:16379"
+  db: 0
+
+jwt:
+  secret: "haliluya"
+  access_ttl_min: 60
+  refresh_ttl_hour: 168
+
+storage:
+  root: "../data"
+  max_upload_size: 4294967296  # 4 GiB
+  tmp_dir: "tmp"
+  files_dir: "files"
+  avatars_dir: "avatars"
+  hls_dir: "hls"
+
+ffmpeg:
+  path: "ffmpeg"
+  ffprobe_path: "ffprobe"
+
+log:
+  level: "trace"
+  output: "console"        # 本地开发: console；生产环境: file
+  file_path: "./logs/server.log"
+  max_size_mb: 5
+
+limits:
+  default_storage_quota: 536870912000  # 500 GB
+  bcrypt_cost: 12
+  avatar_max_size: 2097152  # 2 MB
+  content_detect_bytes: 512
+
+trash:
+  retention_days: 30
+  poll_interval: "1h"
+
+upload:
+  chunk_size: 4194304  # 4 MB
+  task_expiry_days: 30
+  merge_lock_ttl: "10m"
+
+cache:
+  challenge_ttl: "2m"
+  chunks_ttl: "24h"
+  precache_ttl: "168h"  # 7 days
+
+media:
+  poll_interval: "5s"
+  batch_size: 3
+
+rate_limit:
+  api_requests_per_min: 600
+  auth_requests_per_min: 20

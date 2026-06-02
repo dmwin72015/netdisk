@@ -6,10 +6,12 @@
 	let {
 		children,
 		class: className = '',
+		style = '',
 		...restProps
 	}: {
 		children: Snippet;
 		class?: string;
+		style?: string;
 	} = $props();
 </script>
 
@@ -23,6 +25,7 @@
 			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
 			duration-200
 			{className}"
+		{style}
 		{...restProps}
 	>
 		{@render children()}

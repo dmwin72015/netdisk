@@ -89,6 +89,9 @@ describe('listUploadTasks', () => {
 					status: 'completed',
 					errorMsg: '',
 					totalChunks: 5,
+					receivedBytes: 5000,
+					parentSlug: 'dir-1',
+					parentName: '工作文档',
 					createdAt: '2025-01-01T00:00:00Z',
 					updatedAt: '2025-01-01T00:01:00Z',
 				},
@@ -103,6 +106,7 @@ describe('listUploadTasks', () => {
 		const result = await listUploadTasks();
 		expect(result.items).toHaveLength(1);
 		expect(result.items[0].slug).toBe('task-1');
+		expect(result.items[0].parentName).toBe('工作文档');
 		expect(result.total).toBe(1);
 	});
 });

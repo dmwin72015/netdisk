@@ -139,6 +139,7 @@ describe('initUpload', () => {
 			fileSize: 5000,
 			mimeType: 'video/mp4',
 			fileName: 'test.mp4',
+			parentSlug: '',
 		});
 		expect(result.uploadSlug).toBe('upload-1');
 		expect(result.totalChunks).toBe(5);
@@ -157,6 +158,7 @@ describe('initUpload', () => {
 
 		const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
 		expect(body.fileName).toBe('');
+		expect(body.parentSlug).toBe('');
 	});
 });
 

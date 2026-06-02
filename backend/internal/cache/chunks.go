@@ -58,3 +58,8 @@ func (ch *Chunks) ChunkCount(ctx context.Context, uploadSlug string) (int64, err
 	}
 	return count, nil
 }
+
+func (ch *Chunks) HasChunk(ctx context.Context, uploadSlug string, chunkIndex int) (bool, error) {
+	key := ChunksKey(uploadSlug)
+	return ch.rdb.SIsMember(ctx, key, chunkIndex).Result()
+}

@@ -32,6 +32,7 @@
     onPreview,
     onRename,
     onDelete,
+    onBatchDelete,
     onMove,
     onAddToMedia,
     loadFolderSummary,
@@ -49,7 +50,8 @@
     onPreview: (file: NormalizedFile) => void;
     onRename: (id: string, name: string) => void;
     onDelete: (id: string, name: string) => void;
-    onMove?: (ids: string[], targetParentSlug: string) => void | Promise<void>;
+    onBatchDelete?: (ids: string[]) => void;
+    onMove?: (ids: string[], targetSlug: string) => Promise<void>;
     onAddToMedia?: (file: NormalizedFile) => void;
     loadFolderSummary?: (id: string) => Promise<FolderSummary>;
   } = $props();
@@ -251,15 +253,27 @@
         canPreview(f.mimeType)
           ? 'cursor-pointer'
           : ''}"
+        role="button"
+        tabindex="0"
         onclick={f.isDir
           ? () => onNavigateDir(f.id)
           : !f.isDir && canPreview(f.mimeType)
             ? () => onPreview(f)
             : undefined}
+        onkeydown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && (f.isDir || canPreview(f.mimeType))) {
+            e.preventDefault();
+            if (f.isDir) onNavigateDir(f.id);
+            else if (canPreview(f.mimeType)) onPreview(f);
+          }
+        }}
       >
         <div
           class="absolute right-1.5 top-1.5"
+          role="button"
+          tabindex="0"
           onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
         >
           <FileActionsDropdown
             file={f}
@@ -450,7 +464,10 @@
             <Tooltip
               content={m.delete_label()}
               delayDuration={200}
-              triggerProps={{ 'aria-label': m.delete_label() }}
+              triggerProps={{
+                'aria-label': m.delete_label(),
+                onclick: () => onBatchDelete?.(Array.from(selected)),
+              }}
               triggerClass="h-8 w-8 rounded-full text-gray-600 transition-colors hover:bg-red-50 hover:text-red-500"
             >
               <Trash2 size={16} />

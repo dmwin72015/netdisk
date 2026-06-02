@@ -1,6 +1,6 @@
 -- name: CreateUploadTask :one
-INSERT INTO upload_tasks (slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, original_name, total_chunks, chunk_size, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO upload_tasks (slug, owner_user_id, hash_algo, file_hash, pre_hash, file_size, mime_type, original_name, total_chunks, chunk_size, status, expires_at, parent_slug)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING *;
 
 -- name: GetUploadTaskBySlug :one

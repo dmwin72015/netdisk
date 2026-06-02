@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Loader2, Film, Check, Search, Folder } from '@lucide/svelte';
+	import { LoaderCircle, Film, Check, Search, Folder } from '@lucide/svelte';
 	import { listFiles, type FileItem } from '$lib/api/files';
 	import { addToLibrary } from '$lib/api/media';
 	import { fmtSize } from '$lib/utils/format';
@@ -108,7 +108,8 @@
 	onCancel={onClose}
 	title={m.select_videos()}
 	footer={false}
-	class="h-[70vh] max-w-2xl"
+	class="h-[70vh]"
+	contentStyle="max-width: 56rem"
 	bodyClass="!p-0 flex flex-col min-h-0 !overflow-hidden"
 >
 		<!-- Search -->
@@ -132,7 +133,7 @@
 
 			{#if loading}
 				<div class="flex items-center justify-center py-16">
-					<Loader2 size={24} class="animate-spin text-gray-300" />
+					<LoaderCircle size={24} class="animate-spin text-gray-300" />
 				</div>
 			{:else if filteredVideos.length === 0}
 				<div class="flex flex-col items-center justify-center py-16 text-center">
@@ -158,14 +159,16 @@
 								<p class="truncate text-sm text-gray-700">{v.fileName}</p>
 								<div class="flex items-center gap-2 text-xs text-gray-400">
 									{#if v.parentName && v.parentSlug && onNavigateDir}
-										<button
-											type="button"
-											class="flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline"
+										<span
+											role="button"
+											tabindex="0"
+											class="flex cursor-pointer items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline"
 											onclick={(e) => { e.stopPropagation(); onNavigateDir(v.parentSlug!); }}
+											onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onNavigateDir(v.parentSlug!); } }}
 										>
 											<Folder size={12} />
 											{v.parentName}
-										</button>
+										</span>
 									{:else if v.parentName}
 										<span class="flex items-center gap-1">
 											<Folder size={12} />
@@ -194,7 +197,7 @@
 				</button>
 				<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
 					{#if submitting}
-						<Loader2 size={14} class="animate-spin" />
+						<LoaderCircle size={14} class="animate-spin" />
 					{/if}
 					{m.add_selected({ count: selectedCount() })}
 				</button>
