@@ -140,41 +140,18 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
 		log.Debug().Msg("creating new transcode")
-
-		tcSlug, err := gonanoid.New(21)
+		tc, transcodeSlug, err = s.createTranscodeWithJob(ctx, uf.PhysicalFileID.Int64, profile)
 		if err != nil {
-			return nil, fmt.Errorf("generate slug: %w", err)
+			return nil, err
 		}
-
-		tc, err = s.queries.CreateTranscode(ctx, sqlc.CreateTranscodeParams{
-			Slug:           tcSlug,
-			PhysicalFileID: uf.PhysicalFileID.Int64,
-			Profile:        profile,
-			Status:         "pending",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("create transcode: %w", err)
-		}
-		log.Debug().Str("transcode_slug", tc.Slug).Msg("transcode created")
-
-		// Create media job
-		jobSlug, err := gonanoid.New(21)
-		if err != nil {
-			return nil, fmt.Errorf("generate slug: %w", err)
-		}
-		_, err = s.queries.CreateMediaJob(ctx, sqlc.CreateMediaJobParams{
-			Slug:        jobSlug,
-			TranscodeID: tc.ID,
-			Status:      "pending",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("create media job: %w", err)
-		}
-		log.Debug().Str("job_slug", jobSlug).Msg("media job created")
-
-		transcodeSlug = tc.Slug
 	} else if err != nil {
 		return nil, fmt.Errorf("get transcode: %w", err)
+	} else if tc.Status == "failed" {
+		log.Debug().Str("old_transcode_slug", tc.Slug).Msg("recreating failed transcode")
+		tc, transcodeSlug, err = s.createTranscodeWithJob(ctx, uf.PhysicalFileID.Int64, profile)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		transcodeReused = true
 		transcodeSlug = tc.Slug
@@ -212,6 +189,38 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		TranscodeStatus: tc.Status,
 		TranscodeReused: transcodeReused,
 	}, nil
+}
+
+func (s *MediaService) createTranscodeWithJob(ctx context.Context, physicalFileID int64, profile string) (sqlc.MediaTranscode, string, error) {
+	tcSlug, err := gonanoid.New(21)
+	if err != nil {
+		return sqlc.MediaTranscode{}, "", fmt.Errorf("generate slug: %w", err)
+	}
+
+	tc, err := s.queries.CreateTranscode(ctx, sqlc.CreateTranscodeParams{
+		Slug:           tcSlug,
+		PhysicalFileID: physicalFileID,
+		Profile:        profile,
+		Status:         "pending",
+	})
+	if err != nil {
+		return sqlc.MediaTranscode{}, "", fmt.Errorf("create transcode: %w", err)
+	}
+
+	jobSlug, err := gonanoid.New(21)
+	if err != nil {
+		return sqlc.MediaTranscode{}, "", fmt.Errorf("generate slug: %w", err)
+	}
+	_, err = s.queries.CreateMediaJob(ctx, sqlc.CreateMediaJobParams{
+		Slug:        jobSlug,
+		TranscodeID: tc.ID,
+		Status:      "pending",
+	})
+	if err != nil {
+		return sqlc.MediaTranscode{}, "", fmt.Errorf("create media job: %w", err)
+	}
+
+	return tc, tcSlug, nil
 }
 
 func (s *MediaService) ListMediaItems(ctx context.Context, userID int64, page, pageSize int) ([]MediaItemResponse, int, error) {
