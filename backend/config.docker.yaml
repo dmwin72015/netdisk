@@ -1,9 +1,11 @@
 server:
-  port: 8080
+  port: 8070
   read_timeout_sec: 300
   write_timeout_sec: 300
   cors_origins:
     - http://localhost:5173
+    - http://localhost
+    - http://localhost:80
 
 db:
   dsn: "postgres://postgres:root1234@postgres:5432/netdisk?sslmode=disable"
