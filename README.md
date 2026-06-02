@@ -46,11 +46,21 @@ NetDisk 是一个单机部署的网盘系统，面向个人和小团队使用。
 
 ## 快速启动
 
-系统提供两种部署方案：
+系统提供两种部署方案，可按需选择。
 
 ### 方案一：三容器部署（推荐，nginx 反代）
 
-前后端分离，nginx 统一入口：
+前后端分离，各司其职，易于独立扩缩。
+
+```
+┌──────────┐   /api /hls /avatars   ┌──────────┐
+│  nginx:80 │ ─────────────────────→ │ backend  │
+│          │                         │ :8070    │
+│          │   其他路由               ├──────────┤
+│          │ ─────────────────────→ │ frontend │
+└──────────┘                         │ :8090    │
+                              (adapter-node, SSR)
+```
 
 ```bash
 docker compose up -d --build
@@ -58,17 +68,59 @@ docker compose up -d --build
 
 访问 `http://localhost:8080`。
 
-架构：`nginx:80` → `frontend:8090`（Node） / `backend:8070`（Go）
+| 服务 | 容器 | 镜像 | 说明 |
+|------|------|------|------|
+| nginx | `netdisk_nginx` | `nginx:1.27-alpine` | 统一入口，反代 API/HLS 到后端，其余到前端 |
+| 前端 | `netdisk_frontend` | `netdisk-frontend:local` | SvelteKit Node 服务（adapter-node），SSR |
+| 后端 | `netdisk_backend` | `netdisk-backend:local` | Go Echo API 服务 |
+
+启动文件：
+- `docker-compose.yml` — 编排定义
+- `nginx/default.conf` — nginx 反代规则
+- `frontend/Dockerfile` — 前端容器构建（node:22-alpine）
+- `backend/Dockerfile` — 后端容器构建（golang:1.25-alpine → alpine:3.22）
 
 ### 方案二：单容器部署（前端嵌入 Go 二进制）
 
-前端使用 `adapter-static` 构建为 SPA，通过 `go:embed` 编译进后端，无需 nginx：
+前端使用 `adapter-static` 构建为 SPA，通过 `go:embed` 编译进后端，简化运维。
+
+```
+┌───────────────────────────┐
+│       single container    │
+│  ┌─────────────────────┐  │
+│  │   Go 二进制          │  │
+│  │   ├─ API handler     │  │
+│  │   └─ embedded SPA    │  │
+│  └─────────────────────┘  │
+└───────────────────────────┘
+```
 
 ```bash
 docker compose -f docker-compose.single.yml up -d --build
 ```
 
 访问 `http://localhost:8080`。
+
+| 服务 | 容器 | 说明 |
+|------|------|------|
+| 后端 | `netdisk_server` | 单体二进制，内嵌前端静态文件，同时处理 API 和 SPA 路由 |
+
+启动文件：
+- `docker-compose.single.yml` — 编排定义
+- `backend/Dockerfile.single` — 多阶段构建（先 pnpm build → 再 go build）
+- `frontend/svelte.config.static.js` — adapter-static 配置（SPA fallback）
+- `backend/internal/web/embed.go` — `go:embed` 将前端产物嵌入二进制
+
+### 方案对比
+
+| 维度 | 方案一（nginx） | 方案二（单容器） |
+|------|----------------|-----------------|
+| 组件数 | 3 容器 | 1 容器 |
+| 前端渲染 | SSR（Node） | CSR（SPA fallback） |
+| 部署复杂度 | 中等 | 低 |
+| 独立升级前后端 | ✓ | 需整体构建 |
+| 静态文件性能 | nginx 高效处理 | Go http.FileServer |
+| HTTPS 终止 | nginx 直接支持 | 需额外反向代理 |
 
 ### 本地开发
 
