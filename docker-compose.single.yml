@@ -24,7 +24,7 @@ services:
     restart: unless-stopped
 
   migrate:
-    image: migrate/migrate:v4.19.1
+    image: migrate/migrate:latest
     container_name: netdisk_migrate
     depends_on:
       postgres:

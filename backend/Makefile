@@ -3,7 +3,7 @@ SHELL := /bin/bash
 GO    := go
 PG_DSN ?= postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable
 
-MIGRATE_IMAGE := migrate/migrate:v4.19.1
+MIGRATE_IMAGE := migrate/migrate:latest
 SQLC_IMAGE    := sqlc/sqlc:v1.27.0
 
 # Prefer locally installed binaries; fall back to docker if absent.
