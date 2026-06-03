@@ -77,6 +77,7 @@ export type StatusResponse = {
 export async function preCheck(preHash: string, fileSize: number) {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.preCheck);
+		console.debug(`[upload-api] preCheck: size=${fileSize}`);
 		return api<PreCheckResponse>('/api/v1/upload/pre-check', {
 		method: 'POST',
 		body: JSON.stringify({ preHash, fileSize }),
@@ -88,6 +89,7 @@ export async function preCheck(preHash: string, fileSize: number) {
 export async function requestChallenge(fileHash: string) {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.challenge);
+		console.debug(`[upload-api] requestChallenge: hash=${fileHash.slice(0, 8)}...`);
 		return api<ChallengeResponse>('/api/v1/upload/request-challenge', {
 		method: 'POST',
 		body: JSON.stringify({ fileHash }),
@@ -99,6 +101,7 @@ export async function requestChallenge(fileHash: string) {
 export async function verify(fileHash: string, proofCode: string) {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.verify);
+		console.debug(`[upload-api] verify: hash=${fileHash.slice(0, 8)}..., proofLength=${proofCode.length}`);
 		return api<VerifyResponse>('/api/v1/upload/verify', {
 		method: 'POST',
 		body: JSON.stringify({ fileHash, proofCode }),
@@ -110,6 +113,7 @@ export async function verify(fileHash: string, proofCode: string) {
 export async function initUpload(fileHash: string, preHash: string, fileSize: number, mimeType: string, fileName?: string, parentSlug?: string) {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.init);
+		console.debug(`[upload-api] initUpload: name=${fileName} size=${fileSize} hash=${fileHash.slice(0, 8)}... parent=${parentSlug ?? ''}`);
 		return api<InitResponse>('/api/v1/upload/init', {
 		method: 'POST',
 		body: JSON.stringify({ fileHash, preHash, fileSize, mimeType, fileName: fileName ?? '', parentSlug: parentSlug ?? '' }),
@@ -121,6 +125,7 @@ export async function initUpload(fileHash: string, preHash: string, fileSize: nu
 export async function updateHash(uploadSlug: string, fileHash: string, preHash?: string) {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.updateHash);
+		console.debug(`[upload-api] updateHash: slug=${uploadSlug} hash=${fileHash.slice(0, 8)}...`);
 		return api('/api/v1/upload/update-hash', {
 		method: 'POST',
 		body: JSON.stringify({ uploadSlug, fileHash, preHash: preHash ?? '' }),
@@ -136,6 +141,7 @@ export async function uploadChunk(uploadSlug: string, chunkIndex: number, data: 
 		form.append('uploadSlug', uploadSlug);
 		form.append('chunkIndex', String(chunkIndex));
 		form.append('chunkData', new Blob([data]));
+		console.debug(`[upload-api] uploadChunk: slug=${uploadSlug} chunk=${chunkIndex} size=${data.byteLength}`);
 		return api('/api/v1/upload/chunk', {
 		method: 'POST',
 		body: form,
@@ -148,6 +154,7 @@ export async function uploadChunk(uploadSlug: string, chunkIndex: number, data: 
 export async function completeUpload(uploadSlug: string): Promise<CompleteResponse> {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.complete);
+		console.debug(`[upload-api] completeUpload: slug=${uploadSlug}`);
 		return api<CompleteResponse>('/api/v1/upload/complete', {
 		method: 'POST',
 		body: JSON.stringify({ uploadSlug }),

@@ -29,13 +29,23 @@ func EchoErrorHandler(logger zerolog.Logger) echo.HTTPErrorHandler {
 			return
 		}
 		status, code, msg := MapError(err)
-		if status >= 500 {
-			ev := logger.Error().Err(err).Int("status", status).Str("path", c.Path())
-			if uid, ok := middleware.UserID(c); ok && uid != 0 {
-				ev.Int64("user_id", uid)
-			}
-			ev.Msg("handler error")
+
+		ev := logger.Warn().Err(err).Int("status", status).Int("errCode", code).Str("path", c.Path()).Str("method", c.Request().Method)
+		if uid, ok := middleware.UserID(c); ok && uid != 0 {
+			ev.Int64("user_id", uid)
 		}
+		if q := c.QueryString(); q != "" {
+			ev.Str("query", q)
+		}
+		if cl := c.Request().ContentLength; cl > 0 {
+			ev.Int64("contentLength", cl)
+		}
+		if status >= 500 {
+			ev.Str("severity", "error").Msg("handler error (5xx)")
+		} else {
+			ev.Str("severity", "warn").Msg("handler error (4xx)")
+		}
+
 		_ = c.JSON(status, map[string]any{"error": msg, "errCode": code})
 	}
 }

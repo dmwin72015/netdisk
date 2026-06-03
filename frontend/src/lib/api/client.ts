@@ -143,16 +143,25 @@ export type ApiOptions = RequestInit & {
 
 export async function api<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
 	const { auth = true, ...init } = options;
+	const method = init.method ?? 'GET';
+	const reqId = Math.random().toString(36).slice(2, 8);
+
+	console.debug(`[api:${reqId}] → ${method} ${path}`, {
+		contentType: init.headers ? (init.headers as Record<string, string>)['Content-Type'] : undefined,
+		bodySize: init.body ? (typeof init.body === 'string' ? init.body.length : init.body instanceof FormData ? 'form-data' : 'unknown') : 0,
+	});
+
 	let token = auth ? getAccessToken() : null;
 	let res = await rawRequest(path, init, token);
 
 	if (res.status === 401 && auth) {
+		console.warn(`[api:${reqId}] 401 on ${method} ${path}, attempting token refresh`);
 		const fresh = await tryRefresh();
 		if (fresh) {
+			console.info(`[api:${reqId}] token refreshed, retrying ${method} ${path}`);
 			res = await rawRequest(path, init, fresh);
 		} else if (browser) {
-			// Redirect to login instead of throwing 401 ApiError
-			// (which callers would show as a toast).
+			console.warn(`[api:${reqId}] token refresh failed, redirecting to /login`);
 			window.location.href = '/login';
 			return new Promise<never>(() => {});
 		}
@@ -171,13 +180,20 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
 				// ignore
 			}
 		}
+		console.error(`[api:${reqId}] ✗ ${method} ${path} → ${res.status} "${message}" (errCode=${errCode})`);
 		throw new ApiError(message || `HTTP ${res.status}`, res.status, errCode);
 	}
 
-	if (res.status === 204) return undefined as T;
+	if (res.status === 204) {
+		console.debug(`[api:${reqId}] ✓ ${method} ${path} → 204`);
+		return undefined as T;
+	}
 	if (contentType.includes('application/json')) {
 		const body = await res.json();
+		console.debug(`[api:${reqId}] ✓ ${method} ${path} → ${res.status}`, body);
 		return (body?.data ?? body) as T;
 	}
-	return (await res.text()) as unknown as T;
+	const text = await res.text();
+	console.debug(`[api:${reqId}] ✓ ${method} ${path} → ${res.status} (text, ${text.length} chars)`);
+	return text as unknown as T;
 }

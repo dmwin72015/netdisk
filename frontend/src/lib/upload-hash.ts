@@ -17,6 +17,8 @@ export async function computeSHA256Chunked(
 		throw new Error('invalid file');
 	}
 	const totalChunks = Math.ceil(file.size / (chunkSize ?? 4 * 1024 * 1024));
+	const fileInfo = `"${file.name}" (${file.size} bytes, ${totalChunks} upload chunks)`;
+	console.debug(`[hash] computeSHA256Chunked: starting for ${fileInfo}`);
 
 	return new Promise((resolve, reject) => {
 		let settled = false;
@@ -29,18 +31,21 @@ export async function computeSHA256Chunked(
 			if (settled) return;
 			if (e.data.type === 'pre_hash') {
 				preHash = e.data.hash;
+				console.debug(`[hash] pre_hash received: ${preHash.slice(0, 16)}...`);
 				callbacks.onPreHash?.(preHash);
 			} else if (e.data.type === 'progress') {
 				callbacks.onProgress?.(e.data.percent);
 			} else if (e.data.type === 'complete') {
+				console.debug(`[hash] complete: hash=${e.data.hash.slice(0, 16)}... preHash=${preHash.slice(0, 16)}... totalChunks=${e.data.totalChunks}`);
 				settled = true;
 				resolve({ preHash, hash: e.data.hash, totalChunks });
 				worker.terminate();
 			}
 		};
-		worker.onerror = () => {
+		worker.onerror = (ev) => {
 			if (settled) return;
 			settled = true;
+			console.error(`[hash] worker error:`, ev);
 			reject(new Error('SHA-256 computation failed'));
 			worker.terminate();
 		};
@@ -48,20 +53,28 @@ export async function computeSHA256Chunked(
 		(async () => {
 			try {
 				const hashChunks = Math.ceil(file.size / HASH_CHUNK_SIZE);
+				console.debug(`[hash] sending ${hashChunks} hash chunks to worker`);
 				for (let i = 0; i < hashChunks; i++) {
 					const start = i * HASH_CHUNK_SIZE;
 					const end = Math.min(start + HASH_CHUNK_SIZE, file.size);
+					const readStart = performance.now();
 					const buf = await file.slice(start, end).arrayBuffer();
+					const readTime = performance.now() - readStart;
 					if (settled) return;
 					worker.postMessage({ type: 'chunk', index: i, data: buf }, [buf]);
+					if (i % 10 === 0) {
+						console.debug(`[hash] sent chunk ${i + 1}/${hashChunks} (${buf.byteLength} bytes, read in ${readTime.toFixed(0)}ms)`);
+					}
 				}
 				if (!settled) {
+					console.debug(`[hash] all ${hashChunks} chunks sent, signaling done`);
 					worker.postMessage({ type: 'done', totalChunks: hashChunks });
 				}
 			} catch (e) {
 				if (settled) return;
 				settled = true;
 				worker.terminate();
+				console.error(`[hash] error reading file for hashing:`, e);
 				reject(e instanceof Error ? e : new Error('failed to read file for hashing'));
 			}
 		})();

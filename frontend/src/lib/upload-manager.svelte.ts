@@ -152,13 +152,26 @@ export function createUploadManager(opts: {
 	function apiLogError(uid: string, slug: string | null, label: string, e: unknown) {
 		const s = slug ? `[${slug}]` : '';
 		if (e instanceof Error) {
+			const cause = (e as { cause?: unknown }).cause;
 			console.error(`[upload:${uid}]${s} ${label} FAILED: ${e.message}`, {
 				name: e.name,
-				stack: e.stack?.split('\n').slice(0, 4).join('\n'),
+				status: (e as { status?: unknown }).status,
+				errCode: (e as { errCode?: unknown }).errCode,
+				cause: cause instanceof Error ? cause.message : cause,
+				stack: e.stack?.split('\n').slice(0, 6).join('\n'),
 			});
 		} else {
 			console.error(`[upload:${uid}]${s} ${label} FAILED:`, e);
 		}
+	}
+
+	function logChunkProgress(uid: string, slug: string | null, completedChunks: Set<number>, totalChunks: number, label: string) {
+		const sorted = [...completedChunks].sort((a, b) => a - b);
+		const missing: number[] = [];
+		for (let i = 0; i < totalChunks; i++) {
+			if (!completedChunks.has(i)) missing.push(i);
+		}
+		log(uid, slug, `${label} progress: ${completedChunks.size}/${totalChunks} completed, missing: [${missing.slice(0, 20).join(',')}${missing.length > 20 ? ',...' : ''}]`);
 	}
 
 	function filterAcceptedFiles(files: File[]) {
@@ -292,15 +305,21 @@ export function createUploadManager(opts: {
 	}
 
 	function pumpQueue() {
+		const waiting = uploadItems.filter((i) => (i.phase === 'hashing' || i.phase === 'pending') && !processing.has(i.uid));
+		if (waiting.length > 0 || runningCount > 0) {
+			log('pump', null, `running=${runningCount} max=${maxConcurrent} waiting=${waiting.length} total=${uploadItems.length}`);
+		}
 		while (runningCount < maxConcurrent) {
 			const idx = uploadItems.findIndex((i) => (i.phase === 'hashing' || i.phase === 'pending') && !processing.has(i.uid));
 			if (idx === -1) break;
 			const item = uploadItems[idx];
 			processing.add(item.uid);
 			runningCount++;
+			log(item.uid, item.uploadSlug, `pumping: starting processFile (phase=${item.phase})`);
 			processFile(item).finally(() => {
 				processing.delete(item.uid);
 				runningCount--;
+				log('pump', null, `processFile completed for ${item.uid}, running=${runningCount}`);
 				pumpQueue();
 			});
 		}
@@ -474,7 +493,9 @@ export function createUploadManager(opts: {
 			let chunkFailure: unknown = null;
 			const chunkWorkers = Math.min(UPLOAD_CHUNK_CONCURRENCY_PER_FILE, Math.max(0, totalChunks - completedChunks.size));
 
-			async function uploadChunkWorker() {
+			const CHUNK_WORKER_LOG_INTERVAL = 5; // log every N chunks
+			async function uploadChunkWorker(workerId: number) {
+				let workerChunksDone = 0;
 				while (!chunkFailure) {
 					if ((item.phase as string) === 'paused') return;
 					let i: number | null = null;
@@ -486,7 +507,10 @@ export function createUploadManager(opts: {
 						}
 						chunkCursor++;
 					}
-					if (i === null) return;
+					if (i === null) {
+						log(item.uid, task.uploadSlug, `worker#${workerId}: no more chunks to upload (processed ${workerChunksDone} chunks)`);
+						return;
+					}
 
 					const chunkStart = i * chunkSize;
 					const chunkEnd = Math.min(chunkStart + chunkSize, item.fileSize);
@@ -496,23 +520,24 @@ export function createUploadManager(opts: {
 					for (let attempt = 1; attempt <= MAX_CHUNK_RETRIES; attempt++) {
 						if ((item.phase as string) === 'paused') return;
 						try {
+							log(item.uid, task.uploadSlug, `worker#${workerId} chunk ${i + 1}/${totalChunks} attempt ${attempt}/${MAX_CHUNK_RETRIES} (size=${chunkData.byteLength})`);
 							await uploadChunk(task.uploadSlug, i, chunkData, item.abortCtrl?.signal);
 							chunkOk = true;
 							break;
 						} catch (e) {
 							if ((item.phase as string) === 'paused') return;
 							if (attempt < MAX_CHUNK_RETRIES) {
-								warn(item.uid, task.uploadSlug, `chunk ${i + 1}/${totalChunks} attempt ${attempt}/${MAX_CHUNK_RETRIES} failed, retrying...`, e);
+								warn(item.uid, task.uploadSlug, `worker#${workerId} chunk ${i + 1}/${totalChunks} attempt ${attempt}/${MAX_CHUNK_RETRIES} failed, retrying in ${chunkRetryDelay(attempt)}ms...`, e);
 								await new Promise(r => setTimeout(r, chunkRetryDelay(attempt)));
 							} else {
-								apiLogError(item.uid, task.uploadSlug, `chunk ${i + 1}/${totalChunks} (final attempt)`, e);
+								apiLogError(item.uid, task.uploadSlug, `worker#${workerId} chunk ${i + 1}/${totalChunks} (final attempt)`, e);
 								throw e;
 							}
 						}
 					}
-					if (!chunkOk) throw new Error(`chunk ${i}/${totalChunks} failed after ${MAX_CHUNK_RETRIES} attempts`);
+					if (!chunkOk) throw new Error(`worker#${workerId} chunk ${i}/${totalChunks} failed after ${MAX_CHUNK_RETRIES} attempts`);
 
-					log(item.uid, task.uploadSlug, `chunk ${i + 1}/${totalChunks} uploaded (${fmtSize(chunkEnd)}/${fmtSize(item.fileSize)})`);
+					workerChunksDone++;
 					completedChunks.add(i);
 					uploaded = getUploadedBytesFromCompletedChunks(completedChunks, totalChunks, chunkSize, item.fileSize);
 					item.uploadedBytes = uploaded;
@@ -525,15 +550,29 @@ export function createUploadManager(opts: {
 						lastBytes = uploaded;
 						lastTime = now;
 					}
+
+					if (workerChunksDone % CHUNK_WORKER_LOG_INTERVAL === 0) {
+						logChunkProgress(item.uid, task.uploadSlug, completedChunks, totalChunks, `worker#${workerId}`);
+					}
 				}
 			}
 
 			if (chunkWorkers > 0) {
-				await Promise.all(Array.from({ length: chunkWorkers }, () => uploadChunkWorker().catch((e) => {
-					chunkFailure ??= e;
-				})));
+				log(item.uid, task.uploadSlug, `starting ${chunkWorkers} chunk workers for ${totalChunks - completedChunks.size} remaining chunks`);
+				const workerPromises = Array.from({ length: chunkWorkers }, (_, idx) =>
+					uploadChunkWorker(idx + 1).catch((e) => {
+						chunkFailure ??= e;
+					})
+				);
+				await Promise.all(workerPromises);
+			} else {
+				log(item.uid, task.uploadSlug, `no chunk workers needed (${completedChunks.size}/${totalChunks} already done)`);
 			}
-			if (chunkFailure) throw chunkFailure;
+			if (chunkFailure) {
+				err(item.uid, task.uploadSlug, `chunk workers failed: ${chunkFailure instanceof Error ? chunkFailure.message : chunkFailure}`, chunkFailure);
+				throw chunkFailure;
+			}
+			logChunkProgress(item.uid, task.uploadSlug, completedChunks, totalChunks, 'post-upload');
 			const missingChunk = nextMissingChunk(completedChunks, totalChunks);
 			if (missingChunk !== null) throw new Error(`chunk ${missingChunk + 1}/${totalChunks} missing after upload`);
 
@@ -552,25 +591,39 @@ export function createUploadManager(opts: {
 			}
 
 			log(item.uid, task.uploadSlug, 'all chunks uploaded, completing...');
+			log(item.uid, task.uploadSlug, `calling completeUpload for slug=${task.uploadSlug}`);
 			const completeResp = await completeUpload(task.uploadSlug);
+			log(item.uid, task.uploadSlug, `completeUpload response:`, completeResp);
 
 			let physicalFileSlug: string | undefined = completeResp?.physicalFileSlug;
 			if (completeResp?.status !== 'DONE') {
-				log(item.uid, task.uploadSlug, `complete status: ${completeResp?.status}, polling for completion...`);
+				log(item.uid, task.uploadSlug, `complete status is "${completeResp?.status}", polling getUploadStatus every 2s for completion...`);
 				for (let attempt = 0; attempt < 60; attempt++) {
 					await new Promise(r => setTimeout(r, 2000));
 					const statusResp = await getUploadStatus(task.uploadSlug);
+					log(item.uid, task.uploadSlug, `poll attempt ${attempt + 1}/60: status=${statusResp.status} slug=${statusResp.physicalFileSlug} err=${statusResp.error ?? 'none'}`);
 					if (statusResp.status === 'done' && statusResp.physicalFileSlug) {
 						physicalFileSlug = statusResp.physicalFileSlug;
+						log(item.uid, task.uploadSlug, `poll: got done with physicalFileSlug=${physicalFileSlug}`);
 						break;
 					}
 					if (statusResp.status === 'failed') {
+						err(item.uid, task.uploadSlug, `poll: upload task failed with error: ${statusResp.error ?? 'unknown'}`);
 						throw new Error(statusResp.error ?? 'upload task failed');
 					}
 				}
 				if (!physicalFileSlug) {
+					// Try one final getUploadStatus to see what happened
+					try {
+						const finalStatus = await getUploadStatus(task.uploadSlug);
+						err(item.uid, task.uploadSlug, `poll timed out after 120s, final status:`, finalStatus);
+					} catch (finalErr) {
+						err(item.uid, task.uploadSlug, `poll timed out, and final status query also failed:`, finalErr);
+					}
 					throw new Error('upload did not complete in time');
 				}
+			} else {
+				log(item.uid, task.uploadSlug, `complete returned DONE immediately with physicalFileSlug=${physicalFileSlug}`);
 			}
 
 			if (physicalFileSlug) {

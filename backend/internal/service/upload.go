@@ -230,6 +230,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 
 func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest) (*InitResponse, error) {
 	if req.PreHash == "" || req.FileSize <= 0 || req.MimeType == "" {
+		s.logger.Warn().Int64("userID", userID).Str("preHash", req.PreHash).Int64("fileSize", req.FileSize).Str("mimeType", req.MimeType).Str("fileName", req.FileName).Msg("init: invalid input - missing required fields")
 		return nil, model.ErrInvalidInput
 	}
 	if req.FileSize > s.cfg.Storage.MaxUploadSize {
@@ -242,8 +243,16 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 			OwnerUserID: userID,
 			FileHash:    req.FileHash,
 		})
-		if err == nil && existing.ID != 0 && existing.Status != "done" && existing.Status != "failed" {
-			chunks, _ := s.cache.Chunks.ListChunks(ctx, existing.Slug)
+		if err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("init: resume query failed")
+			}
+		} else if existing.ID != 0 && existing.Status != "done" && existing.Status != "failed" {
+			s.logger.Info().Str("slug", existing.Slug).Int64("existingTaskID", existing.ID).Str("status", existing.Status).Int32("totalChunks", existing.TotalChunks).Int32("chunkSize", existing.ChunkSize).Int64("fileSize", existing.FileSize).Msg("init: found existing upload task, trying resume")
+			chunks, chunkErr := s.cache.Chunks.ListChunks(ctx, existing.Slug)
+			if chunkErr != nil {
+				s.logger.Warn().Str("slug", existing.Slug).Err(chunkErr).Msg("init: list cached chunks failed")
+			}
 			validChunks, err := s.store.ValidChunkSet(existing.Slug, int(existing.TotalChunks), int64(existing.ChunkSize), existing.FileSize)
 			if err != nil {
 				s.logger.Warn().Str("slug", existing.Slug).Err(err).Msg("init: validate resume chunks failed")
@@ -257,13 +266,15 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 					seen[chunk] = true
 				}
 			}
-			s.logger.Info().Str("slug", existing.Slug).Str("status", existing.Status).Int("cachedChunks", len(chunks)).Int("validChunks", len(filteredChunks)).Msg("init: resuming existing upload")
+			s.logger.Info().Str("slug", existing.Slug).Str("status", existing.Status).Int("cachedChunks", len(chunks)).Int("validChunks", len(filteredChunks)).Int("totalChunks", int(existing.TotalChunks)).Msg("init: resuming existing upload")
 			return &InitResponse{
 				UploadSlug:      existing.Slug,
 				TotalChunks:     existing.TotalChunks,
 				ChunkSize:       existing.ChunkSize,
 				CompletedChunks: filteredChunks,
 			}, nil
+		} else if existing.ID != 0 {
+			s.logger.Debug().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Str("status", existing.Status).Int64("existingTaskID", existing.ID).Msg("init: existing task found but not resumable (done/failed)")
 		}
 	}
 
@@ -303,19 +314,23 @@ func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest)
 }
 
 func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlug string, chunkIndex int32, data []byte) error {
+	s.logger.Debug().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("dataSize", len(data)).Msg("append chunk: entry")
 	task, err := s.queries.GetUploadTaskBySlug(ctx, uploadSlug)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Msg("append chunk: task not found")
 			return model.ErrNotFound
 		}
+		s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Err(err).Msg("append chunk: get task failed")
 		return fmt.Errorf("get task: %w", err)
 	}
 
 	if task.OwnerUserID != userID {
+		s.logger.Warn().Int64("userID", userID).Int64("taskOwnerID", task.OwnerUserID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Msg("append chunk: unauthorized - owner mismatch")
 		return model.ErrUnauthorized
 	}
 	if chunkIndex < 0 || chunkIndex >= task.TotalChunks {
-		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int32("totalChunks", task.TotalChunks).Msg("append chunk invalid index")
+		s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int32("totalChunks", task.TotalChunks).Msg("append chunk: invalid chunk index")
 		return model.ErrInvalidInput
 	}
 
@@ -326,7 +341,7 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 		expectedSize = remaining
 	}
 	if len(data) != expectedSize {
-		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("expected", expectedSize).Int("got", len(data)).Msg("append chunk size mismatch")
+		s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("expectedSize", expectedSize).Int("gotSize", len(data)).Bool("isLast", isLast).Int32("taskChunkSize", task.ChunkSize).Int64("taskFileSize", task.FileSize).Int32("taskTotalChunks", task.TotalChunks).Msg("append chunk: size mismatch")
 		return model.ErrInvalidInput
 	}
 
@@ -334,26 +349,28 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 	// if the chunk already exists with correct size, skip the write and
 	// just ensure it's tracked in the chunk cache.
 	if task.Status != "uploading" {
+		s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Str("taskStatus", task.Status).Int32("taskTotalChunks", task.TotalChunks).Msg("append chunk: task not in uploading status, checking if chunk already exists")
 		if s.store.ChunkExists(uploadSlug, int(chunkIndex), int64(expectedSize)) {
 			s.logger.Debug().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Str("status", task.Status).Msg("append chunk: task no longer uploading, chunk already exists, skipping")
 			_ = s.cache.Chunks.AddChunk(ctx, uploadSlug, int(chunkIndex))
 			return nil
 		}
-		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Str("status", task.Status).Msg("append chunk on non-uploading task and chunk missing")
+		s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Str("taskStatus", task.Status).Int("expectedSize", expectedSize).Int64("taskID", task.ID).Msg("append chunk: chunk missing and task no longer uploading - rejecting")
 		return model.ErrInvalidInput
 	}
 
+	s.logger.Debug().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("dataSize", len(data)).Int64("taskID", task.ID).Msg("append chunk: writing chunk")
 	if err := s.store.WriteChunk(uploadSlug, int(chunkIndex), bytes.NewReader(data)); err != nil {
-		s.logger.Error().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Err(err).Msg("write chunk failed")
+		s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("dataSize", len(data)).Int64("taskID", task.ID).Err(err).Msg("append chunk: write chunk failed")
 		return fmt.Errorf("write chunk: %w", err)
 	}
 
 	if err := s.cache.Chunks.AddChunk(ctx, uploadSlug, int(chunkIndex)); err != nil {
-		s.logger.Error().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Err(err).Msg("track chunk failed")
+		s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Err(err).Msg("append chunk: track chunk in cache failed")
 		return fmt.Errorf("track chunk: %w", err)
 	}
 
-	s.logger.Debug().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("size", len(data)).Msg("chunk appended")
+	s.logger.Debug().Int64("userID", userID).Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("size", len(data)).Int32("totalChunks", task.TotalChunks).Msg("append chunk: success")
 	return nil
 }
 
@@ -399,92 +416,122 @@ func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req Update
 }
 
 func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug string) (*CompleteResponse, error) {
+	s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Msg("complete: entry")
 	task, err := s.queries.GetUploadTaskBySlug(ctx, uploadSlug)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Msg("complete: task not found")
 			return nil, model.ErrNotFound
 		}
+		s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Err(err).Msg("complete: get task failed")
 		return nil, fmt.Errorf("get task: %w", err)
 	}
 
 	if task.OwnerUserID != userID {
+		s.logger.Warn().Int64("userID", userID).Int64("taskOwnerID", task.OwnerUserID).Str("slug", uploadSlug).Msg("complete: unauthorized - owner mismatch")
 		return nil, model.ErrUnauthorized
 	}
 
+	s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Str("status", task.Status).Int32("totalChunks", task.TotalChunks).Int32("chunkSize", task.ChunkSize).Int64("fileSize", task.FileSize).Str("fileHash", safeHashPrefix(task.FileHash)).Str("preHash", safeHashPrefix(task.PreHash)).Msg("complete: task loaded")
+
 	if task.Status != "uploading" {
-		s.logger.Warn().Str("slug", uploadSlug).Str("status", task.Status).Int64("userID", userID).Msg("complete called on non-uploading task")
+		s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Str("status", task.Status).Int64("taskID", task.ID).Msg("complete: called on non-uploading task")
 		if task.Status == "done" {
 			pf, pfErr := s.queries.GetPhysicalFileByID(ctx, task.PhysicalFileID.Int64)
 			if pfErr == nil {
+				s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Str("physicalFileSlug", pf.Slug).Msg("complete: already done, returning existing result")
 				return &CompleteResponse{Status: "DONE", PhysicalFileSlug: pf.Slug}, nil
 			}
+			s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int64("physicalFileID", task.PhysicalFileID.Int64).Err(pfErr).Msg("complete: status is done but could not load physical file")
 		}
 		return &CompleteResponse{Status: task.Status}, nil
 	}
 
+	s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Int32("totalChunks", task.TotalChunks).Msg("complete: validating chunks")
 	chunkIssues, err := s.store.ValidateChunks(uploadSlug, int(task.TotalChunks), int64(task.ChunkSize), task.FileSize)
 	if err != nil {
-		s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("complete: validate chunks failed")
+		s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Int32("totalChunks", task.TotalChunks).Err(err).Msg("complete: validate chunks failed")
 		return nil, fmt.Errorf("validate chunks: %w", err)
 	}
 	if len(chunkIssues) > 0 {
 		issue := chunkIssues[0]
-		issueEvent := s.logger.Warn().Str("slug", uploadSlug).Int("issueCount", len(chunkIssues)).Int("chunkIndex", issue.Index).Int64("expected", issue.Expected).Bool("missing", issue.Missing)
+		issueEvent := s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int("issueCount", len(chunkIssues)).Int("firstChunkIndex", issue.Index).Int64("expected", issue.Expected).Bool("missing", issue.Missing)
 		if !issue.Missing {
 			issueEvent = issueEvent.Int64("actual", issue.Actual)
 		}
-		issueEvent.Msg("complete: chunks incomplete")
+		// Log all issues in detail for debugging
+		for idx, iss := range chunkIssues {
+			if idx >= 10 {
+				issueEvent = issueEvent.Int("moreIssues", len(chunkIssues)-10)
+				break
+			}
+			issueEvent = issueEvent.Int(fmt.Sprintf("issue_%d_index", idx), iss.Index)
+			if iss.Missing {
+				issueEvent = issueEvent.Bool(fmt.Sprintf("issue_%d_missing", idx), true)
+			}
+			issueEvent = issueEvent.Int64(fmt.Sprintf("issue_%d_expected", idx), iss.Expected)
+			if !iss.Missing {
+				issueEvent = issueEvent.Int64(fmt.Sprintf("issue_%d_actual", idx), iss.Actual)
+			}
+		}
+		issueEvent.Msg("complete: chunks validation failed - some chunks are missing or size mismatch")
 		return nil, model.ErrInvalidInput
 	}
+	s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Int32("totalChunks", task.TotalChunks).Msg("complete: all chunks validated OK")
 
 	// Atomic status transition: only proceed if still "uploading"
+	s.logger.Debug().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: executing atomic status update uploading->merging")
 	tag, err := s.pg.Exec(ctx,
 		`UPDATE upload_tasks SET status = 'merging' WHERE id = $1 AND status = 'uploading'`,
 		task.ID,
 	)
 	if err != nil {
+		s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Err(err).Msg("complete: atomic status update failed")
 		return nil, fmt.Errorf("atomic status update: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		s.logger.Warn().Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: status already changed by another request")
+		s.logger.Warn().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: status already changed by another request (race)")
 		return &CompleteResponse{Status: "MERGING"}, nil
 	}
+	s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: status transitioned to merging")
 
 	fileHash := task.FileHash
 	var storagePath string
 
 	if fileHash == "" {
-		s.logger.Info().Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: hash not known, merging and computing hash")
+		s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Int32("totalChunks", task.TotalChunks).Msg("complete: hash not known, merging chunks and computing hash")
 		computedHash, sp, err := s.store.MergeChunksAndHash(uploadSlug, int(task.TotalChunks))
 		if err != nil {
 			_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{ID: task.ID, Status: "failed"})
-			s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("merge and hash failed")
+			s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Int64("taskID", task.ID).Int32("totalChunks", task.TotalChunks).Err(err).Msg("complete: merge and hash failed")
 			return nil, fmt.Errorf("merge and hash: %w", err)
 		}
 		fileHash = computedHash
 		storagePath = sp
 		_ = s.queries.UpdateUploadTaskFileHash(ctx, sqlc.UpdateUploadTaskFileHashParams{ID: task.ID, FileHash: fileHash})
-		s.logger.Info().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: hash computed")
+		s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Str("storagePath", storagePath).Msg("complete: hash computed from merged chunks")
 	} else {
-		s.logger.Info().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: merging known hash")
+		s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Int32("totalChunks", task.TotalChunks).Msg("complete: merging known hash")
 		acquired, err := s.cache.Lock.AcquireMergeLock(ctx, fileHash)
 		if err != nil {
-			s.logger.Error().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Err(err).Msg("acquire merge lock error")
+			s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Err(err).Msg("complete: acquire merge lock error")
 			return nil, fmt.Errorf("acquire lock: %w", err)
 		}
 		if !acquired {
-			s.logger.Info().Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: merge lock not acquired, another instance merging")
+			s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: merge lock not acquired, another instance merging")
 			return &CompleteResponse{Status: "MERGING"}, nil
 		}
+		s.logger.Debug().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Msg("complete: merge lock acquired")
 		defer s.cache.Lock.ReleaseMergeLock(ctx, fileHash)
 
 		sp, err := s.store.MergeChunks(uploadSlug, fileHash, int(task.TotalChunks))
 		if err != nil {
 			_ = s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{ID: task.ID, Status: "failed"})
-			s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("merge chunks failed")
+			s.logger.Error().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Int64("taskID", task.ID).Err(err).Msg("complete: merge chunks failed")
 			return nil, fmt.Errorf("merge chunks: %w", err)
 		}
 		storagePath = sp
+		s.logger.Debug().Int64("userID", userID).Str("slug", uploadSlug).Str("fileHash", fileHash[:16]+"...").Str("storagePath", storagePath).Msg("complete: chunks merged successfully")
 	}
 
 	pf, err := s.queries.CreatePhysicalFile(ctx, sqlc.CreatePhysicalFileParams{
@@ -526,11 +573,21 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 	_ = s.store.CleanupUpload(uploadSlug)
 	_ = s.cache.Chunks.DeleteChunks(ctx, uploadSlug)
 
-	s.logger.Info().Str("slug", uploadSlug).Str("physicalFileSlug", pf.Slug).Int64("fileSize", task.FileSize).Msg("complete: done")
+	s.logger.Info().Int64("userID", userID).Str("slug", uploadSlug).Str("physicalFileSlug", pf.Slug).Int64("fileSize", task.FileSize).Int64("pfID", pf.ID).Str("fileHash", safeHashPrefix(fileHash)).Msg("complete: done")
 	return &CompleteResponse{
 		Status:           "DONE",
 		PhysicalFileSlug: pf.Slug,
 	}, nil
+}
+
+func safeHashPrefix(hash string) string {
+	if len(hash) >= 16 {
+		return hash[:16] + "..."
+	}
+	if len(hash) > 0 {
+		return hash
+	}
+	return "(empty)"
 }
 
 func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug string) (*StatusResponse, error) {

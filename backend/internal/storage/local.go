@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ChunkIssue struct {
@@ -34,14 +36,20 @@ func NewLocal(root, tmpDir, filesDir string) *Local {
 // ChunkExists checks whether a chunk file exists on disk with the expected size.
 func (s *Local) ChunkExists(uploadSlug string, chunkIndex int, expectedSize int64) bool {
 	if !ValidateSlug(uploadSlug) {
+		slog.Warn("chunk-exists: invalid slug", "slug", uploadSlug)
 		return false
 	}
 	path := filepath.Join(s.root, s.tmpDir, uploadSlug, fmt.Sprintf("chunk_%06d", chunkIndex))
 	info, err := os.Stat(path)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("chunk-exists: stat failed", "slug", uploadSlug, "chunkIndex", chunkIndex, "err", err)
+		}
 		return false
 	}
-	return info.Size() == expectedSize
+	exists := info.Size() == expectedSize
+	slog.Debug("chunk-exists", "slug", uploadSlug, "chunkIndex", chunkIndex, "expectedSize", expectedSize, "actualSize", info.Size(), "exists", exists)
+	return exists
 }
 
 // WriteChunk writes a single chunk to the temporary upload directory.
@@ -51,17 +59,23 @@ func (s *Local) WriteChunk(uploadSlug string, chunkIndex int, data io.Reader) er
 	}
 	dir := filepath.Join(s.root, s.tmpDir, uploadSlug)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
+		slog.Error("write-chunk: mkdir failed", "slug", uploadSlug, "chunkIndex", chunkIndex, "dir", dir, "err", err)
 		return fmt.Errorf("mkdir chunk dir: %w", err)
 	}
 	path := filepath.Join(dir, fmt.Sprintf("chunk_%06d", chunkIndex))
+	slog.Debug("write-chunk: creating", "slug", uploadSlug, "chunkIndex", chunkIndex, "path", path)
 	f, err := os.Create(path)
 	if err != nil {
+		slog.Error("write-chunk: create file failed", "slug", uploadSlug, "chunkIndex", chunkIndex, "path", path, "err", err)
 		return fmt.Errorf("create chunk: %w", err)
 	}
 	defer f.Close()
-	if _, err := io.Copy(f, data); err != nil {
+	written, err := io.Copy(f, data)
+	if err != nil {
+		slog.Error("write-chunk: io copy failed", "slug", uploadSlug, "chunkIndex", chunkIndex, "path", path, "err", err)
 		return fmt.Errorf("write chunk: %w", err)
 	}
+	slog.Debug("write-chunk: success", "slug", uploadSlug, "chunkIndex", chunkIndex, "bytesWritten", written)
 	return nil
 }
 
@@ -112,12 +126,17 @@ func (s *Local) inspectChunks(uploadSlug string, totalChunks int, chunkSize int6
 		return nil, nil, fmt.Errorf("invalid upload slug")
 	}
 	if totalChunks <= 0 || chunkSize <= 0 || fileSize <= 0 {
+		slog.Warn("inspect-chunks: invalid metadata", "slug", uploadSlug, "totalChunks", totalChunks, "chunkSize", chunkSize, "fileSize", fileSize)
 		return nil, nil, fmt.Errorf("invalid chunk metadata")
 	}
 
 	chunkDir := filepath.Join(s.root, s.tmpDir, uploadSlug)
+	slog.Debug("inspect-chunks: start", "slug", uploadSlug, "totalChunks", totalChunks, "chunkDir", chunkDir)
+
 	valid := make(map[int]bool)
 	issues := make([]ChunkIssue, 0)
+	missingCount := 0
+	sizeMismatchCount := 0
 	for i := 0; i < totalChunks; i++ {
 		expected := chunkSize
 		if i == totalChunks-1 {
@@ -128,16 +147,21 @@ func (s *Local) inspectChunks(uploadSlug string, totalChunks int, chunkSize int6
 		if err != nil {
 			if os.IsNotExist(err) {
 				issues = append(issues, ChunkIssue{Index: i, Expected: expected, Missing: true})
+				missingCount++
 				continue
 			}
+			slog.Error("inspect-chunks: stat failed", "slug", uploadSlug, "chunkIndex", i, "path", chunkPath, "err", err)
 			return nil, nil, fmt.Errorf("stat chunk %d: %w", i, err)
 		}
 		if info.Size() == expected {
 			valid[i] = true
 		} else {
 			issues = append(issues, ChunkIssue{Index: i, Expected: expected, Actual: info.Size()})
+			sizeMismatchCount++
 		}
 	}
+
+	slog.Debug("inspect-chunks: complete", "slug", uploadSlug, "totalChunks", totalChunks, "validCount", len(valid), "missingCount", missingCount, "sizeMismatchCount", sizeMismatchCount)
 	return valid, issues, nil
 }
 
@@ -152,15 +176,21 @@ func (s *Local) MergeChunks(uploadSlug string, fileHash string, totalChunks int)
 		return "", fmt.Errorf("invalid file hash")
 	}
 
+	mergeStart := time.Now()
+	slog.Info("merge-chunks: start", "slug", uploadSlug, "totalChunks", totalChunks, "hashPrefix", safePrefix(fileHash))
+
 	finalDir := filepath.Join(s.root, StoragePath(fileHash, s.filesDir))
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o755); err != nil {
+		slog.Error("merge-chunks: mkdir final dir failed", "slug", uploadSlug, "finalDir", filepath.Dir(finalDir), "err", err)
 		return "", fmt.Errorf("mkdir final dir: %w", err)
 	}
 
 	// Write to a temporary .merging file first.
 	mergingPath := finalDir + ".merging"
+	slog.Debug("merge-chunks: creating merging file", "slug", uploadSlug, "mergingPath", mergingPath)
 	out, err := os.Create(mergingPath)
 	if err != nil {
+		slog.Error("merge-chunks: create merging file failed", "slug", uploadSlug, "mergingPath", mergingPath, "err", err)
 		return "", fmt.Errorf("create merging file: %w", err)
 	}
 
@@ -170,19 +200,24 @@ func (s *Local) MergeChunks(uploadSlug string, fileHash string, totalChunks int)
 	chunkDir := filepath.Join(s.root, s.tmpDir, uploadSlug)
 	for i := 0; i < totalChunks; i++ {
 		chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%06d", i))
+		chunkStart := time.Now()
 		f, err := os.Open(chunkPath)
 		if err != nil {
 			out.Close()
 			os.Remove(mergingPath)
+			slog.Error("merge-chunks: open chunk failed", "slug", uploadSlug, "chunkIndex", i, "path", chunkPath, "err", err)
 			return "", fmt.Errorf("open chunk %d: %w", i, err)
 		}
-		if _, err := io.Copy(writer, f); err != nil {
+		n, err := io.Copy(writer, f)
+		if err != nil {
 			f.Close()
 			out.Close()
 			os.Remove(mergingPath)
+			slog.Error("merge-chunks: copy chunk failed", "slug", uploadSlug, "chunkIndex", i, "bytesCopied", n, "err", err)
 			return "", fmt.Errorf("copy chunk %d: %w", i, err)
 		}
 		f.Close()
+		slog.Debug("merge-chunks: chunk merged", "slug", uploadSlug, "chunkIndex", i, "bytesCopied", n, "duration", time.Since(chunkStart))
 	}
 	out.Close()
 
@@ -190,15 +225,19 @@ func (s *Local) MergeChunks(uploadSlug string, fileHash string, totalChunks int)
 	actual := hex.EncodeToString(h.Sum(nil))
 	if actual != fileHash {
 		os.Remove(mergingPath)
+		slog.Error("merge-chunks: hash mismatch", "slug", uploadSlug, "expected", fileHash, "actual", actual)
 		return "", fmt.Errorf("hash mismatch: expected %s, got %s", fileHash, actual)
 	}
+	slog.Debug("merge-chunks: hash verified", "slug", uploadSlug)
 
 	// Atomic rename to final path.
 	if err := os.Rename(mergingPath, finalDir); err != nil {
 		os.Remove(mergingPath)
+		slog.Error("merge-chunks: rename failed", "slug", uploadSlug, "from", mergingPath, "to", finalDir, "err", err)
 		return "", fmt.Errorf("rename to final: %w", err)
 	}
 
+	slog.Info("merge-chunks: complete", "slug", uploadSlug, "totalChunks", totalChunks, "duration", time.Since(mergeStart))
 	return StoragePath(fileHash, s.filesDir), nil
 }
 
@@ -209,12 +248,17 @@ func (s *Local) MergeChunksAndHash(uploadSlug string, totalChunks int) (string, 
 		return "", "", fmt.Errorf("invalid upload slug")
 	}
 
+	mergeStart := time.Now()
+	slog.Info("merge-chunks-and-hash: start", "slug", uploadSlug, "totalChunks", totalChunks)
+
 	chunkDir := filepath.Join(s.root, s.tmpDir, uploadSlug)
 
 	// Merge to temp file and compute hash.
 	tmpPath := filepath.Join(s.root, s.tmpDir, uploadSlug+".merged")
+	slog.Debug("merge-chunks-and-hash: creating temp file", "slug", uploadSlug, "tmpPath", tmpPath)
 	out, err := os.Create(tmpPath)
 	if err != nil {
+		slog.Error("merge-chunks-and-hash: create temp file failed", "slug", uploadSlug, "tmpPath", tmpPath, "err", err)
 		return "", "", fmt.Errorf("create temp file: %w", err)
 	}
 
@@ -223,36 +267,52 @@ func (s *Local) MergeChunksAndHash(uploadSlug string, totalChunks int) (string, 
 
 	for i := 0; i < totalChunks; i++ {
 		chunkPath := filepath.Join(chunkDir, fmt.Sprintf("chunk_%06d", i))
+		chunkStart := time.Now()
 		f, err := os.Open(chunkPath)
 		if err != nil {
 			out.Close()
 			os.Remove(tmpPath)
+			slog.Error("merge-chunks-and-hash: open chunk failed", "slug", uploadSlug, "chunkIndex", i, "path", chunkPath, "err", err)
 			return "", "", fmt.Errorf("open chunk %d: %w", i, err)
 		}
-		if _, err := io.Copy(writer, f); err != nil {
+		n, err := io.Copy(writer, f)
+		if err != nil {
 			f.Close()
 			out.Close()
 			os.Remove(tmpPath)
+			slog.Error("merge-chunks-and-hash: copy chunk failed", "slug", uploadSlug, "chunkIndex", i, "bytesCopied", n, "err", err)
 			return "", "", fmt.Errorf("copy chunk %d: %w", i, err)
 		}
 		f.Close()
+		slog.Debug("merge-chunks-and-hash: chunk merged", "slug", uploadSlug, "chunkIndex", i, "bytesCopied", n, "duration", time.Since(chunkStart))
 	}
 	out.Close()
 
 	actual := hex.EncodeToString(h.Sum(nil))
+	slog.Debug("merge-chunks-and-hash: computed hash", "slug", uploadSlug, "hashPrefix", safePrefix(actual))
 
 	// Move to final path based on computed hash.
 	finalDir := filepath.Join(s.root, StoragePath(actual, s.filesDir))
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o755); err != nil {
 		os.Remove(tmpPath)
+		slog.Error("merge-chunks-and-hash: mkdir final dir failed", "slug", uploadSlug, "finalDir", filepath.Dir(finalDir), "err", err)
 		return "", "", fmt.Errorf("mkdir final dir: %w", err)
 	}
 	if err := os.Rename(tmpPath, finalDir); err != nil {
 		os.Remove(tmpPath)
+		slog.Error("merge-chunks-and-hash: rename failed", "slug", uploadSlug, "from", tmpPath, "to", finalDir, "err", err)
 		return "", "", fmt.Errorf("rename to final: %w", err)
 	}
 
+	slog.Info("merge-chunks-and-hash: complete", "slug", uploadSlug, "totalChunks", totalChunks, "hashPrefix", safePrefix(actual), "duration", time.Since(mergeStart))
 	return actual, StoragePath(actual, s.filesDir), nil
+}
+
+func safePrefix(s string) string {
+	if len(s) >= 16 {
+		return s[:16] + "..."
+	}
+	return s
 }
 
 // HashFile computes the SHA-256 of an existing file at the hash path.
@@ -325,9 +385,12 @@ func (s *Local) CleanupUpload(uploadSlug string) error {
 		return fmt.Errorf("invalid upload slug")
 	}
 	dir := filepath.Join(s.root, s.tmpDir, uploadSlug)
+	slog.Debug("cleanup-upload: removing temp dir", "slug", uploadSlug, "dir", dir)
 	if err := os.RemoveAll(dir); err != nil {
+		slog.Warn("cleanup-upload: removeAll failed", "slug", uploadSlug, "dir", dir, "err", err)
 		return fmt.Errorf("cleanup upload: %w", err)
 	}
+	slog.Debug("cleanup-upload: done", "slug", uploadSlug)
 	return nil
 }
 
