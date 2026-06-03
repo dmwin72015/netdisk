@@ -63,6 +63,11 @@ export type InitResponse = {
 	completedChunks: number[];
 };
 
+export type CompleteResponse = {
+	status: string;
+	physicalFileSlug?: string;
+};
+
 export type StatusResponse = {
 	status: string;
 	physicalFileSlug?: string;
@@ -140,10 +145,10 @@ export async function uploadChunk(uploadSlug: string, chunkIndex: number, data: 
 	}, signal);
 }
 
-export async function completeUpload(uploadSlug: string) {
+export async function completeUpload(uploadSlug: string): Promise<CompleteResponse> {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.complete);
-		return api('/api/v1/upload/complete', {
+		return api<CompleteResponse>('/api/v1/upload/complete', {
 		method: 'POST',
 		body: JSON.stringify({ uploadSlug }),
 		signal,

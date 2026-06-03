@@ -306,6 +306,21 @@ export function createUploadManager(opts: {
 		}
 	}
 
+	async function computeProofCode(sampleBuffer: ArrayBuffer, challengeToken: string): Promise<string> {
+		if (typeof crypto === 'undefined' || !crypto.subtle) {
+			throw new Error('crypto.subtle not available (non-HTTPS context)');
+		}
+		const sampleBytes = new Uint8Array(sampleBuffer);
+		const tokenBytes = new TextEncoder().encode(challengeToken);
+		const proofInput = new Uint8Array(sampleBytes.length + tokenBytes.length);
+		proofInput.set(sampleBytes);
+		proofInput.set(tokenBytes, sampleBytes.length);
+		const proofHash = await crypto.subtle.digest('SHA-256', proofInput);
+		return Array.from(new Uint8Array(proofHash))
+			.map(b => b.toString(16).padStart(2, '0'))
+			.join('');
+	}
+
 	async function processFile(item: UploadItem) {
 		const tStart = Date.now();
 		log(item.uid, item.uploadSlug, `picked from queue, phase=${item.phase}`);
@@ -317,14 +332,16 @@ export function createUploadManager(opts: {
 			return;
 		}
 
-			try {
-				const t0 = Date.now();
-				const cs = getChunkSize();
-				if (cs === null) throw new Error('config unavailable');
-				const chunkSize = cs;
-				const totalChunks = getUploadChunkCount(item.fileSize, chunkSize);
-				const useFastPath = shouldUseSmallFileFastPath(item.fileSize, chunkSize);
+		try {
+			const t0 = Date.now();
+			const cs = getChunkSize();
+			if (cs === null) throw new Error('config unavailable');
+			const chunkSize = cs;
+			const totalChunks = getUploadChunkCount(item.fileSize, chunkSize);
+			const useFastPath = shouldUseSmallFileFastPath(item.fileSize, chunkSize);
 			let hashPromise: ReturnType<typeof computeSHA256Chunked> | null = null;
+			let preHashResolve: (() => void) | null = null;
+			const preHashReady = new Promise<void>((resolve) => { preHashResolve = resolve; });
 
 			const shouldPrepareHash = item.phase === 'hashing' || (item.phase === 'pending' && (!item.preHash || !item.fileHash));
 			const shouldWaitHashBeforeInit = item.phase === 'pending' && !item.fileHash;
@@ -335,6 +352,7 @@ export function createUploadManager(opts: {
 				hashPromise = computeSHA256Chunked(item.file, {
 					onPreHash: (preHash) => {
 						item.preHash = preHash;
+						preHashResolve?.();
 						log(item.uid, null, `preHash ready (${Date.now() - t0}ms): ${preHash}`);
 					},
 					onProgress: (percent) => {
@@ -342,86 +360,81 @@ export function createUploadManager(opts: {
 					}
 				}, chunkSize);
 
-				while (!item.preHash) {
-					await new Promise(r => setTimeout(r, 10));
-				}
+				const preHashTimeout = 60_000;
+				await Promise.race([
+					preHashReady,
+					new Promise<never>((_, reject) =>
+						setTimeout(() => reject(new Error(`preHash timeout after ${preHashTimeout}ms`)), preHashTimeout)
+					),
+				]);
 
 				if (useFastPath) {
 					const { hash } = await hashPromise!;
 					item.fileHash = hash;
 					log(item.uid, null, `small file fast path, skip preCheck/challenge (${Date.now() - t0}ms): ${hash}`);
 				} else {
-						const preResult = await preCheck(item.preHash, item.fileSize);
-						log(item.uid, null, `preCheck result: ${preResult.status}`);
+					const preResult = await preCheck(item.preHash, item.fileSize);
+					log(item.uid, null, `preCheck result: ${preResult.status}`);
 
-						if (preResult.status === 'SUSPECT_HIT') {
-							const { hash } = await hashPromise!;
-							item.fileHash = hash;
-							log(item.uid, null, `fullHash done (${Date.now() - t0}ms): ${hash}`);
+					if (preResult.status === 'SUSPECT_HIT') {
+						const { hash } = await hashPromise!;
+						item.fileHash = hash;
+						log(item.uid, null, `fullHash done (${Date.now() - t0}ms): ${hash}`);
 
-							item.phase = 'verifying';
-							log(item.uid, null, 'phase → verifying, requesting challenge...');
-							const challenge = await requestChallenge(hash);
+						item.phase = 'verifying';
+						log(item.uid, null, 'phase → verifying, requesting challenge...');
+						const challenge = await requestChallenge(hash);
 
-							if (challenge.status === 'CHALLENGE') {
-								const sampleStart = challenge.challengeOffset;
-								const sampleEnd = Math.min(sampleStart + 1024, item.fileSize);
-								const sampleBlob = item.file.slice(sampleStart, sampleEnd);
-								const sampleBuffer = await sampleBlob.arrayBuffer();
-								const sampleBytes = new Uint8Array(sampleBuffer);
+						if (challenge.status === 'CHALLENGE') {
+							const sampleStart = challenge.challengeOffset;
+							const sampleEnd = Math.min(sampleStart + 1024, item.fileSize);
+							const sampleBlob = item.file.slice(sampleStart, sampleEnd);
+							const sampleBuffer = await sampleBlob.arrayBuffer();
+							const proofCode = await computeProofCode(sampleBuffer, challenge.challengeToken);
 
-								const tokenBytes = new TextEncoder().encode(challenge.challengeToken);
-								const proofInput = new Uint8Array(sampleBytes.length + tokenBytes.length);
-								proofInput.set(sampleBytes);
-								proofInput.set(tokenBytes, sampleBytes.length);
-								const proofHash = await crypto.subtle.digest('SHA-256', proofInput);
-								const proofCode = Array.from(new Uint8Array(proofHash))
-									.map(b => b.toString(16).padStart(2, '0'))
-									.join('');
+							const verifyResult = await verifyUpload(hash, proofCode);
+							log(item.uid, null, `verify result: ${verifyResult.status}`);
 
-								const verifyResult = await verifyUpload(hash, proofCode);
-								log(item.uid, null, `verify result: ${verifyResult.status}`);
+							if (verifyResult.status === 'HIT' && verifyResult.physicalFileSlug) {
+								log(item.uid, null, `dedup HIT, importing from ${verifyResult.physicalFileSlug}`);
 
-								if (verifyResult.status === 'HIT' && verifyResult.physicalFileSlug) {
-									log(item.uid, null, `dedup HIT, importing from ${verifyResult.physicalFileSlug}`);
-
-									if (verifyResult.existingFiles && verifyResult.existingFiles.length > 0) {
-										const paths = verifyResult.existingFiles.map(f => f.path).join('\n');
-										const confirmed = await confirmAction(
-											m.duplicate_detected(),
-											m.duplicate_file_paths({ paths }),
-											m.continue_upload()
-										);
-										if (!confirmed) {
-											item.phase = 'failed';
-											item.errorMsg = m.upload_skipped_duplicate();
-											log(item.uid, null, 'skipped by user (duplicate)');
-											return;
-										}
+								if (verifyResult.existingFiles && verifyResult.existingFiles.length > 0) {
+									const paths = verifyResult.existingFiles.map(f => f.path).join('\n');
+									const confirmed = await confirmAction(
+										m.duplicate_detected(),
+										m.duplicate_file_paths({ paths }),
+										m.continue_upload()
+									);
+									if (!confirmed) {
+										item.phase = 'failed';
+										item.errorMsg = m.upload_skipped_duplicate();
+										log(item.uid, null, 'skipped by user (duplicate)');
+										return;
 									}
-
-									item.phase = 'importing';
-									item.progress = 100;
-									await importPhysicalFile(item, verifyResult.physicalFileSlug);
-									item.phase = 'completed';
-									item.uploadedBytes = item.fileSize;
-									log(item.uid, null, 'completed (dedup)');
-									try { await _onCompleted(); } catch (e) { warn(item.uid, null, 'onCompleted threw', e); }
-									return;
 								}
-								log(item.uid, null, 'verify MISS, falling through to upload');
-							} else {
-								log(item.uid, null, `challenge status: ${challenge.status}, no challenge issued`);
+
+								item.phase = 'importing';
+								item.progress = 100;
+								await importPhysicalFile(item, verifyResult.physicalFileSlug);
+								item.phase = 'completed';
+								item.uploadedBytes = item.fileSize;
+								log(item.uid, null, 'completed (dedup)');
+								try { await _onCompleted(); } catch (e) { warn(item.uid, null, 'onCompleted threw', e); }
+								return;
 							}
-						} else if (shouldWaitHashBeforeInit) {
-							const { hash } = await hashPromise!;
-							item.fileHash = hash;
-							log(item.uid, null, `resume fullHash done (${Date.now() - t0}ms): ${hash}`);
+							log(item.uid, null, 'verify MISS, falling through to upload');
 						} else {
-							log(item.uid, null, 'preCheck NOT_FOUND, going straight to upload');
+							log(item.uid, null, `challenge status: ${challenge.status}, no challenge issued`);
 						}
+					} else if (shouldWaitHashBeforeInit) {
+						const { hash } = await hashPromise!;
+						item.fileHash = hash;
+						log(item.uid, null, `resume fullHash done (${Date.now() - t0}ms): ${hash}`);
+					} else {
+						log(item.uid, null, 'preCheck NOT_FOUND, going straight to upload');
 					}
 				}
+			}
 
 			item.phase = 'uploading';
 			log(item.uid, null, 'phase → uploading, init session...');
@@ -539,12 +552,30 @@ export function createUploadManager(opts: {
 			}
 
 			log(item.uid, task.uploadSlug, 'all chunks uploaded, completing...');
-			await completeUpload(task.uploadSlug);
+			const completeResp = await completeUpload(task.uploadSlug);
 
-			const completedTask = await getUploadStatus(task.uploadSlug);
-			if (completedTask.physicalFileSlug) {
-				log(item.uid, task.uploadSlug, `importing physicalFile: ${completedTask.physicalFileSlug}`);
-				await importPhysicalFile(item, completedTask.physicalFileSlug);
+			let physicalFileSlug: string | undefined = completeResp?.physicalFileSlug;
+			if (completeResp?.status !== 'DONE') {
+				log(item.uid, task.uploadSlug, `complete status: ${completeResp?.status}, polling for completion...`);
+				for (let attempt = 0; attempt < 60; attempt++) {
+					await new Promise(r => setTimeout(r, 2000));
+					const statusResp = await getUploadStatus(task.uploadSlug);
+					if (statusResp.status === 'done' && statusResp.physicalFileSlug) {
+						physicalFileSlug = statusResp.physicalFileSlug;
+						break;
+					}
+					if (statusResp.status === 'failed') {
+						throw new Error(statusResp.error ?? 'upload task failed');
+					}
+				}
+				if (!physicalFileSlug) {
+					throw new Error('upload did not complete in time');
+				}
+			}
+
+			if (physicalFileSlug) {
+				log(item.uid, task.uploadSlug, `importing physicalFile: ${physicalFileSlug}`);
+				await importPhysicalFile(item, physicalFileSlug);
 			}
 
 			item.phase = 'completed';

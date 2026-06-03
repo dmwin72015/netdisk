@@ -314,10 +314,6 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 	if task.OwnerUserID != userID {
 		return model.ErrUnauthorized
 	}
-	if task.Status != "uploading" {
-		s.logger.Warn().Str("slug", uploadSlug).Str("status", task.Status).Int32("chunkIndex", chunkIndex).Msg("append chunk on non-uploading task")
-		return model.ErrInvalidInput
-	}
 	if chunkIndex < 0 || chunkIndex >= task.TotalChunks {
 		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int32("totalChunks", task.TotalChunks).Msg("append chunk invalid index")
 		return model.ErrInvalidInput
@@ -331,6 +327,19 @@ func (s *UploadService) AppendChunk(ctx context.Context, userID int64, uploadSlu
 	}
 	if len(data) != expectedSize {
 		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Int("expected", expectedSize).Int("got", len(data)).Msg("append chunk size mismatch")
+		return model.ErrInvalidInput
+	}
+
+	// Tolerate chunks arriving after the task has moved to merging/done:
+	// if the chunk already exists with correct size, skip the write and
+	// just ensure it's tracked in the chunk cache.
+	if task.Status != "uploading" {
+		if s.store.ChunkExists(uploadSlug, int(chunkIndex), int64(expectedSize)) {
+			s.logger.Debug().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Str("status", task.Status).Msg("append chunk: task no longer uploading, chunk already exists, skipping")
+			_ = s.cache.Chunks.AddChunk(ctx, uploadSlug, int(chunkIndex))
+			return nil
+		}
+		s.logger.Warn().Str("slug", uploadSlug).Int32("chunkIndex", chunkIndex).Str("status", task.Status).Msg("append chunk on non-uploading task and chunk missing")
 		return model.ErrInvalidInput
 	}
 
@@ -401,10 +410,18 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 	if task.OwnerUserID != userID {
 		return nil, model.ErrUnauthorized
 	}
+
 	if task.Status != "uploading" {
 		s.logger.Warn().Str("slug", uploadSlug).Str("status", task.Status).Int64("userID", userID).Msg("complete called on non-uploading task")
-		return nil, model.ErrInvalidInput
+		if task.Status == "done" {
+			pf, pfErr := s.queries.GetPhysicalFileByID(ctx, task.PhysicalFileID.Int64)
+			if pfErr == nil {
+				return &CompleteResponse{Status: "DONE", PhysicalFileSlug: pf.Slug}, nil
+			}
+		}
+		return &CompleteResponse{Status: task.Status}, nil
 	}
+
 	chunkIssues, err := s.store.ValidateChunks(uploadSlug, int(task.TotalChunks), int64(task.ChunkSize), task.FileSize)
 	if err != nil {
 		s.logger.Error().Str("slug", uploadSlug).Err(err).Msg("complete: validate chunks failed")
@@ -420,11 +437,17 @@ func (s *UploadService) Complete(ctx context.Context, userID int64, uploadSlug s
 		return nil, model.ErrInvalidInput
 	}
 
-	if err := s.queries.UpdateUploadTaskStatus(ctx, sqlc.UpdateUploadTaskStatusParams{
-		ID:     task.ID,
-		Status: "merging",
-	}); err != nil {
-		return nil, fmt.Errorf("update status: %w", err)
+	// Atomic status transition: only proceed if still "uploading"
+	tag, err := s.pg.Exec(ctx,
+		`UPDATE upload_tasks SET status = 'merging' WHERE id = $1 AND status = 'uploading'`,
+		task.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("atomic status update: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		s.logger.Warn().Str("slug", uploadSlug).Int64("taskID", task.ID).Msg("complete: status already changed by another request")
+		return &CompleteResponse{Status: "MERGING"}, nil
 	}
 
 	fileHash := task.FileHash

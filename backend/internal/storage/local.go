@@ -31,6 +31,19 @@ func NewLocal(root, tmpDir, filesDir string) *Local {
 	return &Local{root: root, tmpDir: tmpDir, filesDir: filesDir}
 }
 
+// ChunkExists checks whether a chunk file exists on disk with the expected size.
+func (s *Local) ChunkExists(uploadSlug string, chunkIndex int, expectedSize int64) bool {
+	if !ValidateSlug(uploadSlug) {
+		return false
+	}
+	path := filepath.Join(s.root, s.tmpDir, uploadSlug, fmt.Sprintf("chunk_%06d", chunkIndex))
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.Size() == expectedSize
+}
+
 // WriteChunk writes a single chunk to the temporary upload directory.
 func (s *Local) WriteChunk(uploadSlug string, chunkIndex int, data io.Reader) error {
 	if !ValidateSlug(uploadSlug) {
