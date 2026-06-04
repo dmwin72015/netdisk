@@ -5,7 +5,7 @@
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import {
-		listFiles, mkdir, trashFile, renameFile, setStarred,
+		listFiles, mkdir, trashFile, batchTrashFiles, renameFile, setStarred,
 		downloadUrl, getBreadcrumb, moveFile, type FileItem
 	} from '$lib/api/files';
 	import { ApiError } from '$lib/api/client';
@@ -35,6 +35,7 @@
 	let total = $state(0);
 	let loading = $state(true);
 	let loadingMore = $state(false);
+	let deleting = $state(false);
 	let notFound = $state(false);
 	let refreshId = 0;
 
@@ -256,11 +257,14 @@
 	// --- File operations ---
 	async function remove(slug: string, name: string) {
 		if (!(await confirmDelete(m.confirm_delete_file({ name })))) return;
+		deleting = true;
 		try {
 			await trashFile(slug);
 			await refresh();
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.delete_failed());
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -269,11 +273,14 @@
 		if (files.length === 0) return;
 		const names = files.map(f => f.name);
 		if (!(await confirmDelete(m.confirm_delete_multiple({ count: String(files.length), names: names.join('\n') })))) return;
+		deleting = true;
 		try {
-			await Promise.all(files.map(f => trashFile(f.id)));
+			await batchTrashFiles(ids);
 			await refresh();
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.delete_failed());
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -382,25 +389,32 @@
 		<input bind:this={folderInput} type="file" webkitdirectory class="hidden" onchange={upload.onPickFolder} />
 
 		<!-- File list -->
-		<FileListView
-			files={normalizedFiles}
-			{viewMode}
-			{loading}
-			directoryId={currentSlug}
-			currentPath={crumbs}
-			includeSystemDirs={showSystemDirs}
-			downloadUrlFn={downloadUrl}
-			emptyMessage={currentSlug ? m.dir_empty() : m.no_files()}
-			onNavigateDir={navigateToDir}
-			onStar={toggleStar}
-			onPreview={onPreview}
-			onRename={rename}
-			onDelete={remove}
-			onBatchDelete={batchRemove}
-			onMove={move}
-			onAddToMedia={onAddToMedia}
-			{loadFolderSummary}
-		/>
+		<div class="relative">
+			{#if deleting}
+				<div class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/60 backdrop-blur-[1px]">
+					<LoaderCircle size={24} class="animate-spin text-gray-400" />
+				</div>
+			{/if}
+			<FileListView
+				files={normalizedFiles}
+				{viewMode}
+				{loading}
+				directoryId={currentSlug}
+				currentPath={crumbs}
+				includeSystemDirs={showSystemDirs}
+				downloadUrlFn={downloadUrl}
+				emptyMessage={currentSlug ? m.dir_empty() : m.no_files()}
+				onNavigateDir={navigateToDir}
+				onStar={toggleStar}
+				onPreview={onPreview}
+				onRename={rename}
+				onDelete={remove}
+				onBatchDelete={batchRemove}
+				onMove={move}
+				onAddToMedia={onAddToMedia}
+				{loadFolderSummary}
+			/>
+		</div>
 
 		{#if files.length > 0}
 			<div class="flex items-center justify-between text-xs text-gray-400">

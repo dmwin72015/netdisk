@@ -225,6 +225,29 @@ func (h *FilesHandler) TrashFile(c echo.Context) error {
 	return OK(c, map[string]string{"message": "file trashed"})
 }
 
+func (h *FilesHandler) BatchTrashFiles(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input struct {
+		Slugs []string `json:"slugs"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if len(input.Slugs) == 0 {
+		return model.ErrInvalidInput
+	}
+
+	if err := h.svc.BatchTrashFiles(c.Request().Context(), userID, input.Slugs); err != nil {
+		return err
+	}
+
+	return OK(c, map[string]string{"message": "files trashed"})
+}
+
 func (h *FilesHandler) RestoreFile(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

@@ -96,6 +96,13 @@ export async function trashFile(slug: string) {
 	return api(`/api/v1/files/${slug}`, { method: 'DELETE' });
 }
 
+export async function batchTrashFiles(slugs: string[]) {
+	return api('/api/v1/files/trash/batch', {
+		method: 'POST',
+		body: JSON.stringify({ slugs })
+	});
+}
+
 export async function restoreFile(slug: string) {
 	return api(`/api/v1/files/${slug}/restore`, { method: 'POST' });
 }

@@ -72,6 +72,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	files.POST("/check-duplicate", h.Files.CheckDuplicate)
 	files.POST("/import", h.Files.ImportFile)
 	files.GET("/trash", h.Files.ListTrashed)
+	files.POST("/trash/batch", h.Files.BatchTrashFiles)
 	files.POST("/trash/empty", h.Files.EmptyTrash)
 	files.POST("/trash/restore-all", h.Files.RestoreAll)
 	files.GET("/starred", h.Files.ListStarred)

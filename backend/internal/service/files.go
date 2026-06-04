@@ -486,6 +486,96 @@ func (s *FilesService) TrashFile(ctx context.Context, userID int64, fileSlug str
 	})
 }
 
+func (s *FilesService) BatchTrashFiles(ctx context.Context, userID int64, slugs []string) error {
+	if len(slugs) == 0 {
+		return nil
+	}
+
+	// Query all files by slugs in a single query
+	rows, err := s.pg.Query(ctx,
+		`SELECT id, slug, is_dir, is_trashed, is_system FROM user_files
+		 WHERE slug = ANY($1::varchar[]) AND user_id = $2`,
+		slugs, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("batch trash: query files: %w", err)
+	}
+	defer rows.Close()
+
+	type foundFile struct {
+		ID        int64
+		Slug      string
+		IsDir     bool
+		IsTrashed bool
+		IsSystem  bool
+	}
+	var files []foundFile
+	var notFound []string
+	foundSlugs := make(map[string]bool)
+
+	for rows.Next() {
+		var f foundFile
+		if err := rows.Scan(&f.ID, &f.Slug, &f.IsDir, &f.IsTrashed, &f.IsSystem); err != nil {
+			return fmt.Errorf("batch trash: scan: %w", err)
+		}
+		files = append(files, f)
+		foundSlugs[f.Slug] = true
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Check for not-found slugs
+	for _, slug := range slugs {
+		if !foundSlugs[slug] {
+			notFound = append(notFound, slug)
+		}
+	}
+	if len(notFound) > 0 {
+		return fmt.Errorf("batch trash: files not found: %v", notFound)
+	}
+
+	// Validate all files
+	var dirIDs []int64
+	for _, f := range files {
+		if f.IsSystem {
+			return fmt.Errorf("batch trash: system file cannot be trashed: %s", f.Slug)
+		}
+		if f.IsDir {
+			dirIDs = append(dirIDs, f.ID)
+		}
+	}
+
+	// Check directories for non-empty
+	if len(dirIDs) > 0 {
+		var nonEmptyCount int64
+		err = s.pg.QueryRow(ctx,
+			`SELECT COUNT(*) FROM user_files
+			 WHERE parent_id = ANY($1::bigint[]) AND is_trashed = FALSE`,
+			dirIDs,
+		).Scan(&nonEmptyCount)
+		if err != nil {
+			return fmt.Errorf("batch trash: count dir children: %w", err)
+		}
+		if nonEmptyCount > 0 {
+			return model.ErrDirNotEmpty
+		}
+	}
+
+	// Batch trash all files
+	_, err = s.pg.Exec(ctx,
+		`UPDATE user_files
+		 SET is_trashed = TRUE, trashed_at = NOW(), updated_at = NOW()
+		 WHERE slug = ANY($1::varchar[]) AND user_id = $2 AND is_trashed = FALSE`,
+		slugs, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("batch trash: update: %w", err)
+	}
+
+	return nil
+}
+
 func (s *FilesService) RestoreFile(ctx context.Context, userID int64, fileSlug string) error {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
