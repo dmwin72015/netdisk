@@ -146,6 +146,18 @@ func (s *UploadService) RequestChallenge(ctx context.Context, userID int64, req 
 		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
+	// If a challenge already exists for this user+hash, reuse it so concurrent
+	// uploads of the same file share one challenge instead of overwriting each other.
+	existingOffset, existingToken, err := s.cache.Challenge.GetChallenge(ctx, userID, req.FileHash)
+	if err == nil {
+		s.logger.Debug().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("offset", existingOffset).Msg("request challenge: reusing existing challenge")
+		return &RequestChallengeResponse{
+			Status:          "CHALLENGE",
+			ChallengeOffset: int64(existingOffset),
+			ChallengeToken:  existingToken,
+		}, nil
+	}
+
 	offset := int(rand.Int63n(max(1, pf.FileSize-1024)))
 	token, err := gonanoid.New(32)
 	if err != nil {
@@ -172,8 +184,8 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 
 	offset, token, err := s.cache.Challenge.ConsumeChallenge(ctx, userID, req.FileHash)
 	if err != nil {
-		s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("verify: consume challenge failed")
-		return nil, model.ErrChallengeExpired
+		s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("verify: consume challenge failed, treating as MISS")
+		return &VerifyResponse{Status: "MISS"}, nil
 	}
 
 	diskBytes, err := s.store.ReadAt(req.FileHash, int64(offset), 1024)

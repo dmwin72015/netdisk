@@ -9,14 +9,14 @@
 		onPause,
 		onResume,
 		onDelete,
-		onClear,
+		onDismiss,
 		onRetry
 	}: {
 		items: UploadItem[];
 		onPause: (uid: string) => void;
 		onResume: (uid: string) => void;
 		onDelete: (uid: string) => void;
-		onClear: () => void;
+		onDismiss: () => void;
 		onRetry?: (uid: string) => void;
 	} = $props();
 
@@ -74,7 +74,7 @@
 						{/if}
 					</div>
 					<div class="flex items-center gap-1">
-						<button type="button" onclick={onClear} class="rounded-md p-1 text-gray-400 transition-colors hover:text-gray-600">
+						<button type="button" onclick={onDismiss} class="rounded-md p-1 text-gray-400 transition-colors hover:text-gray-600">
 							<X size={14} />
 						</button>
 						<button type="button" onclick={() => (open = false)} class="rounded-md p-1 text-gray-400 transition-colors hover:text-gray-600">

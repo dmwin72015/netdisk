@@ -53,7 +53,7 @@
 		onPause={upload.pauseUpload}
 		onResume={upload.resumeUpload}
 		onDelete={upload.deleteUpload}
-		onClear={upload.clearCompleted}
+		onDismiss={upload.dismissAll}
 		onRetry={handleRetry}
 	/>
 {/if}

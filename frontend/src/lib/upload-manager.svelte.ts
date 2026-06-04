@@ -32,6 +32,7 @@ type SnapshotItem = {
 	uploadedBytes: number;
 	uploadSlug: string | null;
 	sessionId: string | null;
+	parentSlug: string | null;
 	errorMsg: string | null;
 };
 
@@ -82,6 +83,7 @@ export function createUploadManager(opts: {
 				uploadedBytes: i.uploadedBytes,
 				uploadSlug: i.uploadSlug,
 				sessionId: i.sessionId,
+				parentSlug: i.parentSlug,
 				errorMsg: i.errorMsg,
 			}));
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
@@ -102,9 +104,20 @@ export function createUploadManager(opts: {
 		}
 	}
 
+	function clearSnapshot() {
+		if (!STORAGE_KEY) return;
+		try {
+			localStorage.removeItem(STORAGE_KEY);
+		} catch {
+			// ignore
+		}
+	}
+
 	let uploadItems = $state<UploadItem[]>([]);
+	let _hydrated = false;
 
 	$effect(() => {
+		if (!_hydrated) return;
 		const _ = uploadItems;
 		saveSnapshot();
 	});
@@ -192,7 +205,7 @@ export function createUploadManager(opts: {
 
 	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string) {
 		item.phase = 'importing';
-		const parentSlug = await _getCurrentSlug();
+		const parentSlug = item.parentSlug;
 		const imported = await importFile(physicalFileSlug, item.fileName, parentSlug || undefined);
 		await _onFileImported?.({
 			fileSlug: imported.fileSlug,
@@ -204,7 +217,7 @@ export function createUploadManager(opts: {
 
 	// --- File picker handlers ---
 
-	function onPick(e: Event) {
+	async function onPick(e: Event) {
 		const el = e.currentTarget as HTMLInputElement;
 		const fileList = el?.files;
 		if (!fileList || fileList.length === 0) return;
@@ -213,6 +226,7 @@ export function createUploadManager(opts: {
 		el.value = '';
 		if (pickedFiles.length === 0) return;
 
+		const currentSlug = await _getCurrentSlug();
 		const newItems: UploadItem[] = pickedFiles.map((f) => ({
 			uid: nextUid(),
 			file: f,
@@ -227,6 +241,7 @@ export function createUploadManager(opts: {
 			speed: 0,
 			uploadSlug: null,
 			sessionId: null,
+			parentSlug: currentSlug,
 			abortCtrl: null,
 			errorMsg: null
 		}));
@@ -265,10 +280,11 @@ export function createUploadManager(opts: {
 		}, 50);
 	}
 
-	function onFolderConfirm(selected: { file: File; relativePath: string }[]) {
+	async function onFolderConfirm(selected: { file: File; relativePath: string }[]) {
 		folderDialogOpen = false;
 		if (selected.length === 0) return;
 
+		const currentSlug = await _getCurrentSlug();
 		const newItems: UploadItem[] = selected.map((f) => ({
 			uid: nextUid(),
 			file: f.file,
@@ -283,6 +299,7 @@ export function createUploadManager(opts: {
 			speed: 0,
 			uploadSlug: null,
 			sessionId: null,
+			parentSlug: currentSlug,
 			abortCtrl: null,
 			errorMsg: null
 		}));
@@ -458,7 +475,7 @@ export function createUploadManager(opts: {
 			item.phase = 'uploading';
 			log(item.uid, null, 'phase → uploading, init session...');
 			const mimeType = item.file.type || 'application/octet-stream';
-			const parentSlug = await _getCurrentSlug();
+			const parentSlug = item.parentSlug;
 			const task = await initUpload(item.fileHash, item.preHash, item.fileSize, mimeType, item.file.name, parentSlug || undefined);
 			item.uploadSlug = task.uploadSlug;
 			let hashSynced = Boolean(item.fileHash);
@@ -684,14 +701,16 @@ export function createUploadManager(opts: {
 		uploadItems = uploadItems.filter((i) => i.uid !== uid);
 	}
 
-	function clearCompleted() {
-		uploadItems = uploadItems.filter((i) => i.phase !== 'completed');
+	function dismissAll() {
+		clearSnapshot();
+		uploadItems = [];
 	}
 
 	// --- Persistence ---
 
 	function restore() {
 		const snap = restoreSnapshot();
+		_hydrated = true;
 		if (snap.length === 0) return;
 		const activePhases = new Set(['hashing', 'pending', 'verifying', 'uploading', 'paused']);
 		const restored: UploadItem[] = snap.map((s) => ({
@@ -709,6 +728,7 @@ export function createUploadManager(opts: {
 			uploadSlug: s.uploadSlug,
 			sessionId: s.sessionId,
 			abortCtrl: null,
+			parentSlug: s.parentSlug ?? null,
 			errorMsg: s.errorMsg,
 		}));
 		if (uidCounter === 0) {
@@ -750,7 +770,7 @@ export function createUploadManager(opts: {
 		pauseUpload,
 		resumeUpload,
 		deleteUpload,
-		clearCompleted,
+		dismissAll,
 		restore,
 		retryItem,
 		setGetCurrentSlug,

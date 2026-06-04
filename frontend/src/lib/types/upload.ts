@@ -14,6 +14,7 @@ export type UploadItem = {
 	speed: number;
 	uploadSlug: string | null;
 	sessionId: string | null;
+	parentSlug: string | null;
 	abortCtrl: AbortController | null;
 	errorMsg: string | null;
 };

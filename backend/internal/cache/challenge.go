@@ -26,6 +26,30 @@ func (c *Challenge) SetChallenge(ctx context.Context, userID int64, fileHash str
 	}).Err()
 }
 
+// GetChallenge returns the existing challenge without consuming it.
+// Returns (0, "", ErrChallengeExpired) if not found.
+func (c *Challenge) GetChallenge(ctx context.Context, userID int64, fileHash string) (int, string, error) {
+	key := ChallengeKey(userID, fileHash)
+	vals, err := c.rdb.HGetAll(ctx, key).Result()
+	if err != nil {
+		return 0, "", fmt.Errorf("get challenge: %w", err)
+	}
+	if len(vals) == 0 {
+		return 0, "", fmt.Errorf("challenge not found")
+	}
+	offsetStr, ok := vals["offset"]
+	if !ok {
+		return 0, "", fmt.Errorf("challenge missing offset")
+	}
+	token, ok := vals["token"]
+	if !ok {
+		return 0, "", fmt.Errorf("challenge missing token")
+	}
+	var offset int
+	fmt.Sscanf(offsetStr, "%d", &offset)
+	return offset, token, nil
+}
+
 // ExpireChallenge sets the TTL on a challenge key.
 func (c *Challenge) ExpireChallenge(ctx context.Context, userID int64, fileHash string) error {
 	key := ChallengeKey(userID, fileHash)
