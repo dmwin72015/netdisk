@@ -432,13 +432,14 @@ func (h *FilesHandler) ListStarred(c echo.Context) error {
 
 	starred := true
 	params := db.ListFilesParams{
-		UserID:      userID,
-		IsStarred:   &starred,
-		IncludeDirs: true,
-		SortBy:      "updated_at",
-		SortDir:     "DESC",
-		Page:        page,
-		PageSize:    pageSize,
+		UserID:         userID,
+		IsStarred:      &starred,
+		IncludeDirs:    true,
+		IgnoreParentID: true,
+		SortBy:         "updated_at",
+		SortDir:        "DESC",
+		Page:           page,
+		PageSize:       pageSize,
 	}
 
 	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params)
