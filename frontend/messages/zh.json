@@ -167,6 +167,8 @@
   "confirm_delete_tasks": "确定删除选中的 {count} 个任务?",
   "tasks_deleted": "任务已删除",
   "task_deleted": "任务已删除",
+  "select_all": "全选",
+  "clear_selection": "清除选择",
   "selected_count": "已选择 {count} 项",
   "queued": "排队中",
   "converting_progress": "转换中 {progress}%",

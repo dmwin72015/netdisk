@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -147,11 +148,12 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 	} else if err != nil {
 		return nil, fmt.Errorf("get transcode: %w", err)
 	} else if tc.Status == "failed" {
-		log.Debug().Str("old_transcode_slug", tc.Slug).Msg("recreating failed transcode")
-		tc, transcodeSlug, err = s.createTranscodeWithJob(ctx, uf.PhysicalFileID.Int64, profile)
-		if err != nil {
+		log.Debug().Str("transcode_slug", tc.Slug).Msg("resetting failed transcode")
+		if err := s.resetFailedTranscodeWithJob(ctx, tc); err != nil {
 			return nil, err
 		}
+		tc.Status = "pending"
+		transcodeSlug = tc.Slug
 	} else {
 		transcodeReused = true
 		transcodeSlug = tc.Slug
@@ -204,23 +206,57 @@ func (s *MediaService) createTranscodeWithJob(ctx context.Context, physicalFileI
 		Status:         "pending",
 	})
 	if err != nil {
+		if isUniqueViolation(err) {
+			existing, getErr := s.queries.GetTranscodeByPhysicalFileAndProfile(ctx, sqlc.GetTranscodeByPhysicalFileAndProfileParams{
+				PhysicalFileID: physicalFileID,
+				Profile:        profile,
+			})
+			if getErr == nil {
+				return existing, existing.Slug, nil
+			}
+		}
 		return sqlc.MediaTranscode{}, "", fmt.Errorf("create transcode: %w", err)
 	}
 
-	jobSlug, err := gonanoid.New(21)
-	if err != nil {
-		return sqlc.MediaTranscode{}, "", fmt.Errorf("generate slug: %w", err)
-	}
-	_, err = s.queries.CreateMediaJob(ctx, sqlc.CreateMediaJobParams{
-		Slug:        jobSlug,
-		TranscodeID: tc.ID,
-		Status:      "pending",
-	})
-	if err != nil {
+	if _, err := s.enqueueTranscodeJob(ctx, tc.ID); err != nil {
 		return sqlc.MediaTranscode{}, "", fmt.Errorf("create media job: %w", err)
 	}
 
 	return tc, tcSlug, nil
+}
+
+func (s *MediaService) resetFailedTranscodeWithJob(ctx context.Context, tc sqlc.MediaTranscode) error {
+	if err := s.queries.UpdateTranscodeStatus(ctx, sqlc.UpdateTranscodeStatusParams{
+		ID:       tc.ID,
+		Status:   "pending",
+		ErrorMsg: pgtype.Text{},
+	}); err != nil {
+		return fmt.Errorf("reset transcode status: %w", err)
+	}
+	_ = s.cache.MediaProgress.DeleteProgress(ctx, tc.Slug)
+	if _, err := s.enqueueTranscodeJob(ctx, tc.ID); err != nil {
+		return fmt.Errorf("create media job: %w", err)
+	}
+	return nil
+}
+
+func (s *MediaService) enqueueTranscodeJob(ctx context.Context, transcodeID int64) (string, error) {
+	jobSlug, err := gonanoid.New(21)
+	if err != nil {
+		return "", fmt.Errorf("generate slug: %w", err)
+	}
+	_, err = s.queries.CreateMediaJob(ctx, sqlc.CreateMediaJobParams{
+		Slug:        jobSlug,
+		TranscodeID: transcodeID,
+		Status:      "pending",
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return jobSlug, nil
 }
 
 func (s *MediaService) ListMediaItems(ctx context.Context, userID int64, page, pageSize int) ([]MediaItemResponse, int, error) {
@@ -331,6 +367,57 @@ func (s *MediaService) RemoveFromLibrary(ctx context.Context, userID int64, medi
 	}
 
 	return s.queries.DeleteMediaItem(ctx, item.ID)
+}
+
+func (s *MediaService) BatchRemoveFromLibrary(ctx context.Context, userID int64, mediaSlugs []string) error {
+	slugs := make([]string, 0, len(mediaSlugs))
+	seen := make(map[string]struct{}, len(mediaSlugs))
+	for _, mediaSlug := range mediaSlugs {
+		mediaSlug = strings.TrimSpace(mediaSlug)
+		if mediaSlug == "" {
+			return model.ErrInvalidInput
+		}
+		if _, ok := seen[mediaSlug]; ok {
+			continue
+		}
+		seen[mediaSlug] = struct{}{}
+		slugs = append(slugs, mediaSlug)
+	}
+	if len(slugs) == 0 {
+		return model.ErrInvalidInput
+	}
+
+	_, err := s.pg.Exec(ctx,
+		"DELETE FROM media_items WHERE user_id = $1 AND slug = ANY($2::varchar[])",
+		userID,
+		slugs,
+	)
+	if err != nil {
+		return fmt.Errorf("batch delete media items: %w", err)
+	}
+	return nil
+}
+
+func (s *MediaService) RenameMediaItem(ctx context.Context, userID int64, mediaSlug, newName string) (*MediaItemResponse, error) {
+	newName = strings.TrimSpace(newName)
+	if mediaSlug == "" || newName == "" || len(newName) > 512 {
+		return nil, model.ErrInvalidInput
+	}
+
+	result, err := s.pg.Exec(ctx,
+		"UPDATE media_items SET title = $1, updated_at = NOW() WHERE slug = $2 AND user_id = $3",
+		newName,
+		mediaSlug,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("rename media item: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return nil, model.ErrNotFound
+	}
+
+	return s.GetMediaItem(ctx, userID, mediaSlug)
 }
 
 func (s *MediaService) GetPosterPath(ctx context.Context, userID int64, mediaSlug string) (string, error) {

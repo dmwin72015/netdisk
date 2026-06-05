@@ -106,6 +106,47 @@ func (h *MediaHandler) RemoveFromLibrary(c echo.Context) error {
 	return OK(c, map[string]string{"message": "removed from library"})
 }
 
+func (h *MediaHandler) BatchRemoveFromLibrary(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input struct {
+		MediaSlugs []string `json:"mediaSlugs"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+
+	if err := h.svc.BatchRemoveFromLibrary(c.Request().Context(), userID, input.MediaSlugs); err != nil {
+		return err
+	}
+
+	return OK(c, map[string]string{"message": "removed from library"})
+}
+
+func (h *MediaHandler) RenameMediaItem(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input struct {
+		NewName string `json:"newName"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+
+	item, err := h.svc.RenameMediaItem(c.Request().Context(), userID, c.Param("media_slug"), input.NewName)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, item)
+}
+
 func (h *MediaHandler) ServePoster(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

@@ -2,10 +2,11 @@
 	import { onMount, onDestroy, getContext } from 'svelte';
 	import { user, authReady } from '$lib/stores/auth';
 	import { getAccessToken } from '$lib/api/client';
-	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, getMediaItem, type MediaItem } from '$lib/api/media';
-	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown } from '@lucide/svelte';
+	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, batchRemoveFromLibrary, renameMediaItem, getMediaItem, type MediaItem } from '$lib/api/media';
+	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown, Check, X, Pencil } from '@lucide/svelte';
+	import { fly } from 'svelte/transition';
 	import { toast } from 'svelte-sonner';
-	import { confirmDelete } from '$lib/dialog';
+	import { confirmDelete, promptInput } from '$lib/dialog';
 	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
 	import { Popover } from '$lib/ui/popover';
@@ -23,6 +24,10 @@
 	let videoInput: HTMLInputElement | undefined = $state();
 	let es: EventSource | undefined;
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+	let selected = $state<Set<string>>(new Set());
+	let allSelected = $derived(items.length > 0 && items.every(item => selected.has(item.mediaSlug)));
+	let hasSelection = $derived(selected.size > 0);
+	let selectedItems = $derived(items.filter(item => selected.has(item.mediaSlug)));
 
 	function isVideoFile(file: File) {
 		if (file.type.startsWith('video/')) return true;
@@ -129,6 +134,8 @@
 			const data = await listMedia();
 			items = data.items;
 			total = data.total;
+			const itemSlugs = new Set(items.map(item => item.mediaSlug));
+			selected = new Set(Array.from(selected).filter(slug => itemSlugs.has(slug)));
 			connectSSE();
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.media_load_failed());
@@ -142,14 +149,59 @@
 		clearTimeout(refreshTimer);
 	});
 
+	function toggleSelect(mediaSlug: string) {
+		if (selected.has(mediaSlug)) selected.delete(mediaSlug);
+		else selected.add(mediaSlug);
+		selected = new Set(selected);
+	}
+
+	function toggleSelectAll() {
+		selected = allSelected ? new Set() : new Set(items.map(item => item.mediaSlug));
+	}
+
+	function clearSelection() {
+		selected = new Set();
+	}
+
 	async function remove(slug: string, name: string) {
 		if (!(await confirmDelete(m.confirm_remove_media({ name })))) return;
 		try {
 			await removeFromLibrary(slug);
 			items = items.filter(i => i.mediaSlug !== slug);
 			total--;
+			selected.delete(slug);
+			selected = new Set(selected);
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.media_remove_failed());
+		}
+	}
+
+	async function batchRemove() {
+		const targets = selectedItems;
+		if (targets.length === 0) return;
+		const names = targets.map(item => item.fileName);
+		if (!(await confirmDelete(m.confirm_delete_multiple({ count: String(targets.length), names: names.join('\n') })))) return;
+		try {
+			const slugs = targets.map(item => item.mediaSlug);
+			await batchRemoveFromLibrary(slugs);
+			items = items.filter(item => !selected.has(item.mediaSlug));
+			total = Math.max(0, total - targets.length);
+			clearSelection();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.media_remove_failed());
+		}
+	}
+
+	async function rename(slug: string, currentName: string) {
+		const newName = await promptInput(m.rename(), m.enter_new_name(), currentName, 512);
+		const trimmed = newName?.trim();
+		if (!trimmed || trimmed === currentName) return;
+		try {
+			const updated = await renameMediaItem(slug, trimmed);
+			const idx = items.findIndex(item => item.mediaSlug === slug);
+			if (idx !== -1) items[idx] = updated;
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.rename_failed());
 		}
 	}
 
@@ -166,42 +218,49 @@
 				<h1 class="text-lg font-semibold text-gray-900">{m.media_title()}</h1>
 				<span class="text-sm text-gray-400">{m.total_items({ total })}</span>
 			</div>
-			<div class="relative" role="region"
-				onmouseenter={() => { clearTimeout(menuTimer); showMenu = true; }}
-				onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
-			>
-				<div class="flex h-8 items-center overflow-hidden rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition-colors" bind:clientWidth={groupWidth}>
-					<button type="button" onclick={() => videoInput?.click()}
-						class="flex h-full items-center gap-1.5 bg-blue-600 px-3.5 hover:bg-blue-700 active:bg-blue-800"
+				<div class="flex items-center gap-2">
+					{#if items.length > 0}
+						<button type="button" onclick={toggleSelectAll} class="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900">
+							<Check size={15} /> {allSelected ? m.clear_selection() : m.select_all()}
+						</button>
+					{/if}
+					<div class="relative" role="region"
+						onmouseenter={() => { clearTimeout(menuTimer); showMenu = true; }}
+						onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
 					>
-						<Upload size={15} /> {m.upload_video()}
-					</button>
-					<Popover
-						bind:open={showMenu}
-						triggerClass="flex h-full items-center px-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
-						contentClass="w-auto max-w-44 p-1.5"
-						contentStyle="min-width: {groupWidth}px"
-						sideOffset={4}
-						align="end"
-						onOpenChange={(o) => { if (!o) showMenu = false; }}
-					>
-						{#snippet trigger()}
-							<ChevronDown size={14} />
-						{/snippet}
-						<div role="region"
-							onmouseenter={() => clearTimeout(menuTimer)}
-							onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
-						>
-							<button type="button" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
-								onclick={() => { showMenu = false; showAddDialog = true; }}
+						<div class="flex h-8 items-center overflow-hidden rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition-colors" bind:clientWidth={groupWidth}>
+							<button type="button" onclick={() => videoInput?.click()}
+								class="flex h-full items-center gap-1.5 bg-blue-600 px-3.5 hover:bg-blue-700 active:bg-blue-800"
 							>
-								<Plus size={15} class="shrink-0 text-gray-500" /> <span class="truncate">{m.add_to_media_library()}</span>
+								<Upload size={15} /> {m.upload_video()}
 							</button>
+							<Popover
+								bind:open={showMenu}
+								triggerClass="flex h-full items-center px-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+								contentClass="w-auto max-w-44 p-1.5"
+								contentStyle="min-width: {groupWidth}px"
+								sideOffset={4}
+								align="end"
+								onOpenChange={(o) => { if (!o) showMenu = false; }}
+							>
+								{#snippet trigger()}
+									<ChevronDown size={14} />
+								{/snippet}
+								<div role="region"
+									onmouseenter={() => clearTimeout(menuTimer)}
+									onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
+								>
+									<button type="button" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+										onclick={() => { showMenu = false; showAddDialog = true; }}
+									>
+										<Plus size={15} class="shrink-0 text-gray-500" /> <span class="truncate">{m.add_to_media_library()}</span>
+									</button>
+								</div>
+							</Popover>
 						</div>
-					</Popover>
+					</div>
 				</div>
 			</div>
-		</div>
 		<input
 			bind:this={videoInput}
 			type="file"
@@ -220,12 +279,21 @@
 				<p class="text-sm text-gray-400">{m.media_empty()}</p>
 				<p class="mt-1 text-xs text-gray-300">{m.media_help()}</p>
 			</div>
-		{:else}
-			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each items as item (item.mediaSlug)}
-					<div class="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md {item.status === 'done' ? '' : 'cursor-default'}">
-						<!-- Thumbnail / status area -->
-						<div class="relative aspect-video bg-gray-100">
+			{:else}
+				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{#each items as item (item.mediaSlug)}
+						{@const isSelected = selected.has(item.mediaSlug)}
+						<div class="group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md {isSelected ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-100'} {item.status === 'done' ? '' : 'cursor-default'}">
+							<button
+								type="button"
+								aria-pressed={isSelected}
+								onclick={(e) => { e.stopPropagation(); toggleSelect(item.mediaSlug); }}
+								class="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm transition-all {isSelected ? 'border-blue-500 bg-blue-500 opacity-100' : 'border-white/80 bg-black/30 opacity-0 hover:bg-black/45 group-hover:opacity-100'}"
+							>
+								{#if isSelected}<Check size={14} strokeWidth={3} />{/if}
+							</button>
+							<!-- Thumbnail / status area -->
+							<div class="relative aspect-video bg-gray-100">
 							{#if item.status === 'done'}
 								<a href="/media/{item.mediaSlug}" class="block h-full">
 									{#if item.posterUrl}
@@ -273,21 +341,45 @@
 										{new Date(item.createdAt).toLocaleDateString()}
 									</p>
 								</div>
-								<button type="button" onclick={() => remove(item.mediaSlug, item.fileName)} class="shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100" title={m.remove()}>
-									<Trash2 size={14} />
-								</button>
-							</div>
+									<div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 {isSelected ? 'opacity-100' : ''}">
+										<button type="button" onclick={() => rename(item.mediaSlug, item.fileName)} class="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-blue-500" title={m.rename()}>
+											<Pencil size={14} />
+										</button>
+										<button type="button" onclick={() => remove(item.mediaSlug, item.fileName)} class="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500" title={m.remove()}>
+											<Trash2 size={14} />
+										</button>
+									</div>
+								</div>
 							{#if item.status === 'failed' && item.errorMsg}
 								<p class="mt-1 truncate text-xs text-red-500" title={item.errorMsg}>{item.errorMsg}</p>
 							{/if}
 						</div>
 					</div>
-				{/each}
-			</div>
-		{/if}
-	</div>
+					{/each}
+				</div>
+			{/if}
 
-	<AddMediaDialog
+			{#if hasSelection}
+				<div class="fixed bottom-6 left-1/2 z-50 max-w-[calc(100vw-1rem)] -translate-x-1/2">
+					<div
+						class="flex items-center gap-2 overflow-x-auto rounded-full border border-gray-100 bg-white/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
+						transition:fly={{ y: 16, duration: 180, opacity: 0 }}
+					>
+						<span class="shrink-0 px-3 text-sm font-medium text-gray-700">{m.selected_count({ count: String(selected.size) })}</span>
+						<div class="h-7 w-px shrink-0 bg-gray-100"></div>
+						<button type="button" onclick={batchRemove} class="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-red-50 hover:text-red-500" title={m.delete_label()}>
+							<Trash2 size={16} />
+						</button>
+						<div class="mx-1 h-7 w-px bg-gray-100"></div>
+						<button type="button" onclick={clearSelection} class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" title={m.close()}>
+							<X size={16} />
+						</button>
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		<AddMediaDialog
 		open={showAddDialog}
 		onClose={() => (showAddDialog = false)}
 		onDone={refresh}

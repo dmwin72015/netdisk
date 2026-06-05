@@ -39,6 +39,20 @@ export async function removeFromLibrary(mediaSlug: string) {
 	return api(`/api/v1/media/items/${mediaSlug}`, { method: 'DELETE' });
 }
 
+export async function batchRemoveFromLibrary(mediaSlugs: string[]) {
+	return api('/api/v1/media/items/batch-delete', {
+		method: 'POST',
+		body: JSON.stringify({ mediaSlugs })
+	});
+}
+
+export async function renameMediaItem(mediaSlug: string, newName: string) {
+	return api<MediaItem>(`/api/v1/media/items/${mediaSlug}/rename`, {
+		method: 'POST',
+		body: JSON.stringify({ newName })
+	});
+}
+
 export async function ensureMediaUploadDir() {
 	return api<FileItem>('/api/v1/media/upload-dir');
 }

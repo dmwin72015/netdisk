@@ -178,6 +178,8 @@
   "confirm_delete_tasks": "Delete {count} selected tasks?",
   "tasks_deleted": "Tasks deleted",
   "task_deleted": "Task deleted",
+  "select_all": "Select all",
+  "clear_selection": "Clear selection",
   "selected_count": "{count} selected",
   "queued": "Queued",
   "converting_progress": "Converting {progress}%",
