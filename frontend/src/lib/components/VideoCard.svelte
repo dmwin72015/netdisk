@@ -4,8 +4,9 @@
 	import type { Task } from '$lib/api/tasks';
 	import { deleteTask } from '$lib/api/tasks';
 	import { confirmDelete } from '$lib/dialog';
+	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
-	import { fmtSize, fmtDurationHMS, timeAgo, authedUrl } from '$lib/utils/format';
+	import { fmtSize, fmtDurationHMS, timeAgo, authedUrl, copyToClipboard } from '$lib/utils/format';
 
 	let {
 		task,
@@ -17,9 +18,13 @@
 	let thumbFailed = $state(false);
 
 	async function copyUrl(url: string) {
-		await navigator.clipboard.writeText(url);
-		copied = true;
-		setTimeout(() => (copied = false), 1500);
+		const fullUrl = new URL(url, window.location.origin).toString();
+		if (await copyToClipboard(fullUrl)) {
+			copied = true;
+			setTimeout(() => (copied = false), 1500);
+		} else {
+			toast.error(m.copy_failed());
+		}
 	}
 
 	async function remove(e: Event) {

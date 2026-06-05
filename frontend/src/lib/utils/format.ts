@@ -69,3 +69,31 @@ export function authedUrl(url: string): string {
 	u.searchParams.set('access_token', token);
 	return u.pathname + '?' + u.searchParams.toString();
 }
+
+/**
+ * Copy text to clipboard with fallback for non-secure contexts.
+ * Uses navigator.clipboard first, falls back to execCommand('copy').
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+	try {
+		await navigator.clipboard.writeText(text);
+		return true;
+	} catch {
+		// Fallback for HTTP and older browsers
+		try {
+			const textarea = document.createElement('textarea');
+			textarea.value = text;
+			textarea.style.position = 'fixed';
+			textarea.style.opacity = '0';
+			textarea.style.pointerEvents = 'none';
+			document.body.appendChild(textarea);
+			textarea.focus();
+			textarea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textarea);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+}

@@ -1,22 +1,27 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/media"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
 type MediaHandler struct {
-	svc *service.MediaService
+	svc         *service.MediaService
+	broadcaster *media.Broadcaster
 }
 
-func NewMediaHandler(svc *service.MediaService) *MediaHandler {
-	return &MediaHandler{svc: svc}
+func NewMediaHandler(svc *service.MediaService, broadcaster *media.Broadcaster) *MediaHandler {
+	return &MediaHandler{svc: svc, broadcaster: broadcaster}
 }
 
 func (h *MediaHandler) AddToLibrary(c echo.Context) error {
@@ -148,4 +153,44 @@ func (h *MediaHandler) ServeHLS(c echo.Context) error {
 	c.Response().WriteHeader(http.StatusOK)
 
 	return c.File(filePath)
+}
+
+func (h *MediaHandler) StreamEvents(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	c.Response().Header().Set(echo.HeaderContentType, "text/event-stream")
+	c.Response().Header().Set("Cache-Control", "no-cache")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().WriteHeader(http.StatusOK)
+
+	flusher, ok := c.Response().Writer.(http.Flusher)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "streaming not supported")
+	}
+
+	ch := h.broadcaster.Subscribe()
+	defer h.broadcaster.Unsubscribe(ch)
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.Request().Context().Done():
+			return nil
+		case event := <-ch:
+			if event.UserID != userID {
+				continue
+			}
+			data, _ := json.Marshal(event)
+			_, _ = fmt.Fprintf(c.Response().Writer, "event: %s\ndata: %s\n\n", event.Status, data)
+			flusher.Flush()
+		case <-ticker.C:
+			_, _ = fmt.Fprintf(c.Response().Writer, ": heartbeat\n\n")
+			flusher.Flush()
+		}
+	}
 }

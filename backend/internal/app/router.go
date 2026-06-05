@@ -112,8 +112,27 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	admin.DELETE("/users/:id", h.Admin.DeleteUser)
 	admin.GET("/files", h.Admin.ListFiles)
 
+	// Photo routes
+	photos := authed.Group("/photos")
+	photos.GET("", h.Photo.ListPhotos)
+	photos.GET("/:file_slug", h.Photo.GetPhotoDetail)
+	photos.GET("/:file_slug/thumbnail", h.Photo.ServeThumbnail)
+	photos.GET("/:file_slug/albums", h.Photo.ListPhotoAlbums)
+
+	// Album routes
+	albums := authed.Group("/albums")
+	albums.POST("", h.Photo.CreateAlbum)
+	albums.GET("", h.Photo.ListAlbums)
+	albums.GET("/:album_slug", h.Photo.GetAlbum)
+	albums.PUT("/:album_slug", h.Photo.UpdateAlbum)
+	albums.DELETE("/:album_slug", h.Photo.DeleteAlbum)
+	albums.POST("/:album_slug/photos", h.Photo.AddPhotosToAlbum)
+	albums.GET("/:album_slug/photos", h.Photo.ListAlbumPhotos)
+	albums.DELETE("/:album_slug/photos/:file_slug", h.Photo.RemovePhotoFromAlbum)
+
 	// Media routes
 	media := authed.Group("/media")
+	media.GET("/events", h.Media.StreamEvents)
 	media.GET("/upload-dir", h.Media.EnsureUploadDir)
 	media.POST("/items", h.Media.AddToLibrary)
 	media.GET("/items", h.Media.ListMediaItems)

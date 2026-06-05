@@ -2,7 +2,7 @@
   import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X, FolderInput } from "@lucide/svelte";
   import { fade, fly } from "svelte/transition";
   import type { NormalizedFile } from "$lib/types/file";
-  import { fmtSize, fmtTime } from "$lib/utils/format";
+  import { fmtSize, fmtTime, copyToClipboard } from "$lib/utils/format";
   import * as m from "$lib/paraglide/messages";
   import MimeIcon from "$lib/components/MimeIcon.svelte";
   import { Tooltip } from "$lib/ui/tooltip";
@@ -143,13 +143,12 @@
   }
 
   async function copyFileLink(file: NormalizedFile) {
-    try {
-      const url = new URL(downloadUrlFn(file.id), window.location.origin);
-      const token = getAccessToken();
-      if (token) url.searchParams.set("access_token", token);
-      await navigator.clipboard.writeText(url.toString());
+    const url = new URL(downloadUrlFn(file.id), window.location.origin);
+    const token = getAccessToken();
+    if (token) url.searchParams.set("access_token", token);
+    if (await copyToClipboard(url.toString())) {
       toast.success(m.copied());
-    } catch {
+    } else {
       toast.error(m.copy_failed());
     }
   }

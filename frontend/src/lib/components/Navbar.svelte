@@ -3,7 +3,7 @@
 	import { logout } from '$lib/api/auth';
 	import { goto } from '$app/navigation';
 	import { setUser } from '$lib/stores/auth';
-	import { HardDrive, Folder, Star, Trash2, Film, User, ChevronDown, LogOut, Settings, ListRestart, Shield } from '@lucide/svelte';
+	import { HardDrive, Folder, Star, Trash2, Film, Image, User, ChevronDown, LogOut, Settings, ListRestart, Shield } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import LanguageDropdown from '$lib/components/LanguageDropdown.svelte';
 	import { page } from '$app/state';
@@ -47,6 +47,12 @@
 						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/media') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
 					>
 						<Film size={15} /> {m.nav_media()}
+					</a>
+					<a
+						href="/photos"
+						class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors {isActive('/photos') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
+					>
+						<Image size={15} /> {m.nav_photos()}
 					</a>
 					<div class="mx-1 h-5 w-px bg-gray-200"></div>
 

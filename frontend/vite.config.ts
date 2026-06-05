@@ -10,10 +10,17 @@ export default defineConfig({
     sveltekit(),
     paraglideVitePlugin({
       project: "./project.inlang",
-      outdir: "./src/lib/paraglide",
+      outdir: "./lib/paraglide",
       strategy: ["cookie", "baseLocale"],
     }),
   ],
+  ssr: {
+    noExternal: ['@lucide/svelte'],
+    optimizeDeps: {
+      include: ['@lucide/svelte'],
+    },
+  },
+
   server: {
     host: "0.0.0.0",
     port: 5173,

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy, getContext } from 'svelte';
 	import { user, authReady } from '$lib/stores/auth';
-	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, type MediaItem } from '$lib/api/media';
+	import { getAccessToken } from '$lib/api/client';
+	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, getMediaItem, type MediaItem } from '$lib/api/media';
 	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { confirmDelete } from '$lib/dialog';
@@ -20,7 +21,7 @@
 	let menuTimer: ReturnType<typeof setTimeout> | undefined;
 	let groupWidth = $state(0);
 	let videoInput: HTMLInputElement | undefined = $state();
-	let pollTimer: ReturnType<typeof setInterval> | undefined;
+	let es: EventSource | undefined;
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function isVideoFile(file: File) {
@@ -48,7 +49,6 @@
 					toast.success(m.media_transcode_started());
 				}
 				scheduleRefresh();
-				startPolling();
 			} catch (e) {
 				toast.error(e instanceof Error ? e.message : m.media_add_failed());
 				throw e;
@@ -59,33 +59,67 @@
 		});
 	});
 
-	function startPolling() {
-		if (pollTimer) return;
-		pollTimer = setInterval(async () => {
-			if (!$user) return;
-			try {
-				const data = await listMedia();
-				items = data.items;
-				total = data.total;
-				if (!items.some(i => i.status === 'processing' || i.status === 'pending')) {
-					stopPolling();
-				}
-			} catch {
-				// ignore poll errors
+	function connectSSE() {
+		if (es) return;
+		const token = getAccessToken();
+		if (!token) return;
+		const url = new URL('/api/v1/media/events', window.location.origin);
+		url.searchParams.set('access_token', token);
+		es = new EventSource(url.toString());
+
+		function updateItem(mediaSlug: string, update: Partial<MediaItem>) {
+			const idx = items.findIndex(i => i.mediaSlug === mediaSlug);
+			if (idx !== -1) {
+				items[idx] = { ...items[idx], ...update };
 			}
-		}, 3000);
+		}
+
+		es.addEventListener('processing', (e) => {
+			const data = JSON.parse(e.data);
+			updateItem(data.mediaSlug, { status: data.status, progress: data.progress });
+		});
+
+		es.addEventListener('done', (e) => {
+			const data = JSON.parse(e.data);
+			updateItem(data.mediaSlug, { status: data.status, progress: 100 });
+			void refreshItem(data.mediaSlug);
+		});
+
+		es.addEventListener('failed', (e) => {
+			const data = JSON.parse(e.data);
+			updateItem(data.mediaSlug, { status: data.status, progress: 0, errorMsg: data.errorMsg ?? null });
+		});
+
+		es.onerror = () => {
+			// EventSource auto-reconnects
+		};
 	}
 
-	function stopPolling() {
-		if (pollTimer) {
-			clearInterval(pollTimer);
-			pollTimer = undefined;
+	function disconnectSSE() {
+		if (es) {
+			es.close();
+			es = undefined;
+		}
+	}
+
+	async function refreshItem(mediaSlug: string) {
+		try {
+			const updated = await getMediaItem(mediaSlug);
+			const idx = items.findIndex(i => i.mediaSlug === mediaSlug);
+			if (idx !== -1) {
+				items[idx] = updated;
+			}
+		} catch {
+			// ignore
 		}
 	}
 
 	function scheduleRefresh() {
 		clearTimeout(refreshTimer);
-		refreshTimer = setTimeout(() => void refresh(false), 250);
+		refreshTimer = setTimeout(() => {
+			disconnectSSE();
+			void refresh(false);
+		}, 250);
 	}
 
 	async function refresh(showLoading = true) {
@@ -95,9 +129,7 @@
 			const data = await listMedia();
 			items = data.items;
 			total = data.total;
-			if (items.some(i => i.status === 'processing' || i.status === 'pending')) {
-				startPolling();
-			}
+			connectSSE();
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.media_load_failed());
 		} finally {
@@ -106,7 +138,7 @@
 	}
 
 	onDestroy(() => {
-		stopPolling();
+		disconnectSSE();
 		clearTimeout(refreshTimer);
 	});
 

@@ -1,0 +1,125 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { user, authReady } from '$lib/stores/auth';
+	import * as m from '$lib/paraglide/messages';
+	import { toast } from 'svelte-sonner';
+	import { Image, LoaderCircle, ArrowLeft, Trash2 } from '@lucide/svelte';
+	import { authedUrl } from '$lib/utils/format';
+	import { getAlbum, removePhotoFromAlbum, type AlbumDetail } from '$lib/api/albums';
+	import { thumbnailUrl } from '$lib/api/photos';
+	import PhotoViewer from '$lib/components/PhotoViewer.svelte';
+
+	let album = $state<AlbumDetail | null>(null);
+	let loading = $state(true);
+	let viewerSlug = $state<string | null>(null);
+	let viewerIndex = $state(0);
+
+	let allSlugs = $derived(album?.photos.map(p => p.slug) ?? []);
+	let albumSlug = $derived($page.params.slug ?? '');
+
+	async function fetch() {
+		loading = true;
+		try {
+			album = await getAlbum(albumSlug);
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.load_failed());
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handleRemove(fileSlug: string) {
+		try {
+			await removePhotoFromAlbum(albumSlug, fileSlug);
+			if (album) {
+				album.photos = album.photos.filter(p => p.slug !== fileSlug);
+				album.itemCount = album.photos.length;
+			}
+			toast.success(m.albums_remove_photo());
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.load_failed());
+		}
+	}
+
+	function openViewer(slug: string) {
+		viewerIndex = allSlugs.indexOf(slug);
+		viewerSlug = slug;
+	}
+
+	onMount(() => {
+		void fetch();
+	});
+</script>
+
+{#if $authReady && $user}
+	<div class="space-y-4">
+		<!-- Header -->
+		<div class="flex items-center gap-3">
+			<a href="/photos/albums" class="rounded-md p-1 text-gray-400 hover:text-gray-600">
+				<ArrowLeft size={20} />
+			</a>
+			{#if album}
+				<div>
+					<h1 class="text-lg font-semibold text-gray-900">{album.title}</h1>
+					<p class="text-xs text-gray-400">
+						{m.albums_photos_count({ count: album.itemCount })}
+						{#if album.description}
+							&middot; {album.description}
+						{/if}
+					</p>
+				</div>
+			{:else if !loading}
+				<h1 class="text-lg font-semibold text-gray-900">Not Found</h1>
+			{/if}
+		</div>
+
+		{#if loading}
+			<div class="flex items-center justify-center py-16">
+				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+			</div>
+		{:else if album && album.photos.length === 0}
+			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
+				<Image size={40} class="mb-3 text-gray-300" />
+				<p class="text-sm text-gray-400">{m.photos_empty()}</p>
+			</div>
+		{:else if album}
+			<div class="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+				{#each album.photos as photo (photo.slug)}
+					<div class="group relative">
+						<button
+							type="button"
+							onclick={() => openViewer(photo.slug)}
+							class="aspect-square w-full overflow-hidden rounded-md bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+						>
+							<img
+								src={authedUrl(thumbnailUrl(photo.slug))}
+								alt={photo.fileName}
+								class="h-full w-full object-cover transition group-hover:scale-105"
+								loading="lazy"
+							/>
+						</button>
+						<button
+							type="button"
+							onclick={() => handleRemove(photo.slug)}
+							class="absolute right-1.5 top-1.5 rounded-full bg-white/80 p-1.5 text-gray-400 opacity-0 shadow transition-opacity hover:text-red-500 group-hover:opacity-100"
+							title={m.albums_remove_photo()}
+						>
+							<Trash2 size={12} />
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+
+	{#if viewerSlug}
+		<PhotoViewer
+			slug={viewerSlug}
+			bind:fileSlugs={allSlugs}
+			index={viewerIndex}
+			close={() => (viewerSlug = null)}
+			photos={album?.photos ?? []}
+		/>
+	{/if}
+{/if}

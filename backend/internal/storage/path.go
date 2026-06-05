@@ -30,6 +30,12 @@ func ValidateSlug(slug string) bool {
 	return slugRe.MatchString(slug)
 }
 
+// HLSAbsPath returns the sharded absolute path for an HLS transcode output directory.
+// e.g. ("/data", "hls", "abc123...xyz") -> "/data/hls/ab/c1/abc123...xyz"
+func HLSAbsPath(root, hlsDir, slug string) string {
+	return filepath.Join(root, hlsDir, slug[0:2], slug[2:4], slug)
+}
+
 // SafePath cleans a sub-path and ensures it doesn't escape the parent directory.
 func SafePath(subPath string) string {
 	cleaned := filepath.Clean(subPath)

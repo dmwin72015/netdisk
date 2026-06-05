@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Hls from 'hls.js';
@@ -73,29 +73,48 @@
 		}
 	});
 
-	// Poll for status updates while processing
-	let pollTimer: ReturnType<typeof setInterval> | undefined;
-	$effect(() => {
-		if (item && (item.status === 'pending' || item.status === 'processing')) {
-			pollTimer = setInterval(async () => {
-				try {
-					const updated = await getMediaItem(page.params.slug!);
-					item = updated;
-					if (updated.status === 'done' || updated.status === 'failed') {
-						if (pollTimer) clearInterval(pollTimer);
-						if (updated.status === 'failed') {
-							error = updated.errorMsg || m.conversion_failed();
-						}
-					}
-				} catch {
-					// ignore poll errors
-				}
-			}, 3000);
-			return () => {
-				if (pollTimer) clearInterval(pollTimer);
-			};
+	// SSE for real-time transcode progress
+	let es: EventSource | undefined;
+	function connectSSE() {
+		if (es) return;
+		const token = getAccessToken();
+		if (!token) return;
+		const url = new URL('/api/v1/media/events', window.location.origin);
+		url.searchParams.set('access_token', token);
+		es = new EventSource(url.toString());
+
+		es.addEventListener('processing', (e) => {
+			const data = JSON.parse(e.data);
+			if (data.mediaSlug !== page.params.slug) return;
+			if (!item) return;
+			item = { ...item, status: data.status, progress: data.progress };
+		});
+
+		es.addEventListener('done', (e) => {
+			const data = JSON.parse(e.data);
+			if (data.mediaSlug !== page.params.slug) return;
+			void load();
+		});
+
+		es.addEventListener('failed', (e) => {
+			const data = JSON.parse(e.data);
+			if (data.mediaSlug !== page.params.slug) return;
+			if (!item) return;
+			item = { ...item, status: data.status, errorMsg: data.errorMsg ?? m.conversion_failed() };
+			error = data.errorMsg || m.conversion_failed();
+		});
+
+		es.onerror = () => {
+			// EventSource auto-reconnects
+		};
+	}
+
+	function disconnectSSE() {
+		if (es) {
+			es.close();
+			es = undefined;
 		}
-	});
+	}
 
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -105,10 +124,13 @@
 		}
 	}
 
-	onMount(load);
-	onDestroy(() => {
-		hls?.destroy();
-		if (pollTimer) clearInterval(pollTimer);
+	onMount(() => {
+		void load();
+		connectSSE();
+		return () => {
+			hls?.destroy();
+			disconnectSSE();
+		};
 	});
 </script>
 

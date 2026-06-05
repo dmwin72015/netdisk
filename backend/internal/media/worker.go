@@ -20,22 +20,24 @@ import (
 )
 
 type Worker struct {
-	queries *sqlc.Queries
-	pg      *pgxpool.Pool
-	cfg     *config.Config
-	store   *storage.Local
-	cache   *cache.Cache
-	logger  zerolog.Logger
+	queries     *sqlc.Queries
+	pg          *pgxpool.Pool
+	cfg         *config.Config
+	store       *storage.Local
+	cache       *cache.Cache
+	logger      zerolog.Logger
+	broadcaster *Broadcaster
 }
 
-func NewWorker(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config, store *storage.Local, c *cache.Cache, logger zerolog.Logger) *Worker {
+func NewWorker(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config, store *storage.Local, c *cache.Cache, logger zerolog.Logger, broadcaster *Broadcaster) *Worker {
 	return &Worker{
-		queries: queries,
-		pg:      pg,
-		cfg:     cfg,
-		store:   store,
-		cache:   c,
-		logger:  logger,
+		queries:     queries,
+		pg:          pg,
+		cfg:         cfg,
+		store:       store,
+		cache:       c,
+		logger:      logger,
+		broadcaster: broadcaster,
 	}
 }
 
@@ -101,10 +103,20 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 		return
 	}
 
+	// Look up media item for SSE progress events
+	var mediaSlug string
+	var mediaUserID int64
+	mi, miErr := w.queries.GetMediaItemByTranscodeID(ctx, pgtype.Int8{Int64: tc.ID, Valid: true})
+	if miErr == nil {
+		mediaSlug = mi.Slug
+		mediaUserID = mi.UserID
+	}
+
 	// Get physical file
 	pf, err := w.queries.GetPhysicalFileByID(ctx, tc.PhysicalFileID)
 	if err != nil {
 		log.Error().Err(err).Int64("physical_file_id", tc.PhysicalFileID).Msg("get physical file")
+		w.publishFailEvent(mediaSlug, mediaUserID, "physical file not found")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "physical file not found")
 		return
 	}
@@ -112,17 +124,19 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 
 	// Build paths
 	inputPath := w.store.AbsPath(pf.FileHash)
-	outputDir := filepath.Join(w.cfg.Storage.Root, w.cfg.Storage.HLSDir, tc.Slug)
+	outputDir := storage.HLSAbsPath(w.cfg.Storage.Root, w.cfg.Storage.HLSDir, tc.Slug)
 	log.Debug().Str("input_path", inputPath).Str("output_dir", outputDir).Msg("paths resolved")
 
 	if _, err := os.Stat(inputPath); err != nil {
 		log.Error().Err(err).Str("input_path", inputPath).Msg("input file not accessible")
+		w.publishFailEvent(mediaSlug, mediaUserID, "input file not accessible")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "input file not accessible")
 		return
 	}
 
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		log.Error().Err(err).Str("output_dir", outputDir).Msg("create output dir")
+		w.publishFailEvent(mediaSlug, mediaUserID, "create output dir failed")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "create output dir failed")
 		return
 	}
@@ -145,6 +159,7 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		log.Error().Err(err).Msg("create stderr pipe")
+		w.publishFailEvent(mediaSlug, mediaUserID, "stderr pipe failed")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "stderr pipe failed")
 		return
 	}
@@ -152,12 +167,14 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Error().Err(err).Msg("create stdout pipe")
+		w.publishFailEvent(mediaSlug, mediaUserID, "stdout pipe failed")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "stdout pipe failed")
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
 		log.Error().Err(err).Msg("start ffmpeg")
+		w.publishFailEvent(mediaSlug, mediaUserID, "ffmpeg start failed")
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, "ffmpeg start failed")
 		return
 	}
@@ -181,11 +198,20 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 			log.Debug().Int("progress_pct", pct).Msg("transcode progress")
 			nextLogPct = pct + 25
 		}
+		if w.broadcaster != nil && mediaSlug != "" {
+			w.broadcaster.Publish(ProgressEvent{
+				UserID:    mediaUserID,
+				MediaSlug: mediaSlug,
+				Progress:  pct,
+				Status:    "processing",
+			})
+		}
 	})
 
 	if err := cmd.Wait(); err != nil {
 		log.Error().Err(err).Msg("ffmpeg exited with error")
 		_ = os.RemoveAll(outputDir)
+		w.publishFailEvent(mediaSlug, mediaUserID, fmt.Sprintf("ffmpeg failed: %v", err))
 		w.failTranscodeAndJob(ctx, tc.ID, job.ID, fmt.Sprintf("ffmpeg failed: %v", err))
 		return
 	}
@@ -199,14 +225,11 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 	}
 
 	// Update media item poster path
-	if posterPath != "" {
-		mediaItem, err := w.queries.GetMediaItemByTranscodeID(ctx, pgtype.Int8{Int64: tc.ID, Valid: true})
-		if err == nil {
-			_ = w.queries.UpdateMediaItemPoster(ctx, sqlc.UpdateMediaItemPosterParams{
-				ID:         mediaItem.ID,
-				PosterPath: pgtype.Text{String: posterPath, Valid: true},
-			})
-		}
+	if posterPath != "" && miErr == nil {
+		_ = w.queries.UpdateMediaItemPoster(ctx, sqlc.UpdateMediaItemPosterParams{
+			ID:         mi.ID,
+			PosterPath: pgtype.Text{String: posterPath, Valid: true},
+		})
 	}
 
 	// Success
@@ -237,6 +260,27 @@ func (w *Worker) processJob(ctx context.Context, job sqlc.MediaJob) {
 
 	_ = w.cache.MediaProgress.DeleteProgress(ctx, tc.Slug)
 	log.Info().Int32("duration", duration).Msg("transcode completed")
+
+	if w.broadcaster != nil && mediaSlug != "" {
+		w.broadcaster.Publish(ProgressEvent{
+			UserID:    mediaUserID,
+			MediaSlug: mediaSlug,
+			Progress:  100,
+			Status:    "done",
+		})
+	}
+}
+
+func (w *Worker) publishFailEvent(mediaSlug string, userID int64, errMsg string) {
+	if w.broadcaster == nil || mediaSlug == "" {
+		return
+	}
+	w.broadcaster.Publish(ProgressEvent{
+		UserID:    userID,
+		MediaSlug: mediaSlug,
+		Status:    "failed",
+		ErrorMsg:  errMsg,
+	})
 }
 
 func (w *Worker) failJob(ctx context.Context, jobID int64, msg string) {

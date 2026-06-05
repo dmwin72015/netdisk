@@ -76,12 +76,13 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 		time.Duration(cfg.JWT.RefreshTTLHour)*time.Hour,
 	)
 
-	handlers := buildHandlers(cfg, logger, queries, pg, rdb, a.jwtMgr)
+	broadcaster := media.NewBroadcaster()
+	handlers := buildHandlers(cfg, logger, queries, pg, rdb, a.jwtMgr, broadcaster)
 
 	// Start media worker
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb, cfg)
-	a.worker = media.NewWorker(queries, pg, cfg, store, c, logger)
+	a.worker = media.NewWorker(queries, pg, cfg, store, c, logger, broadcaster)
 	a.trashWorker = service.NewTrashWorker(queries, pg, store, logger, cfg)
 
 	a.echo = echo.New()
@@ -208,6 +209,7 @@ type handlers struct {
 	Files  *handler.FilesHandler
 	Upload *handler.UploadHandler
 	Media  *handler.MediaHandler
+	Photo  *handler.PhotoHandler
 	Config *handler.ConfigHandler
 	Admin  *handler.AdminHandler
 }
@@ -219,6 +221,7 @@ func buildHandlers(
 	pg *pgxpool.Pool,
 	rdb *redis.Client,
 	jwtMgr *jwtutil.Manager,
+	broadcaster *media.Broadcaster,
 ) *handlers {
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb)
 	userSvc := service.NewUserService(queries, pg, cfg)
@@ -230,13 +233,15 @@ func buildHandlers(
 	filesSvc := service.NewFilesService(queries, pg, cfg, store)
 	uploadSvc := service.NewUploadService(queries, pg, cfg, store, c, logger)
 	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c, filesSvc, logger)
+	photoSvc := service.NewPhotoService(queries, pg, cfg, store, logger)
 
 	return &handlers{
 		Auth:   handler.NewAuthHandler(authSvc),
 		User:   handler.NewUserHandler(userSvc),
 		Files:  handler.NewFilesHandler(filesSvc),
 		Upload: handler.NewUploadHandler(uploadSvc, logger),
-		Media:  handler.NewMediaHandler(mediaSvc),
+		Media:  handler.NewMediaHandler(mediaSvc, broadcaster),
+		Photo:  handler.NewPhotoHandler(photoSvc),
 		Config: handler.NewConfigHandler(cfg),
 		Admin:  handler.NewAdminHandler(adminSvc),
 	}

@@ -111,7 +111,6 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 		Username:     input.Username,
 		Email:        input.Email,
 		PasswordHash: string(hash),
-		RegisterMethod: "email",
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -436,11 +435,10 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		qtx := s.queries.WithTx(tx)
 
 		user, err = qtx.CreateUser(ctx, sqlc.CreateUserParams{
-			Slug:           slug,
-			Username:       userInfo.Username,
-			Email:          oauthEmail(provider, userInfo.ID),
-			PasswordHash:   randomPasswordHash(),
-			RegisterMethod: provider,
+			Slug:         slug,
+			Username:     userInfo.Username,
+			Email:        oauthEmail(provider, userInfo.ID),
+			PasswordHash: randomPasswordHash(),
 		})
 		if err != nil {
 			if isUniqueViolation(err) {

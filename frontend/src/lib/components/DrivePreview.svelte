@@ -2,7 +2,7 @@
 	import { Copy, Download } from '@lucide/svelte';
 	import { downloadUrl } from '$lib/api/files';
 	import { getAccessToken } from '$lib/api/client';
-	import { fmtSize } from '$lib/utils/format';
+	import { fmtSize, copyToClipboard } from '$lib/utils/format';
 	import { isCodeLikeFile, isJsonFile, isTextPreviewFile } from '$lib/utils/code-files';
 	import { Dialog } from '$lib/ui/dialog';
 	import * as m from '$lib/paraglide/messages';
@@ -101,11 +101,10 @@
 	}
 
 	async function copyLink() {
-		try {
-			const url = new URL(authedDlUrl, window.location.origin);
-			await navigator.clipboard.writeText(url.toString());
+		const url = new URL(authedDlUrl, window.location.origin);
+		if (await copyToClipboard(url.toString())) {
 			toast.success(m.copied());
-		} catch {
+		} else {
 			toast.error(m.copy_failed());
 		}
 	}
