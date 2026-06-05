@@ -4,7 +4,7 @@
 	import { authedUrl } from '$lib/utils/format';
 	import * as m from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
-	import { Image, LoaderCircle, Plus, ChevronDown, ArrowUpDown } from '@lucide/svelte';
+	import { Image as ImageIcon, LoaderCircle, Plus, ChevronDown, ArrowUpDown } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 
 	import { listPhotos, thumbnailUrl, photoDetailUrl, type PhotoItem } from '$lib/api/photos';
@@ -138,7 +138,7 @@
 			<!-- Header -->
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
-					<Image size={20} class="text-gray-500" />
+					<ImageIcon size={20} class="text-gray-500" />
 					<h1 class="text-lg font-semibold text-gray-900">{m.photos_title()}</h1>
 					<span class="text-sm text-gray-400">{m.photos_total({ total })}</span>
 				</div>
@@ -218,7 +218,7 @@
 			<!-- Empty -->
 			{:else if photos.length === 0}
 				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-					<Image size={40} class="mb-3 text-gray-300" />
+					<ImageIcon size={40} class="mb-3 text-gray-300" />
 					<p class="text-sm text-gray-400">{m.photos_empty()}</p>
 				</div>
 			<!-- Content -->

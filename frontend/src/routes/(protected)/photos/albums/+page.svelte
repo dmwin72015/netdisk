@@ -3,7 +3,7 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import * as m from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
-	import { Folder as AlbumIcon, Image, LoaderCircle, Trash2, Plus } from '@lucide/svelte';
+	import { Folder as AlbumIcon, Image as ImageIcon, LoaderCircle, Trash2, Plus } from '@lucide/svelte';
 	import { listAlbums, deleteAlbum, type Album } from '$lib/api/albums';
 	import AlbumCreateDialog from '$lib/components/AlbumCreateDialog.svelte';
 
@@ -66,7 +66,7 @@
 			</div>
 		{:else if albums.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-				<Image size={40} class="mb-3 text-gray-300" />
+				<ImageIcon size={40} class="mb-3 text-gray-300" />
 				<p class="text-sm text-gray-400">{m.albums_empty()}</p>
 			</div>
 		{:else}

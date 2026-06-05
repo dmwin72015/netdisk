@@ -4,7 +4,7 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import * as m from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
-	import { Image, LoaderCircle, ArrowLeft, Trash2 } from '@lucide/svelte';
+	import { Image as ImageIcon, LoaderCircle, ArrowLeft, Trash2 } from '@lucide/svelte';
 	import { authedUrl } from '$lib/utils/format';
 	import { getAlbum, removePhotoFromAlbum, type AlbumDetail } from '$lib/api/albums';
 	import { thumbnailUrl } from '$lib/api/photos';
@@ -80,7 +80,7 @@
 			</div>
 		{:else if album && album.photos.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-				<Image size={40} class="mb-3 text-gray-300" />
+				<ImageIcon size={40} class="mb-3 text-gray-300" />
 				<p class="text-sm text-gray-400">{m.photos_empty()}</p>
 			</div>
 		{:else if album}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { authedUrl, copyToClipboard } from '$lib/utils/format';
-	import { ChevronLeft, ChevronRight, X, Image, Star, Download, Link } from '@lucide/svelte';
+	import { ChevronLeft, ChevronRight, X, Image as ImageIcon, Star, Download, Link } from '@lucide/svelte';
 	import { downloadUrl, setStarred } from '$lib/api/files';
 	import { toast } from 'svelte-sonner';
 	import type { PhotoItem } from '$lib/api/photos';
@@ -153,7 +153,7 @@
 		>
 			{#if loading}
 				<div class="flex items-center justify-center p-16">
-					<Image size={40} class="animate-pulse text-gray-500" />
+					<ImageIcon size={40} class="animate-pulse text-gray-500" />
 				</div>
 			{/if}
 			<img
