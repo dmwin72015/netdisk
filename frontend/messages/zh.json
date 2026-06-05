@@ -360,6 +360,15 @@
   "albums_delete_success": "相册已删除",
   "create_failed": "创建失败",
 
+  "photos_view_grid": "网格视图",
+  "photos_view_list": "列表视图",
+  "photos_group_by_date": "按日期分组",
+  "photos_size_large": "大",
+  "photos_size_medium": "中",
+  "photos_size_small": "小",
+  "action_failed": "操作失败",
+  "link_copied": "链接已复制",
+
   "photos_title": "照片",
   "photos_empty": "还没有照片",
   "photos_total": "共 {total} 张",

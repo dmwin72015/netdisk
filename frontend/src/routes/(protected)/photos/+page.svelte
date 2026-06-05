@@ -24,7 +24,7 @@
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let photoSize = $state<'small' | 'medium' | 'large'>('medium');
 	let groupByDate = $state(true);
-	let sizeLabel = $derived(photoSize === 'large' ? '大' : photoSize === 'medium' ? '中' : '小');
+	let sizeLabel = $derived(photoSize === 'large' ? m.photos_size_large() : photoSize === 'medium' ? m.photos_size_medium() : m.photos_size_small());
 
 	// Lightbox
 	let viewerSlug = $state<string | null>(null);
@@ -166,7 +166,7 @@
 								<rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" />
 								<rect x="14" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" />
 							</svg>
-							<span class={viewMode === 'grid' ? 'font-medium text-gray-900' : ''}>网格视图</span>
+							<span class={viewMode === 'grid' ? 'font-medium text-gray-900' : ''}>{m.photos_view_grid()}</span>
 						</DropdownBase.Item>
 						<DropdownBase.Item onSelect={() => (viewMode = 'list')}>
 							{@render checkmark(viewMode === 'list')}
@@ -178,25 +178,25 @@
 								<line x1="3" y1="12" x2="3.01" y2="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
 								<line x1="3" y1="18" x2="3.01" y2="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
 							</svg>
-							<span class={viewMode === 'list' ? 'font-medium text-gray-900' : ''}>列表视图</span>
+							<span class={viewMode === 'list' ? 'font-medium text-gray-900' : ''}>{m.photos_view_list()}</span>
 						</DropdownBase.Item>
 						<DropdownBase.Separator />
 						<DropdownBase.Item onSelect={() => (groupByDate = !groupByDate)}>
 							{@render checkmark(groupByDate)}
-							<span class={groupByDate ? 'font-medium text-gray-900' : ''}>按日期分组</span>
+							<span class={groupByDate ? 'font-medium text-gray-900' : ''}>{m.photos_group_by_date()}</span>
 						</DropdownBase.Item>
 						<DropdownBase.Separator />
 						<DropdownBase.Item onSelect={() => (photoSize = 'large')}>
 							{@render checkmark(photoSize === 'large')}
-							<span class={photoSize === 'large' ? 'font-medium text-gray-900' : ''}>大</span>
+							<span class={photoSize === 'large' ? 'font-medium text-gray-900' : ''}>{m.photos_size_large()}</span>
 						</DropdownBase.Item>
 						<DropdownBase.Item onSelect={() => (photoSize = 'medium')}>
 							{@render checkmark(photoSize === 'medium')}
-							<span class={photoSize === 'medium' ? 'font-medium text-gray-900' : ''}>中</span>
+							<span class={photoSize === 'medium' ? 'font-medium text-gray-900' : ''}>{m.photos_size_medium()}</span>
 						</DropdownBase.Item>
 						<DropdownBase.Item onSelect={() => (photoSize = 'small')}>
 							{@render checkmark(photoSize === 'small')}
-							<span class={photoSize === 'small' ? 'font-medium text-gray-900' : ''}>小</span>
+							<span class={photoSize === 'small' ? 'font-medium text-gray-900' : ''}>{m.photos_size_small()}</span>
 						</DropdownBase.Item>
 					</Dropdown>
 					<button

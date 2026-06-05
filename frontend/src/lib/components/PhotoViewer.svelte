@@ -4,6 +4,7 @@
 	import { downloadUrl, setStarred } from '$lib/api/files';
 	import { toast } from 'svelte-sonner';
 	import type { PhotoItem } from '$lib/api/photos';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		slug,
@@ -58,7 +59,7 @@
 			await setStarred(currentSlug!, next);
 		} catch {
 			currentPhoto.isStarred = !next;
-			toast.error('操作失败');
+			toast.error(m.action_failed());
 		}
 	}
 
@@ -74,9 +75,9 @@
 		e.stopPropagation();
 		const url = new URL(authedUrl(downloadUrl(currentSlug!)), window.location.origin);
 		if (await copyToClipboard(url.toString())) {
-			toast.success('链接已复制');
+			toast.success(m.link_copied());
 		} else {
-			toast.error('复制失败');
+			toast.error(m.copy_failed());
 		}
 	}
 </script>

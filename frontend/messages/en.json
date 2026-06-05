@@ -377,6 +377,15 @@
   "albums_delete_success": "Album deleted",
   "create_failed": "Failed to create",
 
+  "photos_view_grid": "Grid View",
+  "photos_view_list": "List View",
+  "photos_group_by_date": "Group by date",
+  "photos_size_large": "Large",
+  "photos_size_medium": "Medium",
+  "photos_size_small": "Small",
+  "action_failed": "Action failed",
+  "link_copied": "Link copied",
+
   "photos_title": "Photos",
   "photos_empty": "No photos yet",
   "photos_total": "{total} photos",

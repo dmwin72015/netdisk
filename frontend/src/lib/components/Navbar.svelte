@@ -75,45 +75,33 @@
 						{/snippet}
 
 						<DropdownBase.Item onSelect={() => goto('/files/starred')}>
-							{#snippet icon()}
-								<Star size={14} class="text-gray-400" />
-							{/snippet}
-							{m.nav_starred()}
+							{#snippet icon()}<Star size={14} class="text-gray-400" />{/snippet}
+							{#snippet children()}{m.nav_starred()}{/snippet}
 						</DropdownBase.Item>
 						<DropdownBase.Item onSelect={() => goto('/files/trash')}>
-							{#snippet icon()}
-								<Trash2 size={14} class="text-gray-400" />
-							{/snippet}
-							{m.nav_trash()}
+							{#snippet icon()}<Trash2 size={14} class="text-gray-400" />{/snippet}
+							{#snippet children()}{m.nav_trash()}{/snippet}
 						</DropdownBase.Item>
 						<DropdownBase.Separator />
 						{#if $user.role === 'admin'}
 							<DropdownBase.Item onSelect={() => goto('/admin')}>
-								{#snippet icon()}
-									<Shield size={14} class="text-amber-500" />
-								{/snippet}
-								{m.admin_panel()}
+								{#snippet icon()}<Shield size={14} class="text-amber-500" />{/snippet}
+								{#snippet children()}{m.admin_panel()}{/snippet}
 							</DropdownBase.Item>
 							<DropdownBase.Separator />
 						{/if}
 						<DropdownBase.Item onSelect={() => goto('/tasks')}>
-							{#snippet icon()}
-								<ListRestart size={14} class="text-gray-400" />
-							{/snippet}
-							{m.upload_title()}
+							{#snippet icon()}<ListRestart size={14} class="text-gray-400" />{/snippet}
+							{#snippet children()}{m.upload_title()}{/snippet}
 						</DropdownBase.Item>
 						<DropdownBase.Item onSelect={() => goto('/account')}>
-							{#snippet icon()}
-								<Settings size={14} class="text-gray-400" />
-							{/snippet}
-							{m.nav_account()}
+							{#snippet icon()}<Settings size={14} class="text-gray-400" />{/snippet}
+							{#snippet children()}{m.nav_account()}{/snippet}
 						</DropdownBase.Item>
 						<DropdownBase.Separator />
 						<DropdownBase.Item variant="destructive" onSelect={handleLogout}>
-							{#snippet icon()}
-								<LogOut size={14} />
-							{/snippet}
-							{m.logout()}
+							{#snippet icon()}<LogOut size={14} />{/snippet}
+							{#snippet children()}{m.logout()}{/snippet}
 						</DropdownBase.Item>
 					</Dropdown>
 				{:else}

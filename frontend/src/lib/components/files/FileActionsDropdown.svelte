@@ -53,86 +53,59 @@
   <DropdownBase.Content sideOffset={4} align="end">
     {#if onStar && !file.isSystem}
       <DropdownBase.Item onSelect={() => onStar(file.id, file.isStarred)}>
-        {#snippet icon()}
-          <Star
-            size={14}
-            class={file.isStarred ? "text-amber-400" : "text-gray-400"}
-            fill={file.isStarred ? "currentColor" : "none"}
-          />
-        {/snippet}
-        {file.isStarred ? m.unstar_file() : m.star_file()}
+        {#snippet icon()}<Star size={14} class={file.isStarred ? "text-amber-400" : "text-gray-400"} fill={file.isStarred ? "currentColor" : "none"} />{/snippet}
+        {#snippet children()}{file.isStarred ? m.unstar_file() : m.star_file()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isDir}
       <DropdownBase.Item onSelect={() => onPreview(file)}>
-        {#snippet icon()}
-          <Eye size={14} class="text-gray-400" />
-        {/snippet}
-        {m.preview()}
+        {#snippet icon()}<Eye size={14} class="text-gray-400" />{/snippet}
+        {#snippet children()}{m.preview()}{/snippet}
       </DropdownBase.Item>
       <DropdownBase.Item>
-        {#snippet icon()}
-          <Download size={14} class="text-gray-400" />
+        {#snippet icon()}<Download size={14} class="text-gray-400" />{/snippet}
+        {#snippet children()}
+          <a href={downloadUrlFn(file.id)} download={file.name} class="flex items-center gap-2.5">
+            {m.download()}
+          </a>
         {/snippet}
-        <a
-          href={downloadUrlFn(file.id)}
-          download={file.name}
-          class="flex items-center gap-2.5"
-        >
-          {m.download()}
-        </a>
       </DropdownBase.Item>
       {#if onCopyLink}
         <DropdownBase.Item onSelect={() => onCopyLink(file)}>
-          {#snippet icon()}
-            <Link size={14} class="text-gray-400" />
-          {/snippet}
-          {m.copy_url()}
+          {#snippet icon()}<Link size={14} class="text-gray-400" />{/snippet}
+          {#snippet children()}{m.copy_url()}{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}
     {#if onShowDetails}
       <DropdownBase.Item onSelect={() => onShowDetails(file)}>
-        {#snippet icon()}
-          <Info size={14} class="text-gray-400" />
-        {/snippet}
-        {m.view_details()}
+        {#snippet icon()}<Info size={14} class="text-gray-400" />{/snippet}
+        {#snippet children()}{m.view_details()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if isVideo && onAddToMedia}
       <DropdownBase.Item onSelect={() => onAddToMedia(file)}>
-        {#snippet icon()}
-          <Film size={14} class="text-gray-400" />
-        {/snippet}
-        {m.add_to_media_library()}
+        {#snippet icon()}<Film size={14} class="text-gray-400" />{/snippet}
+        {#snippet children()}{m.add_to_media_library()}{/snippet}
       </DropdownBase.Item>
     {/if}
     <DropdownBase.Separator />
     {#if !file.isSystem}
       <DropdownBase.Item onSelect={() => onRename(file.id, file.name)}>
-        {#snippet icon()}
-          <Pencil size={14} class="text-gray-400" />
-        {/snippet}
-        {m.rename()}
+        {#snippet icon()}<Pencil size={14} class="text-gray-400" />{/snippet}
+        {#snippet children()}{m.rename()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if onMove && !file.isSystem}
       <DropdownBase.Item onSelect={() => onMove(file)}>
-        {#snippet icon()}
-          <FolderInput size={14} class="text-gray-400" />
-        {/snippet}
-        {m.move_to()}
+        {#snippet icon()}<FolderInput size={14} class="text-gray-400" />{/snippet}
+        {#snippet children()}{m.move_to()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isSystem}
-      <DropdownBase.Item
-        variant="destructive"
-        onSelect={() => onDelete(file.id, file.name)}
-      >
-        {#snippet icon()}
-          <Trash2 size={14} />
-        {/snippet}
-        {m.delete_label()}
+      <DropdownBase.Item variant="destructive" onSelect={() => onDelete(file.id, file.name)}>
+        {#snippet icon()}<Trash2 size={14} />{/snippet}
+        {#snippet children()}{m.delete_label()}{/snippet}
       </DropdownBase.Item>
     {/if}
   </DropdownBase.Content>
