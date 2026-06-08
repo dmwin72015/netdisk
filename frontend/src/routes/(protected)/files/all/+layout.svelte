@@ -326,7 +326,7 @@
 	async function onAddToMedia(file: NormalizedFile) {
 		try {
 			const resp = await addToLibrary(file.id);
-			if (resp.transcodeStatus === 'existing') {
+			if (resp.alreadyInLibrary) {
 				toast.info(m.media_already_in_library());
 			} else {
 				toast.success(m.media_add_success());

@@ -43,6 +43,7 @@ type Querier interface {
 	DeletePhysicalFile(ctx context.Context, id int64) error
 	DeleteUploadTaskBySlug(ctx context.Context, arg DeleteUploadTaskBySlugParams) error
 	DeleteUploadTasksBySlugs(ctx context.Context, arg DeleteUploadTasksBySlugsParams) error
+	GetActiveFileByMediaUploadIdentity(ctx context.Context, arg GetActiveFileByMediaUploadIdentityParams) (UserFile, error)
 	GetAncestors(ctx context.Context, id int64) ([]GetAncestorsRow, error)
 	GetExpiredTrashedFiles(ctx context.Context) ([]GetExpiredTrashedFilesRow, error)
 	GetFileByID(ctx context.Context, id int64) (UserFile, error)

@@ -43,6 +43,25 @@ func (h *MediaHandler) AddToLibrary(c echo.Context) error {
 	return Created(c, resp)
 }
 
+func (h *MediaHandler) ReaddExistingUpload(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input service.ReaddExistingUploadRequest
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+
+	resp, err := h.svc.ReaddExistingUpload(c.Request().Context(), userID, input)
+	if err != nil {
+		return err
+	}
+
+	return Created(c, resp)
+}
+
 func (h *MediaHandler) EnsureUploadDir(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

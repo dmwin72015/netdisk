@@ -3,6 +3,7 @@ import {
 	preCheck, requestChallenge, verify as verifyUpload,
 	initUpload, uploadChunk, completeUpload, getUploadStatus, updateHash
 } from '$lib/api/upload';
+import type { ExistingFileRef } from '$lib/api/upload';
 import { importFile } from '$lib/api/files';
 import { computeSHA256Chunked } from '$lib/upload-hash';
 import { fmtSize } from '$lib/utils/format';
@@ -18,6 +19,21 @@ export type ImportedUploadFile = {
 	fileSlug: string;
 	fileName: string;
 	physicalFileSlug: string;
+	item: UploadItem;
+};
+
+export type ImportConflictContext = {
+	physicalFileSlug: string;
+	fileName: string;
+	parentSlug: string | null;
+	source: 'dedup' | 'upload';
+	item: UploadItem;
+	error: unknown;
+};
+
+export type DuplicateFileContext = {
+	physicalFileSlug: string;
+	existingFiles: ExistingFileRef[];
 	item: UploadItem;
 };
 
@@ -42,6 +58,8 @@ export function createUploadManager(opts: {
 	acceptFile?: (file: File) => boolean;
 	onRejected?: (files: File[]) => void;
 	onFileImported?: (result: ImportedUploadFile) => void | Promise<void>;
+	onImportConflict?: (context: ImportConflictContext) => boolean | Promise<boolean>;
+	onDuplicateDetected?: (context: DuplicateFileContext) => boolean | Promise<boolean>;
 	storageKey?: string;
 	maxConcurrent?: number;
 }) {
@@ -52,6 +70,8 @@ export function createUploadManager(opts: {
 	let _acceptFile = opts.acceptFile;
 	let _onRejected = opts.onRejected;
 	let _onFileImported = opts.onFileImported;
+	let _onImportConflict = opts.onImportConflict;
+	let _onDuplicateDetected = opts.onDuplicateDetected;
 
 	function setGetCurrentSlug(fn: () => string | null | Promise<string | null>) {
 		_getCurrentSlug = fn;
@@ -67,6 +87,12 @@ export function createUploadManager(opts: {
 	}
 	function setOnFileImported(fn?: (result: ImportedUploadFile) => void | Promise<void>) {
 		_onFileImported = fn;
+	}
+	function setOnImportConflict(fn?: (context: ImportConflictContext) => boolean | Promise<boolean>) {
+		_onImportConflict = fn;
+	}
+	function setOnDuplicateDetected(fn?: (context: DuplicateFileContext) => boolean | Promise<boolean>) {
+		_onDuplicateDetected = fn;
 	}
 
 	function saveSnapshot() {
@@ -203,10 +229,24 @@ export function createUploadManager(opts: {
 		return accepted;
 	}
 
-	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string) {
+	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string, source: 'dedup' | 'upload') {
 		item.phase = 'importing';
 		const parentSlug = item.parentSlug;
-		const imported = await importFile(physicalFileSlug, item.fileName, parentSlug || undefined);
+		let imported: Awaited<ReturnType<typeof importFile>>;
+		try {
+			imported = await importFile(physicalFileSlug, item.fileName, parentSlug || undefined);
+		} catch (error) {
+			const handled = await _onImportConflict?.({
+				physicalFileSlug,
+				fileName: item.fileName,
+				parentSlug,
+				source,
+				item,
+				error
+			});
+			if (handled) return;
+			throw error;
+		}
 		await _onFileImported?.({
 			fileSlug: imported.fileSlug,
 			fileName: imported.fileName,
@@ -435,12 +475,17 @@ export function createUploadManager(opts: {
 								log(item.uid, null, `dedup HIT, importing from ${verifyResult.physicalFileSlug}`);
 
 								if (verifyResult.existingFiles && verifyResult.existingFiles.length > 0) {
-									const paths = verifyResult.existingFiles.map(f => f.path).join('\n');
-									const confirmed = await confirmAction(
-										m.duplicate_detected(),
-										m.duplicate_file_paths({ paths }),
-										m.continue_upload()
-									);
+									const confirmed = _onDuplicateDetected
+										? await _onDuplicateDetected({
+											physicalFileSlug: verifyResult.physicalFileSlug,
+											existingFiles: verifyResult.existingFiles,
+											item
+										})
+										: await confirmAction(
+											m.duplicate_detected(),
+											m.duplicate_file_paths({ paths: verifyResult.existingFiles.map(f => f.path).join('\n') }),
+											m.continue_upload()
+										);
 									if (!confirmed) {
 										item.phase = 'failed';
 										item.errorMsg = m.upload_skipped_duplicate();
@@ -451,7 +496,7 @@ export function createUploadManager(opts: {
 
 								item.phase = 'importing';
 								item.progress = 100;
-								await importPhysicalFile(item, verifyResult.physicalFileSlug);
+								await importPhysicalFile(item, verifyResult.physicalFileSlug, 'dedup');
 								item.phase = 'completed';
 								item.uploadedBytes = item.fileSize;
 								log(item.uid, null, 'completed (dedup)');
@@ -645,7 +690,7 @@ export function createUploadManager(opts: {
 
 			if (physicalFileSlug) {
 				log(item.uid, task.uploadSlug, `importing physicalFile: ${physicalFileSlug}`);
-				await importPhysicalFile(item, physicalFileSlug);
+				await importPhysicalFile(item, physicalFileSlug, 'upload');
 			}
 
 			item.phase = 'completed';
@@ -778,6 +823,8 @@ export function createUploadManager(opts: {
 		setAcceptFile,
 		setOnRejected,
 		setOnFileImported,
+		setOnImportConflict,
+		setOnDuplicateDetected,
 		updateMaxConcurrent(n: number) {
 			maxConcurrent = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, n));
 			pumpQueue();

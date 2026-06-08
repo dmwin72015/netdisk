@@ -66,6 +66,7 @@
   let detailSummaryLoading = $state(false);
   let moveOpen = $state(false);
   let moveTargets = $state<NormalizedFile[]>([]);
+  let failedThumbs = $state<Set<string>>(new Set());
   let selectableFiles = $derived(files.filter((file) => !file.isSystem));
   let allSelected = $derived(selectableFiles.length > 0 && selectableFiles.every(f => selected.has(f.id)));
   let hasSelection = $derived(selected.size > 0);
@@ -182,7 +183,18 @@
   }
 
   function isImageFile(file: NormalizedFile): boolean {
-    return file.mimeType?.startsWith("image/") ?? false;
+    if (file.fileCategory === "image") return true;
+    if (file.mimeType?.startsWith("image/")) return true;
+    return /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/i.test(file.name);
+  }
+
+  function showThumbnail(file: NormalizedFile): boolean {
+    return isImageFile(file) && !failedThumbs.has(file.id);
+  }
+
+  function markThumbnailFailed(fileId: string) {
+    failedThumbs.add(fileId);
+    failedThumbs = new Set(failedThumbs);
   }
 
   function isVideoFile(file: NormalizedFile): boolean {
@@ -289,13 +301,23 @@
             triggerClass="rounded-lg bg-white/90 p-1 text-gray-400 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-gray-600"
           />
         </div>
-        <MimeIcon
-          mimeType={f.mimeType}
-          name={f.name}
-          isDir={f.isDir}
-          category={f.fileCategory}
-          size={36}
-        />
+        {#if showThumbnail(f)}
+          <img
+            src={authedFileUrl(f)}
+            alt=""
+            loading="lazy"
+            class="h-12 w-12 rounded-lg border border-gray-100 object-cover bg-gray-50 shadow-sm"
+            onerror={() => markThumbnailFailed(f.id)}
+          />
+        {:else}
+          <MimeIcon
+            mimeType={f.mimeType}
+            name={f.name}
+            isDir={f.isDir}
+            category={f.fileCategory}
+            size={36}
+          />
+        {/if}
         <div class="mt-3 flex w-full min-w-0 items-center justify-center gap-1.5">
           <p
             class="min-w-0 truncate text-center text-sm font-medium text-gray-700"
@@ -366,14 +388,24 @@
                     {/if}
                   </button>
                 {/if}
-                <span class="shrink-0">
-                  <MimeIcon
-                    mimeType={f.mimeType}
-                    name={f.name}
-                    isDir={f.isDir}
-                    category={f.fileCategory}
-                    size={18}
-                  />
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50">
+                  {#if showThumbnail(f)}
+                    <img
+                      src={authedFileUrl(f)}
+                      alt=""
+                      loading="lazy"
+                      class="h-full w-full object-cover"
+                      onerror={() => markThumbnailFailed(f.id)}
+                    />
+                  {:else}
+                    <MimeIcon
+                      mimeType={f.mimeType}
+                      name={f.name}
+                      isDir={f.isDir}
+                      category={f.fileCategory}
+                      size={18}
+                    />
+                  {/if}
                 </span>
                 <span class="min-w-0 flex-1 truncate text-gray-700" title={f.name}>{f.name}</span>
                 {#if f.isSystem}

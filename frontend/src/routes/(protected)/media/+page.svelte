@@ -1,12 +1,23 @@
 <script lang="ts">
 	import { onMount, onDestroy, getContext } from 'svelte';
 	import { user, authReady } from '$lib/stores/auth';
-	import { getAccessToken } from '$lib/api/client';
-	import { addToLibrary, ensureMediaUploadDir, listMedia, removeFromLibrary, batchRemoveFromLibrary, renameMediaItem, getMediaItem, type MediaItem } from '$lib/api/media';
+	import { ApiError, getAccessToken } from '$lib/api/client';
+	import {
+		addToLibrary,
+		ensureMediaUploadDir,
+		listMedia,
+		removeFromLibrary,
+		batchRemoveFromLibrary,
+		renameMediaItem,
+		getMediaItem,
+		readdExistingUploadToLibrary,
+		type AddToLibraryResponse,
+		type MediaItem
+	} from '$lib/api/media';
 	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown, Check, X, Pencil } from '@lucide/svelte';
 	import { fly } from 'svelte/transition';
 	import { toast } from 'svelte-sonner';
-	import { confirmDelete, promptInput } from '$lib/dialog';
+	import { confirmAction, confirmDelete, promptInput } from '$lib/dialog';
 	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
 	import { Popover } from '$lib/ui/popover';
@@ -28,10 +39,25 @@
 	let allSelected = $derived(items.length > 0 && items.every(item => selected.has(item.mediaSlug)));
 	let hasSelection = $derived(selected.size > 0);
 	let selectedItems = $derived(items.filter(item => selected.has(item.mediaSlug)));
+	const ERR_CODE_NAME_CONFLICT = 2004;
 
 	function isVideoFile(file: File) {
 		if (file.type.startsWith('video/')) return true;
 		return /\.(mp4|mov|webm|mkv|avi|flv|wmv|ogv|ogg|mpeg|mpg|m4v)$/i.test(file.name);
+	}
+
+	function isNameConflict(error: unknown) {
+		return error instanceof ApiError && error.errCode === ERR_CODE_NAME_CONFLICT;
+	}
+
+	function notifyMediaAdd(resp: AddToLibraryResponse) {
+		if (resp.alreadyInLibrary) {
+			toast.info(m.media_already_in_library());
+		} else if (resp.transcodeReused) {
+			toast.success(m.media_add_success());
+		} else {
+			toast.success(m.media_transcode_started());
+		}
 	}
 
 	const upload = getContext<UploadManager>('upload');
@@ -45,15 +71,34 @@
 		upload.setOnRejected((files) => {
 			toast.error(m.media_upload_rejected({ count: files.length }));
 		});
+		upload.setOnDuplicateDetected(() => true);
 		upload.setOnFileImported(async ({ fileSlug }) => {
 			try {
 				const resp = await addToLibrary(fileSlug);
-				if (resp.transcodeStatus === 'existing') {
-					toast.info(m.media_already_in_library());
-				} else {
-					toast.success(m.media_transcode_started());
-				}
+				notifyMediaAdd(resp);
 				scheduleRefresh();
+			} catch (e) {
+				toast.error(e instanceof Error ? e.message : m.media_add_failed());
+				throw e;
+			}
+		});
+		upload.setOnImportConflict(async ({ physicalFileSlug, fileName, source, error }) => {
+			if (source !== 'dedup' || !isNameConflict(error)) return false;
+
+			const confirmed = await confirmAction(
+				m.media_existing_file_title(),
+				m.media_existing_file_message({ name: fileName }),
+				m.media_readd_existing_btn()
+			);
+			if (!confirmed) {
+				throw new Error(m.upload_skipped_duplicate());
+			}
+
+			try {
+				const resp = await readdExistingUploadToLibrary(physicalFileSlug, fileName);
+				notifyMediaAdd(resp);
+				scheduleRefresh();
+				return true;
 			} catch (e) {
 				toast.error(e instanceof Error ? e.message : m.media_add_failed());
 				throw e;
@@ -147,6 +192,11 @@
 	onDestroy(() => {
 		disconnectSSE();
 		clearTimeout(refreshTimer);
+		upload.setAcceptFile();
+		upload.setOnRejected();
+		upload.setOnFileImported();
+		upload.setOnImportConflict();
+		upload.setOnDuplicateDetected();
 	});
 
 	function toggleSelect(mediaSlug: string) {

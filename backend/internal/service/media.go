@@ -54,11 +54,18 @@ type AddToLibraryRequest struct {
 	Title    string `json:"title"`
 }
 
+type ReaddExistingUploadRequest struct {
+	PhysicalFileSlug string `json:"physicalFileSlug"`
+	FileName         string `json:"fileName"`
+	Title            string `json:"title"`
+}
+
 type AddToLibraryResponse struct {
-	MediaSlug       string `json:"mediaSlug"`
-	TranscodeSlug   string `json:"transcodeSlug"`
-	TranscodeStatus string `json:"transcodeStatus"`
-	TranscodeReused bool   `json:"transcodeReused"`
+	MediaSlug        string `json:"mediaSlug"`
+	TranscodeSlug    string `json:"transcodeSlug"`
+	TranscodeStatus  string `json:"transcodeStatus"`
+	TranscodeReused  bool   `json:"transcodeReused"`
+	AlreadyInLibrary bool   `json:"alreadyInLibrary"`
 }
 
 type MediaItemResponse struct {
@@ -124,8 +131,9 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		}
 		log.Info().Str("media_slug", existing.Slug).Str("transcode_status", status).Msg("media already in library")
 		return &AddToLibraryResponse{
-			MediaSlug:       existing.Slug,
-			TranscodeStatus: status,
+			MediaSlug:        existing.Slug,
+			TranscodeStatus:  status,
+			AlreadyInLibrary: true,
 		}, nil
 	}
 
@@ -191,6 +199,56 @@ func (s *MediaService) AddToLibrary(ctx context.Context, userID int64, req AddTo
 		TranscodeStatus: tc.Status,
 		TranscodeReused: transcodeReused,
 	}, nil
+}
+
+func (s *MediaService) ReaddExistingUpload(ctx context.Context, userID int64, req ReaddExistingUploadRequest) (*AddToLibraryResponse, error) {
+	log := s.logger.With().Int64("user_id", userID).Str("physical_file_slug", req.PhysicalFileSlug).Str("file_name", req.FileName).Logger()
+
+	if req.PhysicalFileSlug == "" || req.FileName == "" {
+		log.Warn().Msg("readd existing upload: missing identity")
+		return nil, model.ErrInvalidInput
+	}
+
+	pf, err := s.queries.GetPhysicalFileBySlug(ctx, req.PhysicalFileSlug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Warn().Msg("readd existing upload: physical file not found")
+			return nil, model.ErrNotFound
+		}
+		return nil, fmt.Errorf("get physical file: %w", err)
+	}
+	if pf.Status != "completed" {
+		log.Warn().Str("status", pf.Status).Msg("readd existing upload: physical file not completed")
+		return nil, model.ErrInvalidInput
+	}
+
+	uploadDir, err := s.EnsureUploadDir(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	parent, err := s.files.ResolveParent(ctx, userID, uploadDir.Slug)
+	if err != nil {
+		return nil, err
+	}
+
+	uf, err := s.queries.GetActiveFileByMediaUploadIdentity(ctx, sqlc.GetActiveFileByMediaUploadIdentityParams{
+		UserID:         userID,
+		ParentID:       pgtype.Int8{Int64: parent.ID, Valid: true},
+		PhysicalFileID: pgtype.Int8{Int64: pf.ID, Valid: true},
+		FileName:       req.FileName,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Warn().Msg("readd existing upload: matching user file not found")
+			return nil, model.ErrNotFound
+		}
+		return nil, fmt.Errorf("get existing media upload file: %w", err)
+	}
+
+	return s.AddToLibrary(ctx, userID, AddToLibraryRequest{
+		FileSlug: uf.Slug,
+		Title:    req.Title,
+	})
 }
 
 func (s *MediaService) createTranscodeWithJob(ctx context.Context, physicalFileID int64, profile string) (sqlc.MediaTranscode, string, error) {

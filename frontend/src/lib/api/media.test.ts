@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { addToLibrary, listMedia, getMediaItem, removeFromLibrary, getHLSUrl } from './media';
+import { addToLibrary, listMedia, getMediaItem, removeFromLibrary, getHLSUrl, readdExistingUploadToLibrary } from './media';
 
 // ── helpers ────────────────────────────────────────────────────────
 
@@ -39,6 +39,7 @@ describe('addToLibrary', () => {
 			transcodeSlug: 'tc-1',
 			transcodeStatus: 'pending',
 			transcodeReused: false,
+			alreadyInLibrary: false,
 		}));
 		vi.stubGlobal('fetch', fetchSpy);
 
@@ -50,6 +51,29 @@ describe('addToLibrary', () => {
 		expect(JSON.parse(init.body)).toEqual({ fileSlug: 'file-abc' });
 		expect(result.mediaSlug).toBe('media-1');
 		expect(result.transcodeReused).toBe(false);
+	});
+});
+
+// ── readdExistingUploadToLibrary ──────────────────────────────────
+
+describe('readdExistingUploadToLibrary', () => {
+	it('posts physical file identity', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({
+			mediaSlug: 'media-1',
+			transcodeSlug: 'tc-1',
+			transcodeStatus: 'done',
+			transcodeReused: true,
+			alreadyInLibrary: false,
+		}));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const result = await readdExistingUploadToLibrary('physical-abc', 'video.mp4');
+
+		const [url, init] = fetchSpy.mock.calls[0];
+		expect(url).toBe('/api/v1/media/items/readd-existing');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body)).toEqual({ physicalFileSlug: 'physical-abc', fileName: 'video.mp4' });
+		expect(result.transcodeReused).toBe(true);
 	});
 });
 

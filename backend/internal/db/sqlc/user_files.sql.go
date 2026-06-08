@@ -140,6 +140,56 @@ func (q *Queries) DeleteFile(ctx context.Context, id int64) error {
 	return err
 }
 
+const getActiveFileByMediaUploadIdentity = `-- name: GetActiveFileByMediaUploadIdentity :one
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files
+WHERE user_id = $1
+  AND parent_id = $2
+  AND physical_file_id = $3
+  AND file_name = $4
+  AND is_dir = FALSE
+  AND is_trashed = FALSE
+  AND is_system = FALSE
+LIMIT 1
+`
+
+type GetActiveFileByMediaUploadIdentityParams struct {
+	UserID         int64       `json:"userId"`
+	ParentID       pgtype.Int8 `json:"parentId"`
+	PhysicalFileID pgtype.Int8 `json:"physicalFileId"`
+	FileName       string      `json:"fileName"`
+}
+
+func (q *Queries) GetActiveFileByMediaUploadIdentity(ctx context.Context, arg GetActiveFileByMediaUploadIdentityParams) (UserFile, error) {
+	row := q.db.QueryRow(ctx, getActiveFileByMediaUploadIdentity,
+		arg.UserID,
+		arg.ParentID,
+		arg.PhysicalFileID,
+		arg.FileName,
+	)
+	var i UserFile
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.UserID,
+		&i.PhysicalFileID,
+		&i.ParentID,
+		&i.FileName,
+		&i.IsDir,
+		&i.FileSize,
+		&i.MimeType,
+		&i.IsStarred,
+		&i.IsTrashed,
+		&i.TrashedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FileCategory,
+		&i.ParentSlug,
+		&i.IsSystem,
+		&i.SystemKind,
+	)
+	return i, err
+}
+
 const getAncestors = `-- name: GetAncestors :many
 WITH RECURSIVE ancestors AS (
     SELECT uf.id, uf.slug, uf.parent_id, uf.file_name, uf.is_dir

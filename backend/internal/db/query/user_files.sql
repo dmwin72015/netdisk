@@ -96,6 +96,17 @@ SELECT file_name, parent_slug FROM user_files
 WHERE physical_file_id = $1 AND user_id = $2 AND is_trashed = FALSE
 LIMIT 5;
 
+-- name: GetActiveFileByMediaUploadIdentity :one
+SELECT * FROM user_files
+WHERE user_id = sqlc.arg(user_id)
+  AND parent_id = sqlc.arg(parent_id)
+  AND physical_file_id = sqlc.arg(physical_file_id)
+  AND file_name = sqlc.arg(file_name)
+  AND is_dir = FALSE
+  AND is_trashed = FALSE
+  AND is_system = FALSE
+LIMIT 1;
+
 -- name: GetExpiredTrashedFiles :many
 SELECT uf.id, uf.user_id, uf.is_dir, uf.physical_file_id, uf.file_size
 FROM user_files uf

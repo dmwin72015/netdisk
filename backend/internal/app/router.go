@@ -136,6 +136,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	media.GET("/upload-dir", h.Media.EnsureUploadDir)
 	media.POST("/items", h.Media.AddToLibrary)
 	media.GET("/items", h.Media.ListMediaItems)
+	media.POST("/items/readd-existing", h.Media.ReaddExistingUpload)
 	media.POST("/items/batch-delete", h.Media.BatchRemoveFromLibrary)
 	media.GET("/items/:media_slug", h.Media.GetMediaItem)
 	media.POST("/items/:media_slug/rename", h.Media.RenameMediaItem)

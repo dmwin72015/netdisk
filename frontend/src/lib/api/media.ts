@@ -18,12 +18,20 @@ export type AddToLibraryResponse = {
 	transcodeSlug: string;
 	transcodeStatus: string;
 	transcodeReused: boolean;
+	alreadyInLibrary: boolean;
 };
 
 export async function addToLibrary(fileSlug: string) {
 	return api<AddToLibraryResponse>('/api/v1/media/items', {
 		method: 'POST',
 		body: JSON.stringify({ fileSlug })
+	});
+}
+
+export async function readdExistingUploadToLibrary(physicalFileSlug: string, fileName: string) {
+	return api<AddToLibraryResponse>('/api/v1/media/items/readd-existing', {
+		method: 'POST',
+		body: JSON.stringify({ physicalFileSlug, fileName })
 	});
 }
 

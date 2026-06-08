@@ -1,10 +1,28 @@
 <script lang="ts">
 	import { authedUrl, copyToClipboard } from '$lib/utils/format';
-	import { ChevronLeft, ChevronRight, X, Image as ImageIcon, Star, Download, Link } from '@lucide/svelte';
+	import {
+		ChevronLeft,
+		ChevronRight,
+		X,
+		Image as ImageIcon,
+		Star,
+		Download,
+		Link,
+		ZoomIn,
+		ZoomOut,
+		RotateCcw,
+		RotateCw,
+		RefreshCcw
+	} from '@lucide/svelte';
 	import { downloadUrl, setStarred } from '$lib/api/files';
 	import { toast } from 'svelte-sonner';
 	import type { PhotoItem } from '$lib/api/photos';
 	import * as m from '$lib/paraglide/messages';
+
+	const MIN_SCALE = 0.25;
+	const MAX_SCALE = 5;
+	const SCALE_STEP = 0.25;
+	const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
 	let {
 		slug,
@@ -20,27 +38,150 @@
 		photos: PhotoItem[];
 	} = $props();
 
+	// svelte-ignore state_referenced_locally
 	let currentIndex = $state(index);
 	let currentSlug = $derived(fileSlugs[currentIndex] ?? slug);
 	let loading = $state(true);
+	let scale = $state(1);
+	let rotation = $state(0);
+	let offsetX = $state(0);
+	let offsetY = $state(0);
+	let isPanning = $state(false);
+	let isWheelZooming = $state(false);
+	let imageFrame: HTMLDivElement | undefined = $state();
+	let wheelZoomTimer: ReturnType<typeof setTimeout> | undefined;
+	let panStartX = 0;
+	let panStartY = 0;
+	let panOriginX = 0;
+	let panOriginY = 0;
+	let imageTransform = $derived(`scale(${scale}) rotate(${rotation}deg)`);
+	let panTransform = $derived(`translate3d(${offsetX}px, ${offsetY}px, 0)`);
+	let zoomLabel = $derived(`${Math.round(scale * 100)}%`);
 
 	let currentPhoto = $derived(photos.find(p => p.slug === currentSlug));
 
 	$effect(() => {
 		currentIndex = index;
+		loading = true;
+		resetTransform();
 	});
+
+	function clampScale(value: number) {
+		return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+	}
+
+	function resetTransform() {
+		scale = 1;
+		rotation = 0;
+		offsetX = 0;
+		offsetY = 0;
+		isPanning = false;
+		isWheelZooming = false;
+		clearTimeout(wheelZoomTimer);
+	}
+
+	function setScale(nextScale: number, focalPoint?: { x: number; y: number }) {
+		const previousScale = scale;
+		const next = clampScale(nextScale);
+		if (next === previousScale) return;
+
+		if (focalPoint && imageFrame && next > 1) {
+			const rect = imageFrame.getBoundingClientRect();
+			const centerX = rect.left + rect.width / 2;
+			const centerY = rect.top + rect.height / 2;
+			const ratio = next / previousScale;
+			offsetX += (1 - ratio) * (focalPoint.x - centerX);
+			offsetY += (1 - ratio) * (focalPoint.y - centerY);
+		}
+
+		scale = next;
+		if (scale <= 1) {
+			offsetX = 0;
+			offsetY = 0;
+		}
+	}
+
+	function setCurrentIndex(nextIndex: number) {
+		currentIndex = nextIndex;
+		loading = true;
+		resetTransform();
+	}
 
 	function prev() {
 		if (currentIndex > 0) {
-			currentIndex--;
-			loading = true;
+			setCurrentIndex(currentIndex - 1);
 		}
 	}
 
 	function next() {
 		if (currentIndex < fileSlugs.length - 1) {
-			currentIndex++;
-			loading = true;
+			setCurrentIndex(currentIndex + 1);
+		}
+	}
+
+	function zoomIn(e?: Event) {
+		e?.stopPropagation();
+		setScale(scale + SCALE_STEP);
+	}
+
+	function zoomOut(e?: Event) {
+		e?.stopPropagation();
+		setScale(scale - SCALE_STEP);
+	}
+
+	function rotateLeft(e?: Event) {
+		e?.stopPropagation();
+		rotation -= 90;
+	}
+
+	function rotateRight(e?: Event) {
+		e?.stopPropagation();
+		rotation += 90;
+	}
+
+	function resetView(e?: Event) {
+		e?.stopPropagation();
+		resetTransform();
+	}
+
+	function handleWheel(e: WheelEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		isWheelZooming = true;
+		clearTimeout(wheelZoomTimer);
+		wheelZoomTimer = setTimeout(() => {
+			isWheelZooming = false;
+		}, 120);
+
+		const nextScale = scale * Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY);
+		setScale(nextScale, { x: e.clientX, y: e.clientY });
+	}
+
+	function startPan(e: PointerEvent) {
+		e.stopPropagation();
+		if (scale <= 1) return;
+		isPanning = true;
+		panStartX = e.clientX;
+		panStartY = e.clientY;
+		panOriginX = offsetX;
+		panOriginY = offsetY;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	}
+
+	function movePan(e: PointerEvent) {
+		if (!isPanning) return;
+		e.stopPropagation();
+		offsetX = panOriginX + e.clientX - panStartX;
+		offsetY = panOriginY + e.clientY - panStartY;
+	}
+
+	function endPan(e: PointerEvent) {
+		if (!isPanning) return;
+		e.stopPropagation();
+		isPanning = false;
+		const target = e.currentTarget as HTMLElement;
+		if (target.hasPointerCapture(e.pointerId)) {
+			target.releasePointerCapture(e.pointerId);
 		}
 	}
 
@@ -48,6 +189,10 @@
 		if (e.key === 'Escape') close();
 		if (e.key === 'ArrowLeft') prev();
 		if (e.key === 'ArrowRight') next();
+		if (e.key === '+' || e.key === '=') zoomIn();
+		if (e.key === '-') zoomOut();
+		if (e.key === '0') resetView();
+		if (e.key.toLowerCase() === 'r') rotateRight();
 	}
 
 	async function toggleStar(e: Event) {
@@ -80,6 +225,10 @@
 			toast.error(m.copy_failed());
 		}
 	}
+
+	function stopPropagation(e: Event) {
+		e.stopPropagation();
+	}
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -88,11 +237,15 @@
 {#if currentSlug}
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div
+		role="dialog"
+		aria-modal="true"
+		tabindex="-1"
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
 		onclick={close}
 	>
 		<!-- Top-right actions -->
-		<div class="absolute right-4 top-4 z-10 flex items-center gap-2">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="absolute right-4 top-4 z-10 flex items-center gap-2" onclick={stopPropagation}>
 			<button
 				type="button"
 				onclick={toggleStar}
@@ -146,28 +299,58 @@
 		{/if}
 
 		<!-- Image -->
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div
-			class="flex max-h-full max-w-full items-center justify-center p-4"
-			onclick={(e) => e.stopPropagation()}
-		>
+		<div class="flex h-full w-full items-center justify-center overflow-hidden p-4" onwheel={handleWheel}>
 			{#if loading}
 				<div class="flex items-center justify-center p-16">
 					<ImageIcon size={40} class="animate-pulse text-gray-500" />
 				</div>
 			{/if}
-			<img
-				src={authedUrl(downloadUrl(currentSlug))}
-				alt=""
-				class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-				class:hidden={loading}
-				onload={() => (loading = false)}
-			/>
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+			<div
+					bind:this={imageFrame}
+					role="presentation"
+					class:hidden={loading}
+					class="inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
+					style:transform={panTransform}
+					onclick={stopPropagation}
+					onpointerdown={startPan}
+					onpointermove={movePan}
+					onpointerup={endPan}
+					onpointercancel={endPan}
+			>
+					<img
+						src={authedUrl(downloadUrl(currentSlug))}
+						alt={currentPhoto?.fileName ?? ''}
+						class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl will-change-transform {isWheelZooming || isPanning ? '' : 'transition-transform duration-150 ease-out'}"
+						style:transform={imageTransform}
+					draggable="false"
+					onload={() => (loading = false)}
+				/>
+			</div>
 		</div>
 
 		<!-- Toolbar -->
-		<div class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/50 px-4 py-2 text-white text-sm">
-			{currentIndex + 1} / {fileSlugs.length}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-sm text-white shadow-lg backdrop-blur" onclick={stopPropagation}>
+			<span class="min-w-14 px-2 text-center text-white/80">{currentIndex + 1} / {fileSlugs.length}</span>
+			<div class="h-5 w-px bg-white/20"></div>
+			<button type="button" onclick={zoomOut} class="rounded-full p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40" disabled={scale <= MIN_SCALE} title={m.zoom_out()} aria-label={m.zoom_out()}>
+				<ZoomOut size={18} />
+			</button>
+			<span class="min-w-12 text-center text-xs text-white/80">{zoomLabel}</span>
+			<button type="button" onclick={zoomIn} class="rounded-full p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40" disabled={scale >= MAX_SCALE} title={m.zoom_in()} aria-label={m.zoom_in()}>
+				<ZoomIn size={18} />
+			</button>
+			<div class="h-5 w-px bg-white/20"></div>
+			<button type="button" onclick={rotateLeft} class="rounded-full p-1.5 transition-colors hover:bg-white/15" title={m.rotate_left()} aria-label={m.rotate_left()}>
+				<RotateCcw size={18} />
+			</button>
+			<button type="button" onclick={rotateRight} class="rounded-full p-1.5 transition-colors hover:bg-white/15" title={m.rotate_right()} aria-label={m.rotate_right()}>
+				<RotateCw size={18} />
+			</button>
+			<button type="button" onclick={resetView} class="rounded-full p-1.5 transition-colors hover:bg-white/15" title={m.reset_view()} aria-label={m.reset_view()}>
+				<RefreshCcw size={18} />
+			</button>
 		</div>
 	</div>
 {/if}
