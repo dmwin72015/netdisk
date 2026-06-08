@@ -197,6 +197,7 @@
   "select_resume": "选择文件续传",
   "download": "下载",
   "unsupported_preview": "该文件类型不支持预览",
+  "text_preview_truncated": "文件大于 1 MB，仅显示前 {lines} 行。请下载查看完整内容。",
   "download_file": "下载文件",
   "file_size_mismatch": "文件大小不匹配 ({fileSize} 字节,会话记录 {sessionSize} 字节)",
   "file_name_mismatch": "文件名不匹配 (选了 {fileName},会话记录 {sessionName})",

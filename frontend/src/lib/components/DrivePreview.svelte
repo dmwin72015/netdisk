@@ -3,10 +3,21 @@
 	import { downloadUrl } from '$lib/api/files';
 	import { getAccessToken } from '$lib/api/client';
 	import { fmtSize, copyToClipboard } from '$lib/utils/format';
-	import { isCodeLikeFile, isJsonFile, isTextPreviewFile } from '$lib/utils/code-files';
+	import { isJsonFile, isTextPreviewFile } from '$lib/utils/code-files';
+	import VirtualTextViewer from './VirtualTextViewer.svelte';
 	import { Dialog } from '$lib/ui/dialog';
 	import * as m from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
+
+	const JSON_FORMAT_LIMIT = 512 * 1024;
+	const LARGE_TEXT_LIMIT = 1024 * 1024;
+	const LARGE_TEXT_PREVIEW_LINES = 50;
+	const LARGE_TEXT_MAX_PREVIEW_CHARS = 512 * 1024;
+
+	type TextPreviewResult = {
+		content: string;
+		truncated: boolean;
+	};
 
 	let {
 		id,
@@ -26,6 +37,7 @@
 
 	let textContent = $state<string | null>(null);
 	let textError = $state<string | null>(null);
+	let textTruncated = $state(false);
 	let loadingText = $state(false);
 
 	let blobUrl = $state<string | null>(null);
@@ -41,7 +53,6 @@
 		return `${url.pathname}?${url.searchParams.toString()}`;
 	});
 	let isJson = $derived(isJsonFile(name, mimeType));
-	let isCode = $derived(isCodeLikeFile(name, mimeType));
 	let isText = $derived(isTextPreviewFile(name, mimeType));
 	let canPreview = $derived(
 		mimeType.startsWith('image/') ||
@@ -54,21 +65,34 @@
 	let isVideo = $derived(mimeType.startsWith('video/'));
 	let isAudio = $derived(mimeType.startsWith('audio/'));
 	let isPdf = $derived(mimeType === 'application/pdf');
+	let shouldLimitTextPreview = $derived(size > LARGE_TEXT_LIMIT);
+	let formattedTextContent = $derived(textContent === null ? null : formatTextContent(textContent));
 
 	$effect(() => {
 		if (!open || !isText) return;
 		textContent = null;
 		textError = null;
+		textTruncated = false;
 		loadingText = true;
+		const controller = new AbortController();
 		const token = getAccessToken() ?? '';
-		fetch(dlUrl, { headers: { Authorization: `Bearer ${token}` } })
+		fetch(dlUrl, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
 			.then((r) => {
 				if (!r.ok) throw new Error('Failed to load');
-				return r.text();
+				return readTextPreview(r, shouldLimitTextPreview);
 			})
-			.then((t) => (textContent = t))
-			.catch((e) => (textError = e.message))
-			.finally(() => (loadingText = false));
+			.then(({ content, truncated }) => {
+				textContent = content;
+				textTruncated = truncated;
+			})
+			.catch((e) => {
+				if (e.name !== 'AbortError') textError = e.message;
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) loadingText = false;
+			});
+
+		return () => controller.abort();
 	});
 
 	$effect(() => {
@@ -110,12 +134,57 @@
 	}
 
 	function formatTextContent(content: string) {
-		if (!isJson) return content;
+		if (textTruncated || !isJson || content.length > JSON_FORMAT_LIMIT) return content;
 		try {
 			return JSON.stringify(JSON.parse(content), null, 2);
 		} catch {
 			return content;
 		}
+	}
+
+	async function readTextPreview(response: Response, limitLines: boolean): Promise<TextPreviewResult> {
+		if (!limitLines || !response.body) {
+			return { content: await response.text(), truncated: false };
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let content = '';
+		let truncated = false;
+
+		try {
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+
+				content += decoder.decode(value, { stream: true });
+				const limited = limitTextLines(content);
+
+				if (limited.truncated || content.length >= LARGE_TEXT_MAX_PREVIEW_CHARS) {
+					content = limited.truncated ? limited.content : content.slice(0, LARGE_TEXT_MAX_PREVIEW_CHARS);
+					truncated = true;
+					await reader.cancel();
+					break;
+				}
+			}
+
+			if (!truncated) content += decoder.decode();
+		} finally {
+			reader.releaseLock();
+		}
+
+		const limited = limitTextLines(content);
+		return { content: limited.content, truncated: truncated || limited.truncated };
+	}
+
+	function limitTextLines(content: string): TextPreviewResult {
+		const lines = content.split(/\r\n|\r|\n/);
+		if (lines.length <= LARGE_TEXT_PREVIEW_LINES) return { content, truncated: false };
+
+		return {
+			content: lines.slice(0, LARGE_TEXT_PREVIEW_LINES).join('\n'),
+			truncated: true
+		};
 	}
 </script>
 
@@ -226,8 +295,13 @@
 			<div class="flex items-center justify-center py-16">
 				<p class="text-sm text-red-500">{textError}</p>
 			</div>
-		{:else if textContent !== null}
-			<pre class="max-h-[80vh] overflow-auto p-5 text-sm leading-relaxed text-gray-700"><code>{formatTextContent(textContent)}</code></pre>
+		{:else if formattedTextContent !== null}
+			{#if textTruncated}
+				<div class="border-b border-amber-100 bg-amber-50 px-5 py-2 text-xs text-amber-700">
+					{m.text_preview_truncated({ lines: String(LARGE_TEXT_PREVIEW_LINES) })}
+				</div>
+			{/if}
+			<VirtualTextViewer content={formattedTextContent} ariaLabel={m.preview()} />
 		{/if}
 	{/if}
 </Dialog>
