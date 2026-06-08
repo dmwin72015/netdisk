@@ -18,44 +18,58 @@ const buildStamp = buildTime.replace(/[-:TZ.]/g, "").slice(0, 14);
 const gitShortSha = getGitShortSha();
 const appVersion = gitShortSha ? `${buildStamp}-${gitShortSha}` : buildStamp;
 
-export default defineConfig({
-  define: {
-    __APP_VERSION__: JSON.stringify(appVersion),
-    __APP_BUILD_TIME__: JSON.stringify(buildTime),
-  },
-  plugins: [
-    tailwindcss(),
-    sveltekit(),
-    paraglideVitePlugin({
-      project: "./project.inlang",
-      outdir: "./src/lib/paraglide",
-      strategy: ["cookie", "baseLocale"],
-    }),
-  ],
-  ssr: {
-    noExternal: ['@lucide/svelte'],
-    optimizeDeps: {
-      include: ['@lucide/svelte'],
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === "production";
+
+  return {
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+      __APP_BUILD_TIME__: JSON.stringify(buildTime),
     },
-  },
-  build: {
-    rolldownOptions: {
-      checks: {
-        pluginTimings: false,
+    plugins: [
+      tailwindcss(),
+      sveltekit(),
+      paraglideVitePlugin({
+        project: "./project.inlang",
+        outdir: "./src/lib/paraglide",
+        strategy: ["cookie", "baseLocale"],
+      }),
+    ],
+    ssr: {
+      noExternal: ['@lucide/svelte'],
+      optimizeDeps: {
+        include: ['@lucide/svelte'],
       },
     },
-  },
-
-  server: {
-    host: "0.0.0.0",
-    port: 5173,
-    proxy: {
-      "/api": { target: "http://localhost:8080", changeOrigin: true },
-      "/hls": { target: "http://localhost:8080", changeOrigin: true },
+    build: {
+      rolldownOptions: {
+        output: {
+          minify: isProduction
+            ? {
+                compress: {
+                  dropConsole: true,
+                  dropDebugger: true,
+                },
+              }
+            : "dce-only",
+        },
+        checks: {
+          pluginTimings: false,
+        },
+      },
     },
-  },
-  test: {
-    include: ["src/**/*.test.ts"],
-    globals: true,
-  },
+
+    server: {
+      host: "0.0.0.0",
+      port: 5173,
+      proxy: {
+        "/api": { target: "http://localhost:8080", changeOrigin: true },
+        "/hls": { target: "http://localhost:8080", changeOrigin: true },
+      },
+    },
+    test: {
+      include: ["src/**/*.test.ts"],
+      globals: true,
+    },
+  };
 });
