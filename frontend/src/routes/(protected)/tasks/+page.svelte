@@ -3,9 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listUploadTasks, retryUploadTask, deleteUploadTask, deleteUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
-	import { ListRestart, CircleCheck, CircleX, Clock, Upload, LoaderCircle, ArrowLeft, ArrowRight, Trash2, Check } from '@lucide/svelte';
+	import { ListRestart, CircleCheck, CircleX, Clock, Upload, LoaderCircle, ArrowLeft, ArrowRight, Trash2, Check, ChevronDown } from '@lucide/svelte';
 	import { confirmDelete } from '$lib/dialog';
 	import { DatePicker } from '$lib/ui/date-picker';
+	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
@@ -20,6 +21,7 @@
 	let endDate = $state<Date | null>(null);
 	let selected = $state<Set<string>>(new Set());
 	let statusFilter = $state('');
+	let statusFilterOpen = $state(false);
 
 	let totalPages = $derived(Math.ceil(total / limit));
 	let currentPage = $derived(Math.floor(offset / limit) + 1);
@@ -86,6 +88,26 @@
 		}
 	}
 
+	function statusFilterLabel(status: string) {
+		return status ? statusLabel(status) : m.all_status();
+	}
+
+	function statusFilterOptions() {
+		return [
+			{ value: '', label: m.all_status() },
+			{ value: 'done', label: m.upload_done() },
+			{ value: 'failed', label: m.failed() },
+			{ value: 'uploading', label: m.uploading_status() },
+			{ value: 'created', label: m.waiting() },
+			{ value: 'merging', label: m.converting_status() },
+		];
+	}
+
+	function selectStatusFilter(status: string) {
+		statusFilter = status;
+		statusFilterOpen = false;
+	}
+
 	function taskProgress(task: UploadTaskItem): number {
 		if (task.fileSize <= 0) return 0;
 		return Math.min(100, Math.round((task.receivedBytes / task.fileSize) * 100));
@@ -105,11 +127,6 @@
 		startDate = null;
 		endDate = null;
 		statusFilter = '';
-		offset = 0;
-		refresh();
-	}
-
-	function applyStatusFilter() {
 		offset = 0;
 		refresh();
 	}
@@ -170,14 +187,30 @@
 				<DatePicker bind:value={startDate} placeholderText={m.start_date()} />
 				<span class="text-xs text-gray-400">—</span>
 				<DatePicker bind:value={endDate} placeholderText={m.end_date()} />
-				<select bind:value={statusFilter} class="h-8 rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-700">
-					<option value="">{m.all_status()}</option>
-					<option value="done">{m.upload_done()}</option>
-					<option value="failed">{m.failed()}</option>
-					<option value="uploading">{m.uploading_status()}</option>
-					<option value="created">{m.waiting()}</option>
-					<option value="merging">{m.converting_status()}</option>
-				</select>
+					<Dropdown
+						bind:open={statusFilterOpen}
+						triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 data-[state=open]:border-blue-400 data-[state=open]:bg-white"
+						contentClass="min-w-36"
+						sideOffset={6}
+					align="end"
+				>
+					{#snippet trigger()}
+						<span class="truncate">{statusFilterLabel(statusFilter)}</span>
+						<ChevronDown size={14} class="shrink-0 text-gray-400" />
+					{/snippet}
+					{#each statusFilterOptions() as option (option.value)}
+						<DropdownBase.Item onSelect={() => selectStatusFilter(option.value)}>
+							{#snippet children()}
+								<span class="flex flex-1 items-center justify-between gap-3">
+									<span>{option.label}</span>
+									{#if statusFilter === option.value}
+										<Check size={14} class="text-blue-500" />
+									{/if}
+								</span>
+							{/snippet}
+						</DropdownBase.Item>
+					{/each}
+				</Dropdown>
 				<button type="button" onclick={applyDateFilter}
 					class="h-8 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
 					{m.filter()}

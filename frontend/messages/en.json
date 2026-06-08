@@ -1,5 +1,6 @@
 {
   "app_name": "VideoFlow",
+  "app_version": "Version {version}",
 
   "confirm_delete": "Confirm Delete",
   "delete_btn": "Delete",

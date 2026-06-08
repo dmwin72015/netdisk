@@ -32,6 +32,7 @@
 
 	let internalValue = $state<DateValue | undefined>(toDateValue(value));
 	let internalPlaceholder = $state<DateValue>(toDateValue(placeholder) ?? today(tz));
+	let open = $state(false);
 
 	$effect(() => {
 		internalValue = toDateValue(value);
@@ -47,6 +48,10 @@
 		value = d;
 		onValueChange?.(d);
 	}
+
+	function openCalendar() {
+		if (!disabled) open = true;
+	}
 </script>
 
 <DatePicker.Root
@@ -54,12 +59,14 @@
 	onValueChange={handleValueChange}
 	placeholder={internalPlaceholder}
 	onPlaceholderChange={(p) => { if (p) internalPlaceholder = p; }}
+	bind:open
 	{disabled}
 	closeOnDateSelect={true}
 >
 	<div class="relative">
 		<DatePicker.Input
-			class="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-sm text-gray-700 outline-none transition-colors hover:border-gray-300 focus-within:border-blue-400 focus-within:bg-white"
+			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-sm text-gray-700 outline-none transition-colors hover:border-gray-300 focus-within:border-blue-400 focus-within:bg-white"
+			onclick={openCalendar}
 		>
 			{#snippet children({ segments })}
 				{#each segments as { part, value }}
@@ -74,7 +81,12 @@
 						</DatePicker.Segment>
 					{/if}
 				{/each}
-				<CalendarDays size={14} class="ml-auto shrink-0 text-gray-400" />
+				<DatePicker.Trigger
+					class="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+					aria-label={placeholderText}
+				>
+					<CalendarDays size={14} />
+				</DatePicker.Trigger>
 			{/snippet}
 		</DatePicker.Input>
 

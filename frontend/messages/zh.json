@@ -1,5 +1,6 @@
 {
   "app_name": "VideoFlow",
+  "app_version": "版本 {version}",
   "confirm_delete": "确认删除",
   "delete_btn": "删除",
   "cancel": "取消",

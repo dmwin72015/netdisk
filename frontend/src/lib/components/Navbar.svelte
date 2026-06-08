@@ -70,7 +70,12 @@
 							{:else}
 								<User size={15} />
 							{/if}
-							<span class="hidden sm:inline">{$user?.profile?.displayName || $user?.username || m.nav_account()}</span>
+							<span
+								class="hidden max-w-[10rem] truncate sm:inline-block"
+								title={$user?.profile?.displayName || $user?.username || m.nav_account()}
+							>
+								{$user?.profile?.displayName || $user?.username || m.nav_account()}
+							</span>
 							<ChevronDown size={12} class="text-gray-400" />
 						{/snippet}
 

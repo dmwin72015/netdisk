@@ -40,16 +40,23 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if show}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={() => { if (!submitting) show = false; }}>
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
+		<button
+			type="button"
+			class="absolute inset-0 bg-black/50"
+			aria-label={m.close()}
+			disabled={submitting}
+			onclick={() => { if (!submitting) show = false; }}
+		></button>
 		<div
-			class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-			onclick={(e) => e.stopPropagation()}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="album-create-title"
+			class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
 		>
 			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-lg font-semibold text-gray-900">{m.albums_create()}</h2>
-				<button type="button" onclick={() => (show = false)} class="rounded-md p-1 text-gray-400 hover:text-gray-600">
+				<h2 id="album-create-title" class="text-lg font-semibold text-gray-900">{m.albums_create()}</h2>
+				<button type="button" onclick={() => (show = false)} class="rounded-md p-1 text-gray-400 hover:text-gray-600" aria-label={m.close()}>
 					<X size={20} />
 				</button>
 			</div>

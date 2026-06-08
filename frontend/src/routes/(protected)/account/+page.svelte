@@ -48,6 +48,8 @@
 
 	let usedBytes = $derived(profile?.storage?.storageUsed ?? 0);
 	let quotaBytes = $derived(profile?.storage?.storageQuota ?? 0);
+	const appVersion = __APP_VERSION__;
+	const appBuildTime = __APP_BUILD_TIME__;
 </script>
 
 {#if $authReady && $user}
@@ -75,5 +77,9 @@
 			{quotaBytes}
 			{loading}
 		/>
+
+		<p class="pb-2 pt-4 text-center text-xs text-gray-400" title={appBuildTime}>
+			{m.app_version({ version: appVersion })}
+		</p>
 	</div>
 {/if}
