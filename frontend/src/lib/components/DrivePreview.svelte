@@ -172,7 +172,7 @@
 			</div>
 		{:else if blobUrl}
 			<div class="flex items-center justify-center p-4">
-				<img src={blobUrl} alt={name} class="max-h-[75vh] rounded-lg object-contain" />
+					<img src={blobUrl} alt={name} loading="lazy" class="max-h-[75vh] rounded-lg object-contain" />
 			</div>
 		{/if}
 	{:else if isVideo}

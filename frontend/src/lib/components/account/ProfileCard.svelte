@@ -104,11 +104,12 @@
 			<div class="flex flex-col items-center gap-3">
 				<div class="relative">
 					{#if avatarPreview || avatarUrl}
-						<img
-							src={avatarPreview || avatarUrl}
-							alt="avatar"
-							class="h-24 w-24 rounded-full object-cover ring-2 ring-gray-100"
-						/>
+							<img
+								src={avatarPreview || avatarUrl}
+								alt="avatar"
+								loading="lazy"
+								class="h-24 w-24 rounded-full object-cover ring-2 ring-gray-100"
+							/>
 					{:else}
 						<div class="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 ring-2 ring-gray-100">
 							<User size={40} class="text-gray-400" />
@@ -174,11 +175,12 @@
 		<div class="flex flex-col gap-6 sm:flex-row">
 			<div class="flex flex-col items-center gap-3">
 				{#if avatarUrl}
-					<img
-						src={avatarUrl}
-						alt="avatar"
-						class="h-24 w-24 rounded-full object-cover ring-2 ring-gray-100"
-					/>
+						<img
+							src={avatarUrl}
+							alt="avatar"
+							loading="lazy"
+							class="h-24 w-24 rounded-full object-cover ring-2 ring-gray-100"
+						/>
 				{:else}
 					<div class="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 ring-2 ring-gray-100">
 						<User size={40} class="text-gray-400" />

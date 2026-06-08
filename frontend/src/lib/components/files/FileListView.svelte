@@ -550,6 +550,7 @@
           <img
             src={authedFileUrl(detailFile)}
             alt={detailFile.name}
+            loading="lazy"
             class="max-h-[112px] max-w-[220px] rounded-lg border border-gray-200 object-contain"
           />
         {:else if isVideoFile(detailFile)}

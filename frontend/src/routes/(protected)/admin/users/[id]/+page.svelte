@@ -141,7 +141,7 @@
 							<div class="flex justify-between items-center">
 								<dt class="text-slate-500">Avatar</dt>
 								<dd>
-									<img src={user.profile.avatarUrl} alt="avatar" class="h-10 w-10 rounded-full object-cover" />
+										<img src={user.profile.avatarUrl} alt="avatar" loading="lazy" class="h-10 w-10 rounded-full object-cover" />
 								</dd>
 							</div>
 						{/if}

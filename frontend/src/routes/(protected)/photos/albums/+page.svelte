@@ -78,7 +78,7 @@
 					>
 						<div class="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200">
 							{#if album.coverUrl}
-								<img src={album.coverUrl} alt={album.title} class="h-full w-full object-cover" />
+									<img src={album.coverUrl} alt={album.title} loading="lazy" class="h-full w-full object-cover" />
 							{/if}
 						</div>
 						<div class="p-3">

@@ -66,7 +66,7 @@
 					>
 						{#snippet trigger()}
 							{#if $user?.profile?.avatarUrl}
-								<img src={$user.profile.avatarUrl} alt="" class="h-5 w-5 rounded-full object-cover" />
+									<img src={$user.profile.avatarUrl} alt="" loading="lazy" class="h-5 w-5 rounded-full object-cover" />
 							{:else}
 								<User size={15} />
 							{/if}

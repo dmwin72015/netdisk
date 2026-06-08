@@ -175,7 +175,7 @@
 					{#if oauthBusy}
 						<ExternalLink size={16} class="animate-pulse" />
 					{:else}
-						<img src="/2libra.png" alt="" class="h-4 w-4" />
+						<img src="/2libra.png" alt="" loading="lazy" class="h-4 w-4" />
 					{/if}
 					2libra
 				</button>

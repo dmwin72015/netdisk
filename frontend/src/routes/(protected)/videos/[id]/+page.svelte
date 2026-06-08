@@ -166,10 +166,11 @@
 		<div class="mt-3 flex flex-col gap-4 sm:flex-row">
 			<div class="aspect-video w-full max-w-xs overflow-hidden rounded bg-slate-200 sm:w-64">
 				{#if task.thumbnailUrl}
-					<img
-						src={authedUrl(task.thumbnailUrl)}
-						alt={m.cover_preview()}
-						class="h-full w-full object-cover"
+						<img
+							src={authedUrl(task.thumbnailUrl)}
+							alt={m.cover_preview()}
+							loading="lazy"
+							class="h-full w-full object-cover"
 					/>
 				{:else}
 					<div class="flex h-full w-full items-center justify-center text-slate-400">
