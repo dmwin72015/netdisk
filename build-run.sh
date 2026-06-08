@@ -10,23 +10,24 @@ LOG_PATH="$RUN_DIR/netdisk-server.log"
 LEGACY_PID_FILES=("$BACKEND_DIR/server.pid")
 
 # ---- Usage ----
-#   ./build-run.sh                 build only, binary at backend/bin/netdisk-server
-#   ./build-run.sh run [-- args]   build, stop existing backend, then start it
+#   ./build-run.sh [-- args]       build, stop existing backend, then start it
+#   ./build-run.sh build           build only, binary at backend/bin/netdisk-server
+#   ./build-run.sh run [-- args]   same as default
 #   ./build-run.sh restart [-- args]
-#                                  same as run
-#   ./build-run.sh stop            stop running backend from pid file
-#   ./build-run.sh status          show backend status from pid file
+#                                  same as default
+#   ./build-run.sh stop            stop running backend
+#   ./build-run.sh status          show backend status
 #   ./build-run.sh help            show this help
 #
 #   Examples:
-#   ./build-run.sh run
+#   ./build-run.sh
 #   ./build-run.sh restart -- --config /etc/netdisk.yaml
 
 usage() {
     sed -n 's/^#   //p' "$0"
 }
 
-COMMAND=${1:-build}
+COMMAND=${1:-run}
 case "$COMMAND" in
     build | run | restart | stop | status)
         shift || true
@@ -36,7 +37,7 @@ case "$COMMAND" in
         exit 0
         ;;
     *)
-        COMMAND="build"
+        COMMAND="run"
         ;;
 esac
 if [ "${1:-}" = "--" ]; then
@@ -88,6 +89,23 @@ pid_files() {
     printf '%s\n' "$PID_PATH" "${LEGACY_PID_FILES[@]}"
 }
 
+discover_backend_pids() {
+    local exe_link
+    local pid
+
+    [ -d /proc ] || return 0
+
+    for exe_link in /proc/[0-9]*/exe; do
+        [ -e "$exe_link" ] || continue
+        pid="${exe_link#/proc/}"
+        pid="${pid%/exe}"
+
+        if is_running "$pid" && is_backend_process "$pid"; then
+            printf '%s\n' "$pid"
+        fi
+    done
+}
+
 remove_pid_file() {
     local pid_file="$1"
 
@@ -116,8 +134,37 @@ status_backend() {
         remove_pid_file "$pid_file"
     done < <(pid_files)
 
+    while IFS= read -r pid; do
+        if [ -z "$pid" ] || [[ "$seen" == *" $pid "* ]]; then
+            continue
+        fi
+        seen="${seen} ${pid} "
+
+        echo "==> Backend running (pid $pid)"
+        echo "==> PID: discovered from process table"
+        echo "==> Log: $LOG_PATH"
+        return 0
+    done < <(discover_backend_pids)
+
     echo "==> Backend not running"
     return 1
+}
+
+stop_pid() {
+    local pid="$1"
+
+    echo "==> Stopping backend (pid $pid)"
+    kill "$pid" 2>/dev/null || true
+    for _ in {1..30}; do
+        if ! is_running "$pid"; then
+            break
+        fi
+        sleep 0.2
+    done
+    if is_running "$pid"; then
+        echo "==> Backend did not stop gracefully, killing (pid $pid)"
+        kill -9 "$pid" 2>/dev/null || true
+    fi
 }
 
 stop_backend() {
@@ -140,22 +187,21 @@ stop_backend() {
                 continue
             fi
 
-            echo "==> Stopping backend (pid $pid)"
-            kill "$pid" 2>/dev/null || true
-            for _ in {1..30}; do
-                if ! is_running "$pid"; then
-                    break
-                fi
-                sleep 0.2
-            done
-            if is_running "$pid"; then
-                echo "==> Backend did not stop gracefully, killing (pid $pid)"
-                kill -9 "$pid" 2>/dev/null || true
-            fi
+            stop_pid "$pid"
             stopped=1
         fi
         remove_pid_file "$pid_file"
     done < <(pid_files)
+
+    while IFS= read -r pid; do
+        if [ -z "$pid" ] || [[ "$seen" == *" $pid "* ]]; then
+            continue
+        fi
+        seen="${seen} ${pid} "
+
+        stop_pid "$pid"
+        stopped=1
+    done < <(discover_backend_pids)
 
     if [ "$stopped" -eq 0 ]; then
         echo "==> No running backend found"
