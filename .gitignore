@@ -30,3 +30,5 @@ backend/config.yaml
 # .agents
 # .claude
 # .kiro
+docs
+.superpowers

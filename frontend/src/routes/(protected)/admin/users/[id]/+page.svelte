@@ -20,6 +20,7 @@
 	});
 
 	async function loadUser() {
+		if (!userId) return;
 		loading = true;
 		try {
 			user = await adminGetUser(userId);

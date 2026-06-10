@@ -10,6 +10,7 @@
     Film,
     Info,
     Link,
+    Share2,
     FolderInput,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
@@ -26,6 +27,7 @@
     onAddToMedia,
     onShowDetails,
     onCopyLink,
+    onShare,
     triggerClass = "",
   }: {
     file: NormalizedFile;
@@ -38,6 +40,7 @@
     onAddToMedia?: (file: NormalizedFile) => void;
     onShowDetails?: (file: NormalizedFile) => void;
     onCopyLink?: (file: NormalizedFile) => void;
+    onShare?: (file: NormalizedFile) => void;
     triggerClass?: string;
   } = $props();
 
@@ -74,6 +77,12 @@
         <DropdownBase.Item onSelect={() => onCopyLink(file)}>
           {#snippet icon()}<Link size={14} class="text-gray-400" />{/snippet}
           {#snippet children()}{m.copy_url()}{/snippet}
+        </DropdownBase.Item>
+      {/if}
+      {#if onShare}
+        <DropdownBase.Item onSelect={() => onShare(file)}>
+          {#snippet icon()}<Share2 size={14} class="text-gray-400" />{/snippet}
+          {#snippet children()}分享{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}

@@ -179,49 +179,52 @@
 
 {#if $authReady && $user}
 	<div class="space-y-4">
-		<div class="flex items-center justify-between">
-			<h1 class="flex items-center gap-2 text-xl font-semibold">
-				<ListRestart size={20} /> {m.upload_title()}
-			</h1>
-			<div class="flex items-center gap-2">
-				<DatePicker bind:value={startDate} placeholderText={m.start_date()} />
-				<span class="text-xs text-gray-400">—</span>
-				<DatePicker bind:value={endDate} placeholderText={m.end_date()} />
-					<Dropdown
-						bind:open={statusFilterOpen}
-						triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 data-[state=open]:border-blue-400 data-[state=open]:bg-white"
-						contentClass="min-w-36"
-						sideOffset={6}
-					align="end"
-				>
-					{#snippet trigger()}
-						<span class="truncate">{statusFilterLabel(statusFilter)}</span>
-						<ChevronDown size={14} class="shrink-0 text-gray-400" />
-					{/snippet}
-					{#each statusFilterOptions() as option (option.value)}
-						<DropdownBase.Item onSelect={() => selectStatusFilter(option.value)}>
-							{#snippet children()}
-								<span class="flex flex-1 items-center justify-between gap-3">
-									<span>{option.label}</span>
-									{#if statusFilter === option.value}
-										<Check size={14} class="text-blue-500" />
-									{/if}
-								</span>
-							{/snippet}
-						</DropdownBase.Item>
-					{/each}
-				</Dropdown>
-				<button type="button" onclick={applyDateFilter}
-					class="h-8 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
-					{m.filter()}
+		<!-- Header -->
+		<div class="flex items-center gap-2">
+			<ListRestart size={20} class="text-gray-500" />
+			<h1 class="text-lg font-semibold text-gray-900">{m.upload_title()}</h1>
+			<span class="text-sm text-gray-400">{m.total_items({ total: String(total) })}</span>
+		</div>
+
+		<!-- Filters -->
+		<div class="flex items-center gap-2">
+			<DatePicker bind:value={startDate} placeholderText={m.start_date()} />
+			<span class="text-xs text-gray-300">—</span>
+			<DatePicker bind:value={endDate} placeholderText={m.end_date()} />
+			<Dropdown
+				bind:open={statusFilterOpen}
+				triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 data-[state=open]:border-blue-400 data-[state=open]:bg-white"
+				contentClass="min-w-36"
+				sideOffset={6}
+				align="end"
+			>
+				{#snippet trigger()}
+					<span class="truncate">{statusFilterLabel(statusFilter)}</span>
+					<ChevronDown size={14} class="shrink-0 text-gray-400" />
+				{/snippet}
+				{#each statusFilterOptions() as option (option.value)}
+					<DropdownBase.Item onSelect={() => selectStatusFilter(option.value)}>
+						{#snippet children()}
+							<span class="flex flex-1 items-center justify-between gap-3">
+								<span>{option.label}</span>
+								{#if statusFilter === option.value}
+									<Check size={14} class="text-blue-500" />
+								{/if}
+							</span>
+						{/snippet}
+					</DropdownBase.Item>
+				{/each}
+			</Dropdown>
+			<button type="button" onclick={applyDateFilter}
+				class="flex h-8 items-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+				{m.filter()}
+			</button>
+			{#if startDate || endDate || statusFilter}
+				<button type="button" onclick={clearDateFilter}
+					class="flex h-8 items-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 transition-colors hover:bg-gray-50">
+					{m.reset()}
 				</button>
-				{#if startDate || endDate || statusFilter}
-					<button type="button" onclick={clearDateFilter}
-						class="h-8 rounded-lg border border-gray-200 px-3 text-sm text-gray-600 transition-colors hover:bg-gray-50">
-						{m.reset()}
-					</button>
-				{/if}
-			</div>
+			{/if}
 		</div>
 
 		{#if loading}
@@ -229,13 +232,13 @@
 				<LoaderCircle size={24} class="animate-spin text-gray-300" />
 			</div>
 		{:else if tasks.length === 0}
-			<div class="flex flex-col items-center justify-center py-16 text-center">
+			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
 				<ListRestart size={40} class="mb-3 text-gray-300" />
 				<p class="text-sm text-gray-400">{m.no_tasks()}</p>
 			</div>
 		{:else}
 			{#if selected.size > 0}
-				<div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
+				<div class="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-2">
 					<span class="text-sm text-gray-600">{m.selected_count({ count: String(selected.size) })}</span>
 					<button type="button" onclick={handleDeleteSelected} class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700">
 						<Trash2 size={12} />
@@ -244,47 +247,46 @@
 				</div>
 			{/if}
 
-			<div class="overflow-hidden rounded-xl border border-gray-100">
+			<div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
 				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-gray-50 bg-gray-50/50 text-left text-xs font-medium text-gray-500">
-							<th class="w-10 px-4 py-3">
+						<tr class="border-b border-gray-100 text-left text-xs font-medium text-gray-400">
+							<th class="w-10 px-4 py-2.5">
 								<button type="button" onclick={toggleSelectAll} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {allSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
 									{#if allSelected}
 										<Check size={12} />
 									{/if}
 								</button>
 							</th>
-							<th class="px-4 py-3">{m.col_filename()}</th>
-							<th class="px-4 py-3">{m.col_size()}</th>
-							<th class="px-4 py-3">{m.status()}</th>
-							<th class="px-4 py-3">{m.col_directory()}</th>
-							<th class="px-4 py-3">{m.col_upload_time()}</th>
-							<th class="px-4 py-3">{m.col_actions()}</th>
+							<th class="px-4 py-2.5 font-medium">{m.col_filename()}</th>
+							<th class="w-[100px] px-4 py-2.5 text-right font-medium">{m.col_size()}</th>
+							<th class="w-[120px] px-4 py-2.5 font-medium">{m.status()}</th>
+							<th class="w-[160px] px-4 py-2.5 font-medium">{m.col_directory()}</th>
+							<th class="w-[140px] px-4 py-2.5 text-right font-medium">{m.col_upload_time()}</th>
+							<th class="w-[120px] px-4 py-2.5 text-right font-medium">{m.col_actions()}</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-50">
+					<tbody>
 						{#each tasks as task (task.slug)}
 							{@const StatusIcon = statusIcon(task.status)}
 							{@const progress = taskProgress(task)}
-							{@const isInterrupted = (task.status === 'uploading' || task.status === 'created') && progress > 0}
-							<tr class="relative transition-colors hover:bg-gray-50/50" style={isInterrupted ? `background:linear-gradient(to right, #dbeafe ${progress}%, transparent ${progress}%)` : ''}>
-								<td class="relative w-10 px-4 py-3">
+							<tr class="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80">
+								<td class="px-4 py-2.5">
 									<button type="button" onclick={() => toggleSelect(task.slug)} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {selected.has(task.slug) ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
 										{#if selected.has(task.slug)}
 											<Check size={12} />
 										{/if}
 									</button>
 								</td>
-								<td class="relative max-w-[200px] truncate px-4 py-3 text-gray-900" title={task.fileName || task.slug}>
+								<td class="max-w-[200px] truncate px-4 py-2.5 text-gray-900" title={task.fileName || task.slug}>
 									{task.fileName || task.slug}
 								</td>
-								<td class="relative px-4 py-3 tabular-nums text-gray-500">{fmtSize(task.fileSize)}</td>
-								<td class="relative px-4 py-3">
+								<td class="px-4 py-2.5 text-right tabular-nums text-gray-500">{fmtSize(task.fileSize)}</td>
+								<td class="px-4 py-2.5">
 									<span class="inline-flex items-center gap-1.5">
 										<StatusIcon size={14} class={statusClass(task.status)} />
 										<span class={statusClass(task.status)}>{statusLabel(task.status)}</span>
-										{#if isInterrupted}
+										{#if progress > 0 && (task.status === 'uploading' || task.status === 'created')}
 											<span class="text-xs text-blue-500">{progress}%</span>
 										{/if}
 									</span>
@@ -292,22 +294,22 @@
 										<p class="mt-0.5 text-xs text-red-400">{task.errorMsg}</p>
 									{/if}
 								</td>
-								<td class="relative px-4 py-3 tabular-nums text-gray-400">
+								<td class="px-4 py-2.5 tabular-nums text-gray-400">
 									{#if task.parentSlug}
-											<a href="/files/all/{task.parentSlug}" class="text-blue-600 hover:underline" title={task.parentName ? `${task.parentName} (${task.parentSlug})` : task.parentSlug}>{task.parentName || task.parentSlug}</a>
+										<a href="/files/all/{task.parentSlug}" class="text-blue-600 hover:underline" title={task.parentName ? `${task.parentName} (${task.parentSlug})` : task.parentSlug}>{task.parentName || task.parentSlug}</a>
 									{:else}
 										<span class="text-gray-300">/</span>
 									{/if}
 								</td>
-								<td class="relative px-4 py-3 tabular-nums text-gray-400">{fmtTime(task.createdAt)}</td>
-								<td class="relative px-4 py-3">
-									<div class="flex items-center gap-1">
+								<td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-gray-400">{fmtTime(task.createdAt)}</td>
+								<td class="px-4 py-2.5 text-right">
+									<div class="flex items-center justify-end gap-1">
 										{#if task.status === 'failed'}
 											<button
 												type="button"
 												onclick={() => handleRetry(task)}
 												disabled={retrying[task.slug]}
-												class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+												class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
 											>
 												{#if retrying[task.slug]}
 													<LoaderCircle size={12} class="animate-spin" />
@@ -315,7 +317,7 @@
 												{m.upload_retry()}
 											</button>
 										{/if}
-										<button type="button" onclick={() => handleDeleteSingle(task.slug)} class="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500" title={m.delete_btn()}>
+										<button type="button" onclick={() => handleDeleteSingle(task.slug)} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500" title={m.delete_btn()}>
 											<Trash2 size={14} />
 										</button>
 									</div>
@@ -328,14 +330,14 @@
 
 			<!-- Pagination -->
 			{#if totalPages > 1}
-				<div class="flex items-center justify-center gap-2 text-sm">
+				<div class="flex items-center justify-center gap-1 text-sm">
 					<button
 						type="button"
 						onclick={() => goToPage(currentPage - 1)}
 						disabled={currentPage <= 1}
-						class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-30"
+						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-30"
 					>
-						<ArrowLeft size={14} /> {m.prev()}
+						<ArrowLeft size={14} />
 					</button>
 					{#each Array(totalPages) as _, i}
 						<button
@@ -350,9 +352,9 @@
 						type="button"
 						onclick={() => goToPage(currentPage + 1)}
 						disabled={currentPage >= totalPages}
-						class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-30"
+						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-30"
 					>
-						{m.next()} <ArrowRight size={14} />
+						<ArrowRight size={14} />
 					</button>
 				</div>
 			{/if}

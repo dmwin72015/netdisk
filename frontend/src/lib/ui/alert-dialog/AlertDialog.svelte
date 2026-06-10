@@ -23,7 +23,7 @@
 		contentClass?: string;
 	} = $props();
 
-	let confirmed = $state(false);
+	let controller = $derived(createAlertDialogController(onConfirm, onCancel, () => (open = false)));
 
 	const actionClass = $derived(
 		variant === 'destructive'
@@ -32,19 +32,37 @@
 	);
 
 	function handleConfirm() {
-		confirmed = true;
-		open = false;
+		controller.handleConfirm();
 	}
 
 	function handleOpenChange(v: boolean) {
-		if (!v) {
-			if (confirmed) {
+		controller.handleOpenChange(v);
+	}
+</script>
+
+<script lang="ts" module>
+	export function createAlertDialogController(
+		onConfirm?: () => void,
+		onCancel?: () => void,
+		close?: () => void
+	) {
+		let confirmed = false;
+
+		return {
+			handleConfirm() {
+				confirmed = true;
 				onConfirm?.();
-			} else {
-				onCancel?.();
-			}
-			confirmed = false;
-		}
+				close?.();
+			},
+			handleOpenChange(open: boolean) {
+				if (!open) {
+					if (!confirmed) {
+						onCancel?.();
+					}
+					confirmed = false;
+				}
+			},
+		};
 	}
 </script>
 

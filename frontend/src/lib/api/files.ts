@@ -47,7 +47,8 @@ export async function listFiles(
 	sortBy?: string,
 	sortDir?: string,
 	onlyDirs = false,
-	includeSystem = true
+	includeSystem = true,
+	searchQuery?: string
 ) {
 	const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
 	if (parentSlug) params.set('parentSlug', parentSlug);
@@ -57,6 +58,7 @@ export async function listFiles(
 	if (sortDir) params.set('sortDir', sortDir);
 	if (onlyDirs) params.set('onlyDirs', 'true');
 	if (!includeSystem) params.set('includeSystem', 'false');
+	if (searchQuery) params.set('searchQuery', searchQuery);
 	return api<{ files: FileItem[]; total: number }>(`/api/v1/files?${params}`);
 }
 

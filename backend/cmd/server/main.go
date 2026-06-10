@@ -4,11 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/netdisk/server/internal/app"
 	"github.com/netdisk/server/internal/config"
 	"github.com/netdisk/server/internal/logging"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -37,9 +39,18 @@ func main() {
 
 	a, err := app.New(context.Background(), cfg, logger)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("app init")
+		exitWithLoggedError(logger, closer, "app init", err)
 	}
 	if err := a.Run(); err != nil {
-		logger.Fatal().Err(err).Msg("app run")
+		exitWithLoggedError(logger, closer, "app run", err)
 	}
+}
+
+func exitWithLoggedError(logger zerolog.Logger, closer io.Closer, msg string, err error) {
+	logger.Error().Err(err).Msg(msg)
+	fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
+	if closer != nil {
+		_ = closer.Close()
+	}
+	os.Exit(1)
 }

@@ -1,5 +1,7 @@
 export type UploadPhase = 'hashing' | 'pending' | 'verifying' | 'uploading' | 'paused' | 'importing' | 'completed' | 'failed' | 'interrupted';
 
+export type ConflictStrategy = 'overwrite' | 'keep_both';
+
 export type UploadItem = {
 	uid: string;
 	file: File;
@@ -17,4 +19,6 @@ export type UploadItem = {
 	parentSlug: string | null;
 	abortCtrl: AbortController | null;
 	errorMsg: string | null;
+	conflictStrategy?: ConflictStrategy;
+	conflictExistingSlug?: string;
 };

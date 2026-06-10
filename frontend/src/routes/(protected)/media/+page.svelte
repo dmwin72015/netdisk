@@ -20,6 +20,7 @@
 	import { confirmAction, confirmDelete, promptInput } from '$lib/dialog';
 	import { fmtDurationText, authedUrl } from '$lib/utils/format';
 	import AddMediaDialog from '$lib/components/media/AddMediaDialog.svelte';
+	import PasteUploadProvider from '$lib/components/files/PasteUploadProvider.svelte';
 	import { Popover } from '$lib/ui/popover';
 	import type { createUploadManager as UploadMgrFn } from '$lib/upload-manager.svelte';
 	type UploadManager = ReturnType<typeof UploadMgrFn>;
@@ -261,11 +262,9 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-4">
+	<div class="space-y-4 rounded-3xl border border-gray-100 bg-white/70 p-4 shadow-sm shadow-gray-100/80">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-2">
-				<Film size={20} class="text-gray-500" />
-				<h1 class="text-lg font-semibold text-gray-900">{m.media_title()}</h1>
 				<span class="text-sm text-gray-400">{m.total_items({ total })}</span>
 			</div>
 				<div class="flex items-center gap-2">
@@ -319,6 +318,13 @@
 			class="hidden"
 			onchange={upload.onPick}
 		/>
+
+		<PasteUploadProvider
+			targetLabel={m.media_title()}
+			acceptFile={isVideoFile}
+			onUpload={(files) => upload.enqueueFiles(files)}
+		/>
+
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
 				<LoaderCircle size={24} class="animate-spin text-gray-300" />

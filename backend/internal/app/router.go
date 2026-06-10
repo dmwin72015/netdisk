@@ -48,6 +48,12 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	auth.GET("/oauth/:provider/authorize", h.Auth.OAuthRedirect)
 	auth.GET("/oauth/:provider/callback", h.Auth.OAuthCallback)
 
+	// Public share routes
+	publicShares := api.Group("/public/shares")
+	publicShares.GET("/:slug", h.Share.GetPublicShare)
+	publicShares.POST("/:slug/verify", h.Share.VerifyPublicShare)
+	publicShares.GET("/:slug/file", h.Share.ServePublicFile)
+
 	// Authenticated routes
 	authed := api.Group("", mw.JWT(jwtMgr))
 
@@ -84,6 +90,13 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	files.POST("/:slug/move", h.Files.MoveFile)
 	files.POST("/:slug/star", h.Files.SetStarred)
 	files.GET("/:slug/download", h.Files.DownloadFile)
+
+	// Share routes
+	shares := authed.Group("/shares")
+	shares.POST("", h.Share.CreateShare)
+	shares.GET("", h.Share.ListShares)
+	shares.PATCH("/:slug", h.Share.UpdateShare)
+	shares.DELETE("/:slug", h.Share.CancelShare)
 
 	// Upload routes
 	upload := authed.Group("/upload")

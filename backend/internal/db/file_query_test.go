@@ -279,6 +279,42 @@ func TestBuildListFilesQuery_MimePrefixEscaping(t *testing.T) {
 	}
 }
 
+func TestBuildListFilesQuery_SearchQuery(t *testing.T) {
+	query := "report_%2026"
+	parentID := int64(10)
+	params := ListFilesParams{
+		UserID:      1,
+		ParentID:    &parentID,
+		SearchQuery: &query,
+		IsTrashed:   false,
+		Page:        1,
+		PageSize:    10,
+	}
+
+	sql, args, countSql, countArgs, err := BuildListFilesQuery(params)
+	if err != nil {
+		t.Fatalf("BuildListFilesQuery() error: %v", err)
+	}
+
+	if !strings.Contains(sql, "ILIKE") || !strings.Contains(countSql, "ILIKE") {
+		t.Errorf("expected search SQL to contain ILIKE, got list=%s count=%s", sql, countSql)
+	}
+	if strings.Contains(sql, "f.parent_id = $") || strings.Contains(countSql, "parent_id") {
+		t.Errorf("expected search to ignore parent_id filter, got list=%s count=%s", sql, countSql)
+	}
+	if strings.Contains(sql, "ORDER BY is_dir DESC") {
+		t.Errorf("expected search not to use directory-browsing ordering, got: %s", sql)
+	}
+
+	wantPattern := `%report\_\%2026%`
+	if !containsStringArg(args, wantPattern) {
+		t.Errorf("list args missing escaped search pattern %q: %v", wantPattern, args)
+	}
+	if !containsStringArg(countArgs, wantPattern) {
+		t.Errorf("count args missing escaped search pattern %q: %v", wantPattern, countArgs)
+	}
+}
+
 func TestBuildListFilesQuery_TrashedFilter(t *testing.T) {
 	params := ListFilesParams{
 		UserID:         1,
@@ -340,4 +376,13 @@ func strPtr(s string) *string {
 
 func int64Ptr(n int64) *int64 {
 	return &n
+}
+
+func containsStringArg(args []any, want string) bool {
+	for _, arg := range args {
+		if value, ok := arg.(string); ok && value == want {
+			return true
+		}
+	}
+	return false
 }

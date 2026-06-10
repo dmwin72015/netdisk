@@ -1,0 +1,1 @@
+import{o as e,s as t}from"./CJDU8le4.js";import"./EBFaVcf9.js";import{t as n}from"./DOpHgUgy.js";function r(r,i){let a=e(i,[`$$slots`,`$$events`,`$$legacy`]),o=[[`circle`,{cx:`12`,cy:`12`,r:`10`}],[`path`,{d:`M12 6v6l4 2`}]];n(r,t({name:`clock`},()=>a,{get iconNode(){return o}}))}export{r as t};

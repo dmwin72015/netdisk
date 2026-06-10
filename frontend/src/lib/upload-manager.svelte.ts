@@ -4,11 +4,13 @@ import {
 	initUpload, uploadChunk, completeUpload, getUploadStatus, updateHash
 } from '$lib/api/upload';
 import type { ExistingFileRef } from '$lib/api/upload';
-import { importFile } from '$lib/api/files';
+import { importFile, checkConflict, trashFile } from '$lib/api/files';
 import { computeSHA256Chunked } from '$lib/upload-hash';
 import { fmtSize } from '$lib/utils/format';
 import { confirmAction } from '$lib/dialog';
+import { openConfirm, getCheckboxValue } from '$lib/dialog-state.svelte';
 import * as m from '$lib/paraglide/messages';
+import { getDuplicateStrategy, setDuplicateStrategy } from '$lib/stores/file-preferences.svelte';
 import { getChunkSize, configError } from '$lib/stores/config';
 import { get } from 'svelte/store';
 import { getUploadChunkCount, shouldUseSmallFileFastPath } from '$lib/upload-strategy';
@@ -37,6 +39,18 @@ export type DuplicateFileContext = {
 	item: UploadItem;
 };
 
+export type NameConflictInfo = {
+	uid: string;
+	fileName: string;
+	fileSize: number;
+	existingSlug: string;
+};
+
+export type NameConflictResult = {
+	strategy: 'overwrite' | 'skip' | 'keep_both';
+	applyToAll: boolean;
+};
+
 type SnapshotItem = {
 	uid: string;
 	fileName: string;
@@ -50,6 +64,8 @@ type SnapshotItem = {
 	sessionId: string | null;
 	parentSlug: string | null;
 	errorMsg: string | null;
+	conflictStrategy?: 'overwrite' | 'keep_both';
+	conflictExistingSlug?: string;
 };
 
 export function createUploadManager(opts: {
@@ -60,6 +76,7 @@ export function createUploadManager(opts: {
 	onFileImported?: (result: ImportedUploadFile) => void | Promise<void>;
 	onImportConflict?: (context: ImportConflictContext) => boolean | Promise<boolean>;
 	onDuplicateDetected?: (context: DuplicateFileContext) => boolean | Promise<boolean>;
+	onNameConflicts?: (conflicts: NameConflictInfo[]) => Promise<Map<string, NameConflictResult>>;
 	storageKey?: string;
 	maxConcurrent?: number;
 }) {
@@ -72,6 +89,7 @@ export function createUploadManager(opts: {
 	let _onFileImported = opts.onFileImported;
 	let _onImportConflict = opts.onImportConflict;
 	let _onDuplicateDetected = opts.onDuplicateDetected;
+	let _onNameConflicts = opts.onNameConflicts;
 
 	function setGetCurrentSlug(fn: () => string | null | Promise<string | null>) {
 		_getCurrentSlug = fn;
@@ -94,6 +112,9 @@ export function createUploadManager(opts: {
 	function setOnDuplicateDetected(fn?: (context: DuplicateFileContext) => boolean | Promise<boolean>) {
 		_onDuplicateDetected = fn;
 	}
+	function setOnNameConflicts(fn?: (conflicts: NameConflictInfo[]) => Promise<Map<string, NameConflictResult>>) {
+		_onNameConflicts = fn;
+	}
 
 	function saveSnapshot() {
 		if (!STORAGE_KEY) return;
@@ -111,6 +132,8 @@ export function createUploadManager(opts: {
 				sessionId: i.sessionId,
 				parentSlug: i.parentSlug,
 				errorMsg: i.errorMsg,
+				conflictStrategy: i.conflictStrategy,
+				conflictExistingSlug: i.conflictExistingSlug,
 			}));
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
 		} catch {
@@ -229,9 +252,66 @@ export function createUploadManager(opts: {
 		return accepted;
 	}
 
+	function getFileExtension(name: string): string {
+		const i = name.lastIndexOf('.');
+		return i > 0 ? name.slice(i) : '';
+	}
+
+	function getFileNameWithoutExt(name: string): string {
+		const i = name.lastIndexOf('.');
+		return i > 0 ? name.slice(0, i) : name;
+	}
+
+	function windowsKeepBothName(name: string, counter: number): string {
+		const ext = getFileExtension(name);
+		const base = getFileNameWithoutExt(name);
+		return `${base} (${counter})${ext}`;
+	}
+
+	async function resolveKeepBothName(originalName: string, parentSlug?: string): Promise<string> {
+		let counter = 2;
+		while (true) {
+			const candidate = windowsKeepBothName(originalName, counter);
+			try {
+				const resp = await checkConflict(candidate, 0, '', parentSlug ?? undefined);
+				if (resp.status !== 'NAME_CONFLICT') {
+					return candidate;
+				}
+			} catch {
+				return candidate;
+			}
+			counter++;
+		}
+	}
+
+	async function checkNameConflicts(items: UploadItem[]) {
+		const results: [UploadItem, { slug: string }][] = [];
+		for (const item of items) {
+			try {
+				const resp = await checkConflict(item.fileName, 0, '', item.parentSlug ?? undefined);
+				if (resp.status === 'NAME_CONFLICT' && resp.existing) {
+					results.push([item, resp.existing]);
+				}
+			} catch {
+				// ignore - proceed without conflict detection
+			}
+		}
+		return results;
+	}
+
 	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string, source: 'dedup' | 'upload') {
 		item.phase = 'importing';
 		const parentSlug = item.parentSlug;
+
+		if (item.conflictStrategy === 'overwrite' && item.conflictExistingSlug) {
+			try {
+				log(item.uid, null, `overwrite: trashing existing file ${item.conflictExistingSlug}`);
+				await trashFile(item.conflictExistingSlug);
+			} catch (e) {
+				warn(item.uid, null, 'overwrite: failed to trash existing file, import may still conflict', e);
+			}
+		}
+
 		let imported: Awaited<ReturnType<typeof importFile>>;
 		try {
 			imported = await importFile(physicalFileSlug, item.fileName, parentSlug || undefined);
@@ -257,14 +337,9 @@ export function createUploadManager(opts: {
 
 	// --- File picker handlers ---
 
-	async function onPick(e: Event) {
-		const el = e.currentTarget as HTMLInputElement;
-		const fileList = el?.files;
-		if (!fileList || fileList.length === 0) return;
-
-		const pickedFiles = filterAcceptedFiles(Array.from(fileList));
-		el.value = '';
-		if (pickedFiles.length === 0) return;
+	async function enqueueFiles(files: File[]) {
+		const pickedFiles = filterAcceptedFiles(files);
+		if (pickedFiles.length === 0) return 0;
 
 		const currentSlug = await _getCurrentSlug();
 		const newItems: UploadItem[] = pickedFiles.map((f) => ({
@@ -286,12 +361,93 @@ export function createUploadManager(opts: {
 			errorMsg: null
 		}));
 
+		// Check name conflicts before adding to queue
+		if (_onNameConflicts) {
+			const conflictPairs = await checkNameConflicts(newItems);
+			if (conflictPairs.length > 0) {
+				const autoStrategy = getDuplicateStrategy();
+				if (autoStrategy !== 'prompt') {
+					// Auto-resolve according to duplicate strategy
+					const toKeep: UploadItem[] = [];
+					for (const item of newItems) {
+						const pair = conflictPairs.find((p) => p[0].uid === item.uid);
+						if (!pair) {
+							toKeep.push(item);
+							continue;
+						}
+						if (autoStrategy === 'skip') {
+							log(item.uid, null, `skipped due to name conflict: ${item.fileName}`);
+						} else if (autoStrategy === 'overwrite') {
+							item.conflictStrategy = 'overwrite';
+							item.conflictExistingSlug = pair[1].slug;
+							toKeep.push(item);
+						} else if (autoStrategy === 'keep_both') {
+							item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
+							toKeep.push(item);
+						}
+					}
+					newItems.length = 0;
+					newItems.push(...toKeep);
+				} else {
+					const results = await _onNameConflicts(
+						conflictPairs.map(([item, existing]) => ({
+							uid: item.uid,
+							fileName: item.fileName,
+							fileSize: item.fileSize,
+							existingSlug: existing.slug
+						}))
+					);
+
+					const toKeep: UploadItem[] = [];
+					for (const item of newItems) {
+						const result = results.get(item.uid);
+						if (!result) {
+							toKeep.push(item);
+							continue;
+						}
+						switch (result.strategy) {
+							case 'skip':
+								log(item.uid, null, `skipped due to name conflict: ${item.fileName}`);
+								break;
+							case 'overwrite': {
+								const pair = conflictPairs.find((p) => p[0].uid === item.uid);
+								if (pair) {
+									item.conflictStrategy = 'overwrite';
+									item.conflictExistingSlug = pair[1].slug;
+								}
+								toKeep.push(item);
+								break;
+							}
+							case 'keep_both': {
+								item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
+								toKeep.push(item);
+								break;
+							}
+						}
+					}
+					newItems.length = 0;
+					newItems.push(...toKeep);
+				}
+			}
+		}
+
 		uploadItems = [...uploadItems, ...newItems];
 		for (const item of newItems) {
 			log(item.uid, null, `selected: ${item.fileName} (${fmtSize(item.fileSize)})`);
 		}
 
 		void startUploadQueue();
+		return newItems.length;
+	}
+
+	async function onPick(e: Event) {
+		const el = e.currentTarget as HTMLInputElement;
+		const fileList = el?.files;
+		if (!fileList || fileList.length === 0) return;
+
+		const files = Array.from(fileList);
+		el.value = '';
+		await enqueueFiles(files);
 	}
 
 	function onPickFolder(e: Event) {
@@ -474,24 +630,46 @@ export function createUploadManager(opts: {
 							if (verifyResult.status === 'HIT' && verifyResult.physicalFileSlug) {
 								log(item.uid, null, `dedup HIT, importing from ${verifyResult.physicalFileSlug}`);
 
-								if (verifyResult.existingFiles && verifyResult.existingFiles.length > 0) {
-									const confirmed = _onDuplicateDetected
-										? await _onDuplicateDetected({
-											physicalFileSlug: verifyResult.physicalFileSlug,
-											existingFiles: verifyResult.existingFiles,
-											item
-										})
-										: await confirmAction(
-											m.duplicate_detected(),
-											m.duplicate_file_paths({ paths: verifyResult.existingFiles.map(f => f.path).join('\n') }),
-											m.continue_upload()
-										);
-									if (!confirmed) {
-										item.phase = 'failed';
-										item.errorMsg = m.upload_skipped_duplicate();
-										log(item.uid, null, 'skipped by user (duplicate)');
-										return;
+								const strategy = getDuplicateStrategy();
+								let proceed = false;
+
+								if (strategy === 'skip') {
+									item.phase = 'failed';
+									item.errorMsg = m.upload_skipped_duplicate();
+									log(item.uid, null, 'skipped (duplicate strategy: skip)');
+									return;
+								} else if (strategy === 'overwrite' || strategy === 'keep_both') {
+									proceed = true;
+									if (strategy === 'overwrite') {
+										item.conflictStrategy = 'overwrite';
 									}
+								} else {
+									const existing = verifyResult.existingFiles!;
+									if (_onDuplicateDetected) {
+										proceed = await _onDuplicateDetected({
+											physicalFileSlug: verifyResult.physicalFileSlug,
+											existingFiles: existing,
+											item
+										});
+									} else {
+										proceed = await openConfirm({
+											title: m.duplicate_detected(),
+											message: m.duplicate_file_paths({ paths: existing.map(f => f.path).join('\n') }),
+											confirmText: m.continue_upload(),
+											cancelText: m.cancel(),
+											checkboxLabel: m.upload_conflict_apply_all(),
+										});
+										if (getCheckboxValue()) {
+											setDuplicateStrategy(proceed ? 'keep_both' : 'skip');
+										}
+									}
+								}
+
+								if (!proceed) {
+									item.phase = 'failed';
+									item.errorMsg = m.upload_skipped_duplicate();
+									log(item.uid, null, 'skipped by user (duplicate)');
+									return;
 								}
 
 								item.phase = 'importing';
@@ -809,6 +987,7 @@ export function createUploadManager(opts: {
 		get folderDialogOpen() { return folderDialogOpen; },
 		set folderDialogOpen(v: boolean) { folderDialogOpen = v; },
 		get folderDialogLoading() { return folderDialogLoading; },
+		enqueueFiles,
 		onPick,
 		onPickFolder,
 		onFolderConfirm,
@@ -825,6 +1004,7 @@ export function createUploadManager(opts: {
 		setOnFileImported,
 		setOnImportConflict,
 		setOnDuplicateDetected,
+		setOnNameConflicts,
 		updateMaxConcurrent(n: number) {
 			maxConcurrent = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, n));
 			pumpQueue();

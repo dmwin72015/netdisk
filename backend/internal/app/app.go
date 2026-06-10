@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,6 +46,10 @@ type App struct {
 }
 
 func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, error) {
+	if err := validateStartupConfig(cfg); err != nil {
+		return nil, err
+	}
+
 	a := &App{cfg: cfg, logger: logger}
 
 	pg, err := store.NewPostgresPool(ctx, cfg.DB)
@@ -103,22 +109,49 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 }
 
 func (a *App) Run() error {
+	listener, err := net.Listen("tcp", a.srv.Addr)
+	if err != nil {
+		a.releaseInfra()
+		return fmt.Errorf("server listen %s: %w", a.srv.Addr, err)
+	}
+
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	workerErrCh := make(chan error, 2)
+	a.startCriticalWorker(workerCtx, workerErrCh, "media worker", a.worker.Start)
+	a.startCriticalWorker(workerCtx, workerErrCh, "trash worker", a.trashWorker.Start)
+
+	serverErrCh := make(chan error, 1)
 	go func() {
-		a.logger.Info().Int("port", a.cfg.Server.Port).Msg("server listening")
-		if err := a.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			a.logger.Fatal().Err(err).Msg("server failed")
+		if err := a.srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrCh <- err
 		}
 	}()
-
-	// Start media worker in background
-	workerCtx, workerCancel := context.WithCancel(context.Background())
-	go a.worker.Start(workerCtx)
-	go a.trashWorker.Start(workerCtx)
+	a.logger.Info().Int("port", a.cfg.Server.Port).Msg("server listening")
+	if err := writeStartupReadyFile(); err != nil {
+		workerCancel()
+		_ = a.srv.Close()
+		a.releaseInfra()
+		return fmt.Errorf("write startup ready file: %w", err)
+	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
-	a.logger.Info().Msg("shutdown signal received")
+	defer signal.Stop(sigCh)
+
+	select {
+	case err := <-serverErrCh:
+		workerCancel()
+		a.releaseInfra()
+		return fmt.Errorf("server failed: %w", err)
+	case err := <-workerErrCh:
+		workerCancel()
+		_ = a.srv.Close()
+		a.releaseInfra()
+		return fmt.Errorf("critical worker failed: %w", err)
+	case sig := <-sigCh:
+		a.logger.Info().Str("signal", sig.String()).Msg("shutdown signal received")
+	}
+
 	workerCancel()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -126,9 +159,62 @@ func (a *App) Run() error {
 
 	if err := a.srv.Shutdown(shutdownCtx); err != nil {
 		a.logger.Error().Err(err).Msg("http server shutdown")
+		a.releaseInfra()
+		return fmt.Errorf("http server shutdown: %w", err)
 	}
 	a.releaseInfra()
 	return nil
+}
+
+func (a *App) startCriticalWorker(ctx context.Context, errCh chan<- error, name string, start func(context.Context)) {
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				reportCriticalWorkerError(errCh, fmt.Errorf("%s panic: %v", name, recovered))
+			}
+		}()
+
+		start(ctx)
+		if ctx.Err() == nil {
+			reportCriticalWorkerError(errCh, fmt.Errorf("%s stopped unexpectedly", name))
+		}
+	}()
+}
+
+func reportCriticalWorkerError(errCh chan<- error, err error) {
+	select {
+	case errCh <- err:
+	default:
+	}
+}
+
+func validateStartupConfig(cfg *config.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil config")
+	}
+	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
+		return fmt.Errorf("server.port must be between 1 and 65535, got %d", cfg.Server.Port)
+	}
+	if cfg.Media.PollInterval <= 0 {
+		return fmt.Errorf("media.poll_interval must be greater than 0")
+	}
+	if cfg.Trash.PollInterval <= 0 {
+		return fmt.Errorf("trash.poll_interval must be greater than 0")
+	}
+	return nil
+}
+
+const startupReadyFileEnv = "NETDISK_READY_FILE"
+
+func writeStartupReadyFile() error {
+	path := strings.TrimSpace(os.Getenv(startupReadyFileEnv))
+	if path == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("mkdir ready file dir: %w", err)
+	}
+	return os.WriteFile(path, []byte(time.Now().UTC().Format(time.RFC3339Nano)+"\n"), 0o644)
 }
 
 func (a *App) closePartial() {
@@ -207,6 +293,7 @@ type handlers struct {
 	Auth   *handler.AuthHandler
 	User   *handler.UserHandler
 	Files  *handler.FilesHandler
+	Share  *handler.ShareHandler
 	Upload *handler.UploadHandler
 	Media  *handler.MediaHandler
 	Photo  *handler.PhotoHandler
@@ -231,6 +318,7 @@ func buildHandlers(
 	c := cache.New(rdb, cfg)
 
 	filesSvc := service.NewFilesService(queries, pg, cfg, store)
+	shareSvc := service.NewShareService(pg, store)
 	uploadSvc := service.NewUploadService(queries, pg, cfg, store, c, logger)
 	mediaSvc := service.NewMediaService(queries, pg, cfg, store, c, filesSvc, logger)
 	photoSvc := service.NewPhotoService(queries, pg, cfg, store, logger)
@@ -239,6 +327,7 @@ func buildHandlers(
 		Auth:   handler.NewAuthHandler(authSvc),
 		User:   handler.NewUserHandler(userSvc),
 		Files:  handler.NewFilesHandler(filesSvc),
+		Share:  handler.NewShareHandler(shareSvc),
 		Upload: handler.NewUploadHandler(uploadSvc, logger),
 		Media:  handler.NewMediaHandler(mediaSvc, broadcaster),
 		Photo:  handler.NewPhotoHandler(photoSvc),

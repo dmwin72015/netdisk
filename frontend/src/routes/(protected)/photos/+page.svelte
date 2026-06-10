@@ -138,24 +138,21 @@
 			<!-- Header -->
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
-					<ImageIcon size={20} class="text-gray-500" />
-					<h1 class="text-lg font-semibold text-gray-900">{m.photos_title()}</h1>
 					<span class="text-sm text-gray-400">{m.photos_total({ total })}</span>
 				</div>
+				{#snippet checkmark(active: boolean)}
+					<svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0 {active ? 'text-blue-600' : 'text-transparent'}">
+						<path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				{/snippet}
 				<div class="flex items-center gap-2">
 					<Dropdown
 						triggerClass="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
 						contentClass="min-w-[180px]"
 					>
 						{#snippet trigger()}
-							<ArrowUpDown size={14} />
 							<span class="hidden sm:inline">{sizeLabel}</span>
 							<ChevronDown size={14} class="text-gray-400" />
-						{/snippet}
-						{#snippet checkmark(active: boolean)}
-							<svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0 {active ? 'text-blue-600' : 'text-transparent'}">
-								<path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-							</svg>
 						{/snippet}
 						<DropdownBase.Separator />
 						<DropdownBase.Item onSelect={() => (viewMode = 'grid')}>
@@ -226,12 +223,12 @@
 				{#if groupByDate}
 					{#each groupedPhotos as group (group.date)}
 						<div class="mb-8">
-							<div class="sticky top-14 z-30 bg-white/90 py-2 backdrop-blur-sm">
+								<div class="sticky top-[-1.25rem] z-30 bg-white/90 px-2 py-2 backdrop-blur-sm">
 								<h2 class="text-base font-semibold text-gray-900">{group.label}</h2>
 								<p class="text-xs text-gray-400">{m.photos_total({ total: group.items.length })}</p>
 							</div>
 							{#if viewMode === 'grid'}
-								<div class="grid {gridClass}">
+								<div class="grid {gridClass} p-2 bg-white/90">
 									{#each group.items as photo (photo.slug)}
 										<button
 											type="button"

@@ -67,9 +67,20 @@ func (h *FilesHandler) ListFiles(c echo.Context) error {
 	}
 
 	if v := c.QueryParam("fileCategory"); v != "" {
-		params.Category = &v
-		params.IncludeDirs = false
+		if v == "folder" {
+			params.OnlyDirs = true
+			params.IncludeDirs = true
+		} else {
+			params.Category = &v
+			params.IncludeDirs = false
+		}
 		params.IgnoreParentID = true
+	}
+
+	if v := c.QueryParam("searchQuery"); v != "" {
+		params.SearchQuery = &v
+	} else if v := c.QueryParam("q"); v != "" {
+		params.SearchQuery = &v
 	}
 
 	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params)

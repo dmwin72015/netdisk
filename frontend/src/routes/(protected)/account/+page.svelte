@@ -54,8 +54,6 @@
 
 {#if $authReady && $user}
 	<div class="space-y-6">
-		<h1 class="text-xl font-semibold">{m.account_center()}</h1>
-
 		<ProfileCard
 			displayName={profile?.profile?.displayName ?? ''}
 			avatarUrl={profile?.profile?.avatarUrl ?? ''}

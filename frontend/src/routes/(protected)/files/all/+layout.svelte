@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, getContext } from 'svelte';
+	import { getContext } from 'svelte';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
@@ -13,14 +13,18 @@
 	import { normalizeFileItem } from '$lib/types/adapters';
 	import { addToLibrary } from '$lib/api/media';
 	import { toast } from 'svelte-sonner';
-	import DrivePreview from '$lib/components/DrivePreview.svelte';
-	import FileListView from '$lib/components/files/FileListView.svelte';
-	import FolderUploadDialog from '$lib/components/files/FolderUploadDialog.svelte';
+		import DrivePreview from '$lib/components/DrivePreview.svelte';
+		import FileListView from '$lib/components/files/FileListView.svelte';
+		import ShareDialog from '$lib/components/files/ShareDialog.svelte';
+		import FolderUploadDialog from '$lib/components/files/FolderUploadDialog.svelte';
+	import ConflictDialog from '$lib/components/files/ConflictDialog.svelte';
+	import type { NameConflictInfo, NameConflictResult } from '$lib/upload-manager.svelte';
+	import PasteUploadProvider from '$lib/components/files/PasteUploadProvider.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
+	import { getShowSystemDirs, setShowSystemDirs, getUploadConcurrency } from '$lib/stores/file-preferences.svelte';
 	import FilesToolbar, { type SortField, type ViewMode } from '$lib/components/files/FilesToolbar.svelte';
 	import { confirmDelete, promptInput } from '$lib/dialog';
 	import { FileQuestionMark, LoaderCircle } from '@lucide/svelte';
-	import { UPLOAD_FILE_CONCURRENCY } from '$lib/upload-concurrency';
 	import type { createUploadManager as UploadMgrFn } from '$lib/upload-manager.svelte';
 	type UploadManager = ReturnType<typeof UploadMgrFn>;
 	import * as m from '$lib/paraglide/messages';
@@ -40,9 +44,6 @@
 	let refreshId = 0;
 
 	// --- Preferences ---
-	let searchQuery = $state('');
-	let searchTimer: ReturnType<typeof setTimeout> | undefined;
-
 	let viewMode = $state<ViewMode>(
 		browser ? (localStorage.getItem('nd.files.view') as ViewMode) || 'list' : 'list'
 	);
@@ -57,40 +58,57 @@
 	let sortDir = $state<'ASC' | 'DESC'>(
 		browser ? (localStorage.getItem('nd.files.sortDir') as 'ASC' | 'DESC') || 'DESC' : 'DESC'
 	);
-	let showSystemDirs = $state(
-		browser ? localStorage.getItem('nd.files.showSystemDirs') !== 'false' : true
-	);
-
-	function setShowSystemDirs(value: boolean) {
-		showSystemDirs = value;
-		if (browser) localStorage.setItem('nd.files.showSystemDirs', String(value));
+	function handleShowSystemDirsChange(value: boolean) {
+		setShowSystemDirs(value);
 		void refresh(true);
 	}
-
-	function normalizeUploadConcurrency(value: number) {
-		return Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, value || UPLOAD_FILE_CONCURRENCY));
-	}
-
-		const initialUploadConcurrency =
-			browser ? normalizeUploadConcurrency(parseInt(localStorage.getItem('nd.files.uploadConcurrency') || String(UPLOAD_FILE_CONCURRENCY), 10)) : UPLOAD_FILE_CONCURRENCY
-		;
-		let uploadConcurrency = $state(initialUploadConcurrency);
 
 	// --- Upload manager (shared via context) ---
 	const upload = getContext<UploadManager>('upload');
 
+	// --- Conflict resolution dialog ---
+	let conflictDialogOpen = $state(false);
+	let conflictDialogConflicts = $state<NameConflictInfo[]>([]);
+	let resolveConflicts: ((results: Map<string, NameConflictResult>) => void) | null = null;
+
 	$effect(() => {
-		upload.updateMaxConcurrent(uploadConcurrency);
+		upload.updateMaxConcurrent(getUploadConcurrency());
 		upload.setGetCurrentSlug(() => currentSlug);
 		upload.setOnCompleted(() => refresh());
+		upload.setOnNameConflicts(async (conflicts) => {
+			conflictDialogConflicts = conflicts;
+			conflictDialogOpen = true;
+			return new Promise<Map<string, NameConflictResult>>((resolve) => {
+				resolveConflicts = resolve;
+			});
+		});
 	});
+
+	function onConflictResolve(results: Map<string, NameConflictResult>) {
+		resolveConflicts?.(results);
+		resolveConflicts = null;
+	}
+
+	function onConflictCancel() {
+		const allSkipped = new Map<string, NameConflictResult>(
+			conflictDialogConflicts.map((c) => [c.uid, { strategy: 'skip' as const, applyToAll: false }])
+		);
+		resolveConflicts?.(allSkipped);
+		resolveConflicts = null;
+	}
 
 	let fileInput: HTMLInputElement | undefined = $state();
 	let folderInput: HTMLInputElement | undefined = $state();
 
-	function setUploadConcurrency(value: number) {
-		uploadConcurrency = normalizeUploadConcurrency(value);
-		if (browser) localStorage.setItem('nd.files.uploadConcurrency', String(uploadConcurrency));
+	function openFileUploadFromShell() {
+		fileInput?.click();
+	}
+
+	if (browser) {
+		$effect(() => {
+			window.addEventListener('nd:open-file-upload', openFileUploadFromShell);
+			return () => window.removeEventListener('nd:open-file-upload', openFileUploadFromShell);
+		});
 	}
 
 	function setSort(field: SortField) {
@@ -111,9 +129,9 @@
 	let currentSlug = $state('');
 	let crumbs = $state<{ id: string; name: string }[]>([]);
 	let breadcrumbRef: Breadcrumb | undefined = $state();
+	let pasteTargetLabel = $derived(crumbs.at(-1)?.name ?? m.nav_files());
 
 	function navigateToDir(slug: string) {
-		searchQuery = '';
 		loading = true;
 		files = [];
 		void goto('/files/all/' + slug, { keepFocus: true, noScroll: true });
@@ -142,12 +160,6 @@
 		void refresh(true);
 	});
 
-	// --- Search ---
-	function onSearchInput() {
-		clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => void refresh(true), 300);
-	}
-
 	// --- File listing ---
 	async function refresh(showLoading = false) {
 		if (!$user) return;
@@ -165,7 +177,7 @@
 				sortBy,
 				sortDir,
 				false,
-				showSystemDirs
+				getShowSystemDirs()
 			);
 			if (id !== refreshId) return;
 			files = data.files;
@@ -197,7 +209,7 @@
 				sortBy,
 				sortDir,
 				false,
-				showSystemDirs
+				getShowSystemDirs()
 			);
 			if (id !== refreshId) return;
 			files = [...files, ...data.files];
@@ -233,9 +245,7 @@
 		return summary;
 	}
 
-	onDestroy(() => {
-		clearTimeout(searchTimer);
-	});
+
 
 	// --- Create directory ---
 	async function createDir() {
@@ -317,11 +327,23 @@
 	}
 
 	// --- Preview ---
-	let previewFile = $state<{ slug: string; name: string; mimeType: string; size: number } | null>(null);
+		let previewFile = $state<{ slug: string; name: string; mimeType: string; size: number } | null>(null);
+		let shareOpen = $state(false);
 
-	function onPreview(file: NormalizedFile) {
-		previewFile = { slug: file.id, name: file.name, mimeType: file.mimeType || '', size: file.size };
-	}
+		let shareFiles = $state<NormalizedFile[]>([]);
+		function onPreview(file: NormalizedFile) {
+			previewFile = { slug: file.id, name: file.name, mimeType: file.mimeType || '', size: file.size };
+		}
+
+		function onShare(file: NormalizedFile) {
+			shareFiles = [file];
+			shareOpen = true;
+		}
+
+		function onBatchShare(selectedFiles: NormalizedFile[]) {
+			shareFiles = selectedFiles;
+			shareOpen = true;
+		}
 
 	async function onAddToMedia(file: NormalizedFile) {
 		try {
@@ -340,7 +362,7 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-4">
+	<div class="space-y-4 rounded-3xl border border-gray-100 bg-white/70 p-4 shadow-sm shadow-gray-100/80">
 		{#if notFound}
 			<div class="flex flex-col items-center justify-center py-24 text-center">
 				<FileQuestionMark size={48} class="mb-4 text-gray-300" />
@@ -363,27 +385,21 @@
 			<Breadcrumb
 				bind:this={breadcrumbRef}
 				items={crumbs}
-				onNavigate={(id) => { searchQuery = ''; void goto('/files/all/' + id, { keepFocus: true, noScroll: true }); }}
-				onHome={() => { searchQuery = ''; void goto('/files/all', { keepFocus: true, noScroll: true }); }}
+				onNavigate={(id) => { void goto('/files/all/' + id, { keepFocus: true, noScroll: true }); }}
+				onHome={() => { void goto('/files/all', { keepFocus: true, noScroll: true }); }}
 			/>
 		{/if}
 
 		<!-- Toolbar -->
 		<FilesToolbar
-			bind:searchQuery
 			{sortBy}
 			{sortDir}
 			{viewMode}
-			onSearch={onSearchInput}
 			onSort={setSort}
 			onViewModeChange={setViewMode}
 			onUploadFiles={() => fileInput?.click()}
 			onUploadFolder={() => folderInput?.click()}
 			onCreateDir={createDir}
-			{showSystemDirs}
-			onShowSystemDirsChange={setShowSystemDirs}
-			{uploadConcurrency}
-			onUploadConcurrencyChange={setUploadConcurrency}
 		/>
 		<input bind:this={fileInput} type="file" multiple class="hidden" onchange={upload.onPick} />
 		<input bind:this={folderInput} type="file" webkitdirectory class="hidden" onchange={upload.onPickFolder} />
@@ -401,7 +417,7 @@
 				{loading}
 				directoryId={currentSlug}
 				currentPath={crumbs}
-				includeSystemDirs={showSystemDirs}
+				includeSystemDirs={getShowSystemDirs()}
 				downloadUrlFn={downloadUrl}
 				emptyMessage={currentSlug ? m.dir_empty() : m.no_files()}
 				onNavigateDir={navigateToDir}
@@ -410,10 +426,12 @@
 				onRename={rename}
 				onDelete={remove}
 				onBatchDelete={batchRemove}
-				onMove={move}
-				onAddToMedia={onAddToMedia}
-				{loadFolderSummary}
-			/>
+				{onBatchShare}
+					onMove={move}
+					onAddToMedia={onAddToMedia}
+					onShare={onShare}
+					{loadFolderSummary}
+				/>
 		</div>
 
 		{#if files.length > 0}
@@ -428,9 +446,11 @@
 		{/if}
 		{/if}
 	</div>
-{/if}
+	{/if}
 
-{#if previewFile}
+<ShareDialog bind:open={shareOpen} files={shareFiles} />
+
+	{#if previewFile}
 	<DrivePreview
 		id={previewFile.slug}
 		name={previewFile.name}
@@ -447,6 +467,18 @@
 	loading={upload.folderDialogLoading}
 	onConfirm={upload.onFolderConfirm}
 	onCancel={() => { upload.folderDialogOpen = false; }}
+/>
+
+<ConflictDialog
+	bind:open={conflictDialogOpen}
+	conflicts={conflictDialogConflicts}
+	onResolve={onConflictResolve}
+	onCancel={onConflictCancel}
+/>
+
+<PasteUploadProvider
+	targetLabel={pasteTargetLabel}
+	onUpload={(files) => upload.enqueueFiles(files)}
 />
 
 {@render children()}

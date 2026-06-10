@@ -33,6 +33,7 @@ type ListFilesParams struct {
 	ParentID       *int64
 	MimePrefix     *string
 	Category       *string
+	SearchQuery    *string
 	IsStarred      *bool
 	IsTrashed      bool
 	IncludeDirs    bool
@@ -60,6 +61,9 @@ func (p *ListFilesParams) normalize() {
 	}
 	if p.Category != nil && !allowedCategories[*p.Category] {
 		p.Category = nil
+	}
+	if p.SearchQuery != nil && *p.SearchQuery != "" {
+		p.IgnoreParentID = true
 	}
 }
 
@@ -100,6 +104,13 @@ func buildWhere(p ListFilesParams) sq.And {
 		w = append(w, sq.Eq{"f.is_system": false})
 	}
 
+	if p.SearchQuery != nil && *p.SearchQuery != "" {
+		escaped := strings.ReplaceAll(*p.SearchQuery, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, "%", `\%`)
+		escaped = strings.ReplaceAll(escaped, "_", `\_`)
+		w = append(w, sq.ILike{"f.file_name": "%" + escaped + "%"})
+	}
+
 	return w
 }
 
@@ -115,7 +126,7 @@ func BuildListFilesQuery(p ListFilesParams) (sql string, args []any, countSql st
 		orderBy = fmt.Sprintf("f.is_system DESC, %s", orderBy)
 	}
 	// Directory browsing: always show folders first
-	if !p.IsTrashed && p.ParentID != nil {
+	if !p.IsTrashed && !p.IgnoreParentID && p.ParentID != nil {
 		orderBy = fmt.Sprintf("is_dir DESC, %s", orderBy)
 	}
 

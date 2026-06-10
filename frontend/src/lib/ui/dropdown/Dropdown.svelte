@@ -12,6 +12,7 @@
 		sideOffset = 4,
 		align = 'start',
 		preventScroll = false,
+		disabled = false,
 	}: {
 		open?: boolean;
 		onOpenChange?: (open: boolean) => void;
@@ -22,11 +23,12 @@
 		sideOffset?: number;
 		align?: 'start' | 'center' | 'end';
 		preventScroll?: boolean;
+		disabled?: boolean;
 	} = $props();
 </script>
 
 <DropdownBase.Root bind:open {onOpenChange}>
-	<DropdownBase.Trigger class={triggerClass}>
+	<DropdownBase.Trigger class={triggerClass} {disabled}>
 		{@render trigger()}
 	</DropdownBase.Trigger>
 

@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { AlertDialog, Dialog } from 'bits-ui';
-	import { getPending, getInputValue, setInputValue, closeDialog } from '$lib/dialog-state.svelte';
+	import { getPending, getInputValue, setInputValue, getCheckboxValue, setCheckboxValue, closeDialog } from '$lib/dialog-state.svelte';
+	import { fmtSize } from '$lib/utils/format';
 	import * as m from '$lib/paraglide/messages';
 
 	let pending = $derived(getPending());
 	let inputVal = $derived(getInputValue());
 	let inputEl: HTMLInputElement | undefined = $state();
+	let sizeHint = $derived.by(() => {
+		const n = parseInt(inputVal, 10);
+		if (!isNaN(n) && n > 0) return fmtSize(n);
+		return '';
+	});
 	let open = $state(false);
 	let closing = $state(false);
 	let contentEl: HTMLElement | undefined = $state();
@@ -158,6 +164,20 @@
 							<AlertDialog.Description class="mt-1 text-xs text-gray-500">
 								{pending?.opts.message ?? ''}
 							</AlertDialog.Description>
+							{#if pending?.opts.checkboxLabel}
+								<label class="mt-4 flex cursor-pointer items-center gap-2">
+									<input
+										type="checkbox"
+										checked={getCheckboxValue()}
+										onchange={(e) => setCheckboxValue((e.currentTarget as HTMLInputElement).checked)}
+										class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									/>
+									<span class="text-xs text-gray-600">{pending.opts.checkboxLabel}</span>
+								</label>
+							{/if}
+								{#if sizeHint}
+									<p class="mt-1.5 text-xs text-gray-400">≈ {sizeHint}</p>
+								{/if}
 							<div class="mt-5 flex justify-end gap-2">
 								<AlertDialog.Cancel
 									onclick={onCancel}

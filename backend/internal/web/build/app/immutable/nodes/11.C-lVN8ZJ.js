@@ -1,0 +1,1 @@
+import{Dt as e,Et as t,r as n}from"../chunks/CJDU8le4.js";import{n as r}from"../chunks/B1Xu8h5h.js";import"../chunks/EBFaVcf9.js";import"../chunks/DRluWQVR.js";function i(i,a){e(a,!0),n(()=>{r(`/files/all`,{replaceState:!0})}),t()}export{i as component};

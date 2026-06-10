@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X, FolderInput } from "@lucide/svelte";
+  import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X, FolderInput, Share2 } from "@lucide/svelte";
   import { fade, fly } from "svelte/transition";
   import type { NormalizedFile } from "$lib/types/file";
   import { fmtSize, fmtTime, copyToClipboard } from "$lib/utils/format";
@@ -34,8 +34,10 @@
     onRename,
     onDelete,
     onBatchDelete,
+    onBatchShare,
     onMove,
     onAddToMedia,
+    onShare,
     loadFolderSummary,
   }: {
     files: NormalizedFile[];
@@ -52,8 +54,10 @@
     onRename: (id: string, name: string) => void;
     onDelete: (id: string, name: string) => void;
     onBatchDelete?: (ids: string[]) => void;
+    onBatchShare?: (files: NormalizedFile[]) => void;
     onMove?: (ids: string[], targetSlug: string) => Promise<void>;
     onAddToMedia?: (file: NormalizedFile) => void;
+    onShare?: (file: NormalizedFile) => void;
     loadFolderSummary?: (id: string) => Promise<FolderSummary>;
   } = $props();
 
@@ -296,6 +300,7 @@
             {onDelete}
             onMove={onMove ? openSingleMoveDialog : undefined}
             {onAddToMedia}
+            {onShare}
             onShowDetails={showDetails}
             onCopyLink={copyFileLink}
             triggerClass="rounded-lg bg-white/90 p-1 text-gray-400 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-gray-600"
@@ -430,6 +435,7 @@
                     {onDelete}
                     onMove={onMove ? openSingleMoveDialog : undefined}
                     {onAddToMedia}
+                    {onShare}
                     onShowDetails={showDetails}
                     onCopyLink={copyFileLink}
                     triggerClass="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -493,6 +499,19 @@
                 triggerClass="h-8 w-8 rounded-full text-gray-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
               >
                 <FolderInput size={16} />
+              </Tooltip>
+            {/if}
+            {#if onBatchShare}
+              <Tooltip
+                content="分享"
+                delayDuration={200}
+                triggerProps={{
+                  'aria-label': "分享",
+                  onclick: () => onBatchShare?.(files.filter((f) => selected.has(f.id))),
+                }}
+                triggerClass="h-8 w-8 rounded-full text-gray-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
+              >
+                <Share2 size={16} />
               </Tooltip>
             {/if}
             <Tooltip

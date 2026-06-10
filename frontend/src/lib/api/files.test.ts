@@ -90,6 +90,19 @@ describe('listFiles', () => {
 		const url = fetchSpy.mock.calls[0][0] as string;
 		expect(url).toContain('includeSystem=false');
 	});
+
+	it('includes search query when provided', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ files: [], total: 0 }));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		await listFiles(undefined, 1, 20, undefined, null, 'created_at', 'DESC', false, false, 'hello world');
+
+		const url = fetchSpy.mock.calls[0][0] as string;
+		expect(url).toContain('searchQuery=hello+world');
+		expect(url).toContain('sortBy=created_at');
+		expect(url).toContain('sortDir=DESC');
+		expect(url).toContain('includeSystem=false');
+	});
 });
 
 // ── listRecentFiles ───────────────────────────────────────────────

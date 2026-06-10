@@ -8,6 +8,7 @@ type DialogOptions = {
 	inputPlaceholder?: string;
 	defaultValue?: string;
 	maxLength?: number;
+	checkboxLabel?: string;
 };
 
 type PendingDialog = {
@@ -18,6 +19,7 @@ type PendingDialog = {
 
 let pending = $state<PendingDialog | null>(null);
 let inputValue = $state('');
+let checkboxValue = $state(false);
 
 export function getPending() {
 	return pending;
@@ -31,14 +33,24 @@ export function setInputValue(v: string) {
 	inputValue = v;
 }
 
+export function getCheckboxValue() {
+	return checkboxValue;
+}
+
+export function setCheckboxValue(v: boolean) {
+	checkboxValue = v;
+}
+
 export function closeDialog() {
 	pending = null;
 	inputValue = '';
+	checkboxValue = false;
 }
 
 export function openConfirm(opts: DialogOptions): Promise<boolean> {
 	return new Promise<boolean>((resolve) => {
 		pending = { type: 'confirm', opts, resolve: (v) => resolve(!!v) };
+		checkboxValue = false;
 	});
 }
 

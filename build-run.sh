@@ -7,6 +7,7 @@ BIN_PATH="$BACKEND_DIR/bin/netdisk-server"
 RUN_DIR="$BACKEND_DIR/tmp"
 PID_PATH="$RUN_DIR/netdisk-server.pid"
 LOG_PATH="$RUN_DIR/netdisk-server.log"
+READY_PATH="$RUN_DIR/netdisk-server.ready"
 LEGACY_PID_FILES=("$BACKEND_DIR/server.pid")
 
 # ---- Usage ----
@@ -210,16 +211,43 @@ stop_backend() {
 
 start_backend() {
     mkdir -p "$BACKEND_DIR/bin" "$RUN_DIR"
+    rm -f "$READY_PATH"
     echo "==> Starting backend in background..."
     cd "$BACKEND_DIR"
-    nohup "$BIN_PATH" "$@" > "$LOG_PATH" 2>&1 &
+    NETDISK_READY_FILE="$READY_PATH" nohup "$BIN_PATH" "$@" > "$LOG_PATH" 2>&1 &
     local pid=$!
 
-    sleep 0.5
+    local ready=0
+    for _ in {1..60}; do
+        if ! is_running "$pid" || ! is_backend_process "$pid"; then
+            rm -f "$PID_PATH"
+            rm -f "$READY_PATH"
+            echo "==> Backend failed to start, see log: $LOG_PATH" >&2
+            tail -n 80 "$LOG_PATH" >&2 || true
+            exit 1
+        fi
+        if [ -f "$READY_PATH" ]; then
+            ready=1
+            break
+        fi
+        sleep 0.2
+    done
+
+    if [ "$ready" -eq 0 ]; then
+        rm -f "$PID_PATH"
+        rm -f "$READY_PATH"
+        echo "==> Backend did not report readiness, see log: $LOG_PATH" >&2
+        tail -n 80 "$LOG_PATH" >&2 || true
+        kill "$pid" 2>/dev/null || true
+        exit 1
+    fi
+
+    sleep 1
     if ! is_running "$pid" || ! is_backend_process "$pid"; then
         rm -f "$PID_PATH"
-        echo "==> Backend failed to start, see log: $LOG_PATH" >&2
-        tail -n 40 "$LOG_PATH" >&2 || true
+        rm -f "$READY_PATH"
+        echo "==> Backend exited during startup, see log: $LOG_PATH" >&2
+        tail -n 80 "$LOG_PATH" >&2 || true
         exit 1
     fi
 

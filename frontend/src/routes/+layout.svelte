@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import Navbar from '$lib/components/Navbar.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import AppDialog from '$lib/components/AppDialog.svelte';
 	import { Toast } from '$lib/ui/toast';
@@ -26,11 +25,8 @@
 	<title>{m.app_name()}</title>
 </svelte:head>
 
-<div class="flex min-h-screen flex-col">
-	{#if !isAuthPage}
-		<Navbar />
-	{/if}
-	<main class={isAuthPage ? 'w-full flex-1' : 'mx-auto w-full max-w-6xl flex-1 px-4 py-5'}>
+<div class="min-h-screen">
+	<main class="min-h-screen w-full">
 		{@render children()}
 	</main>
 </div>
