@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed build
+//go:embed all:build
 var buildFiles embed.FS
 
 var BuildFS fs.FS
@@ -17,5 +17,4 @@ func init() {
 		panic("web: failed to get build sub-filesystem: " + err.Error())
 	}
 }
-
 

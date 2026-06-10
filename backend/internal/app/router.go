@@ -166,12 +166,33 @@ func serveFrontend(e *echo.Echo) {
 		path := strings.TrimPrefix(c.Request().URL.Path, "/")
 		if path != "" {
 			if _, err := fs.Stat(web.BuildFS, path); err != nil {
+				if !shouldServeFrontendFallback(path) {
+					return c.NoContent(http.StatusNotFound)
+				}
 				c.Request().URL.Path = "/"
 			}
 		}
 		fileServer.ServeHTTP(c.Response(), c.Request())
 		return nil
 	})
+}
+
+func shouldServeFrontendFallback(path string) bool {
+	path = strings.TrimPrefix(path, "/")
+	if path == "" {
+		return true
+	}
+	if path == "api" || strings.HasPrefix(path, "api/") {
+		return false
+	}
+	if path == "_app" || strings.HasPrefix(path, "_app/") || path == "app" || strings.HasPrefix(path, "app/") {
+		return false
+	}
+	lastSegment := path
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		lastSegment = path[i+1:]
+	}
+	return !strings.Contains(lastSegment, ".")
 }
 
 func healthHandler(c echo.Context) error {

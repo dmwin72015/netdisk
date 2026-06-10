@@ -270,7 +270,11 @@ fi
 echo "==> 1/4: Install frontend dependencies"
 cd "$ROOT_DIR/frontend"
 corepack enable
-pnpm install --frozen-lockfile
+if [ -t 0 ]; then
+    pnpm install --frozen-lockfile
+else
+    CI=true pnpm install --frozen-lockfile
+fi
 
 echo "==> 2/4: Build frontend (static SPA)"
 cp svelte.config.js svelte.config.js.bak
@@ -290,10 +294,16 @@ rm -rf "$ROOT_DIR/backend/internal/web/build"
 mkdir -p "$ROOT_DIR/backend/internal/web/build"
 cp -r build/* "$ROOT_DIR/backend/internal/web/build/"
 
-echo "==> 3.5/4: Sanitize for Go embed (rename _ prefixed dirs/files)"
+echo "==> 3.5/4: Verify frontend build output"
 BUILD_DIR="$ROOT_DIR/backend/internal/web/build"
-find "$BUILD_DIR" -name '_*' -depth -exec sh -c 'for f; do d=$(dirname "$f"); b=$(basename "$f"); mv "$f" "$d/${b#_}"; done' _ {} +
-find "$BUILD_DIR" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' \) -exec sed -i 's|/_app/|/app/|g' {} +
+if [ ! -f "$BUILD_DIR/index.html" ]; then
+    echo "frontend build missing index.html" >&2
+    exit 1
+fi
+if [ ! -d "$BUILD_DIR/_app" ]; then
+    echo "frontend build missing _app assets" >&2
+    exit 1
+fi
 
 echo "==> 4/4: Build backend"
 cd "$BACKEND_DIR"

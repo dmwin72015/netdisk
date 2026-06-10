@@ -138,3 +138,27 @@ func TestWriteStartupReadyFileCreatesFile(t *testing.T) {
 		t.Fatal("ready file is empty")
 	}
 }
+
+func TestShouldServeFrontendFallback(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{path: "", want: true},
+		{path: "files/all", want: true},
+		{path: "s/share-slug", want: true},
+		{path: "_app/immutable/entry/start.js", want: false},
+		{path: "app/immutable/entry/start.js", want: false},
+		{path: "favicon.ico", want: false},
+		{path: "robots.txt", want: false},
+		{path: "assets/logo.png", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			if got := shouldServeFrontendFallback(tt.path); got != tt.want {
+				t.Fatalf("shouldServeFrontendFallback(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}
