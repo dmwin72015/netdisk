@@ -1,4 +1,4 @@
-export type UploadPhase = 'hashing' | 'pending' | 'verifying' | 'uploading' | 'paused' | 'importing' | 'completed' | 'failed' | 'interrupted';
+export type UploadPhase = 'queued' | 'hashing' | 'pending' | 'verifying' | 'uploading' | 'paused' | 'importing' | 'completed' | 'failed' | 'interrupted';
 
 export type ConflictStrategy = 'overwrite' | 'keep_both';
 

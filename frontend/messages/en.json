@@ -213,6 +213,8 @@
   "download": "Download",
   "unsupported_preview": "This file type cannot be previewed",
   "text_preview_truncated": "This file is larger than 1 MB, so only the first {lines} lines are shown. Download it to view the full content.",
+  "text_preview_wrap": "Wrap lines",
+  "text_preview_no_wrap": "No wrap",
   "download_file": "Download File",
 
   "file_size_mismatch": "File size mismatch ({fileSize} bytes, session recorded {sessionSize} bytes)",
@@ -264,6 +266,7 @@
   "importing": "Importing...",
   "paused": "Paused",
   "interrupted": "Interrupted",
+  "upload_waiting": "Waiting to upload",
   "upload_panel_uploading": "Uploading",
   "upload_panel_done": "Upload complete",
   "upload_panel_failed": "{count} failed",

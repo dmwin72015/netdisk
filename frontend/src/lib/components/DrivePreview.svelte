@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Copy, Download } from '@lucide/svelte';
+	import { Copy, Download, WrapText } from '@lucide/svelte';
 	import { downloadUrl } from '$lib/api/files';
 	import { getAccessToken } from '$lib/api/client';
 	import { fmtSize, copyToClipboard } from '$lib/utils/format';
@@ -39,6 +39,7 @@
 	let textError = $state<string | null>(null);
 	let textTruncated = $state(false);
 	let loadingText = $state(false);
+	let textWrap = $state(false);
 
 	let blobUrl = $state<string | null>(null);
 	let blobError = $state<string | null>(null);
@@ -296,12 +297,23 @@
 				<p class="text-sm text-red-500">{textError}</p>
 			</div>
 		{:else if formattedTextContent !== null}
+			<div class="flex items-center justify-end gap-2 border-b border-gray-100 bg-gray-50/60 px-4 py-2">
+				<button
+					type="button"
+					onclick={() => (textWrap = !textWrap)}
+					class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors {textWrap ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}"
+					title={textWrap ? m.text_preview_no_wrap() : m.text_preview_wrap()}
+				>
+					<WrapText size={14} />
+					<span>{textWrap ? m.text_preview_no_wrap() : m.text_preview_wrap()}</span>
+				</button>
+			</div>
 			{#if textTruncated}
 				<div class="border-b border-amber-100 bg-amber-50 px-5 py-2 text-xs text-amber-700">
 					{m.text_preview_truncated({ lines: String(LARGE_TEXT_PREVIEW_LINES) })}
 				</div>
 			{/if}
-			<VirtualTextViewer content={formattedTextContent} ariaLabel={m.preview()} />
+			<VirtualTextViewer content={formattedTextContent} ariaLabel={m.preview()} wrap={textWrap} />
 		{/if}
 	{/if}
 </Dialog>

@@ -1,4 +1,4 @@
-import { UPLOAD_FILE_CONCURRENCY } from '$lib/upload-concurrency';
+import { UPLOAD_FILE_CONCURRENCY, UPLOAD_FILE_CONCURRENCY_DEFAULT } from '$lib/upload-concurrency';
 
 const browser = typeof window !== 'undefined';
 
@@ -7,7 +7,7 @@ function save(key: string, value: string) {
 }
 
 let _showSystemDirs = $state<boolean>(false);
-let _uploadConcurrency = $state<number>(UPLOAD_FILE_CONCURRENCY);
+let _uploadConcurrency = $state<number>(UPLOAD_FILE_CONCURRENCY_DEFAULT);
 let _duplicateStrategy = $state<string>('prompt');
 
 if (browser) {
@@ -15,7 +15,7 @@ if (browser) {
 	if (sv === 'false') _showSystemDirs = false;
 	else _showSystemDirs = true;
 	const cv = localStorage.getItem('nd.files.uploadConcurrency');
-	if (cv) _uploadConcurrency = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, parseInt(cv, 10) || UPLOAD_FILE_CONCURRENCY));
+	if (cv) _uploadConcurrency = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, parseInt(cv, 10) || UPLOAD_FILE_CONCURRENCY_DEFAULT));
 	_duplicateStrategy = localStorage.getItem('nd.files.duplicateStrategy') || 'prompt';
 }
 
@@ -29,7 +29,7 @@ export function setShowSystemDirs(value: boolean) {
 }
 
 export function setUploadConcurrency(value: number) {
-	const clamped = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, value || UPLOAD_FILE_CONCURRENCY));
+	const clamped = Math.max(1, Math.min(UPLOAD_FILE_CONCURRENCY, value || UPLOAD_FILE_CONCURRENCY_DEFAULT));
 	_uploadConcurrency = clamped;
 	save('nd.files.uploadConcurrency', String(clamped));
 }

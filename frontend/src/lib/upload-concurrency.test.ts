@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { UploadRequestPool, UPLOAD_CHUNK_CONCURRENCY_PER_FILE, UPLOAD_FILE_CONCURRENCY, UPLOAD_REQUEST_POOL_SIZE } from './upload-concurrency';
+import { UploadRequestPool, UPLOAD_CHUNK_CONCURRENCY_PER_FILE, UPLOAD_FILE_CONCURRENCY, UPLOAD_FILE_CONCURRENCY_DEFAULT, UPLOAD_REQUEST_POOL_SIZE } from './upload-concurrency';
 
 describe('upload concurrency constants', () => {
 	it('uses requested limits', () => {
-		expect(UPLOAD_FILE_CONCURRENCY).toBe(3);
-		expect(UPLOAD_CHUNK_CONCURRENCY_PER_FILE).toBe(4);
-		expect(UPLOAD_REQUEST_POOL_SIZE).toBe(12);
+		expect(UPLOAD_FILE_CONCURRENCY).toBe(5);
+		expect(UPLOAD_FILE_CONCURRENCY_DEFAULT).toBe(3);
+		expect(UPLOAD_CHUNK_CONCURRENCY_PER_FILE).toBe(2);
+		expect(UPLOAD_REQUEST_POOL_SIZE).toBe(10);
 	});
 });
 

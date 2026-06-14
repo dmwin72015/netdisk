@@ -284,19 +284,58 @@ export function createUploadManager(opts: {
 		}
 	}
 
-	async function checkNameConflicts(items: UploadItem[]) {
-		const results: [UploadItem, { slug: string }][] = [];
-		for (const item of items) {
-			try {
-				const resp = await checkConflict(item.fileName, 0, '', item.parentSlug ?? undefined);
-				if (resp.status === 'NAME_CONFLICT' && resp.existing) {
-					results.push([item, resp.existing]);
-				}
-			} catch {
-				// ignore - proceed without conflict detection
-			}
+	async function resolveItemNameConflict(item: UploadItem): Promise<boolean> {
+		// Returns true if the item was skipped/removed (caller should stop processing).
+		if (!_onNameConflicts) return false;
+
+		let resp: Awaited<ReturnType<typeof checkConflict>>;
+		try {
+			resp = await checkConflict(item.fileName, 0, '', item.parentSlug ?? undefined);
+		} catch (e) {
+			warn(item.uid, null, 'name-conflict check failed, proceeding without it', e);
+			return false;
 		}
-		return results;
+		if (resp.status !== 'NAME_CONFLICT' || !resp.existing) return false;
+		const existing = resp.existing;
+
+		const autoStrategy = getDuplicateStrategy();
+		if (autoStrategy === 'skip') {
+			removeItemSilently(item.uid, `skipped due to name conflict: ${item.fileName}`);
+			return true;
+		}
+		if (autoStrategy === 'overwrite') {
+			item.conflictStrategy = 'overwrite';
+			item.conflictExistingSlug = existing.slug;
+			return false;
+		}
+		if (autoStrategy === 'keep_both') {
+			item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
+			return false;
+		}
+
+		const results = await _onNameConflicts([
+			{
+				uid: item.uid,
+				fileName: item.fileName,
+				fileSize: item.fileSize,
+				existingSlug: existing.slug
+			}
+		]);
+		const result = results.get(item.uid);
+		if (!result) return false;
+		switch (result.strategy) {
+			case 'skip':
+				removeItemSilently(item.uid, `skipped due to name conflict: ${item.fileName}`);
+				return true;
+			case 'overwrite':
+				item.conflictStrategy = 'overwrite';
+				item.conflictExistingSlug = existing.slug;
+				return false;
+			case 'keep_both':
+				item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
+				return false;
+		}
+		return false;
 	}
 
 	async function importPhysicalFile(item: UploadItem, physicalFileSlug: string, source: 'dedup' | 'upload') {
@@ -349,7 +388,7 @@ export function createUploadManager(opts: {
 			fileSize: f.size,
 			fileHash: '',
 			preHash: '',
-			phase: 'hashing',
+			phase: 'queued',
 			progress: 0,
 			hashProgress: 0,
 			uploadedBytes: 0,
@@ -361,76 +400,6 @@ export function createUploadManager(opts: {
 			errorMsg: null
 		}));
 
-		// Check name conflicts before adding to queue
-		if (_onNameConflicts) {
-			const conflictPairs = await checkNameConflicts(newItems);
-			if (conflictPairs.length > 0) {
-				const autoStrategy = getDuplicateStrategy();
-				if (autoStrategy !== 'prompt') {
-					// Auto-resolve according to duplicate strategy
-					const toKeep: UploadItem[] = [];
-					for (const item of newItems) {
-						const pair = conflictPairs.find((p) => p[0].uid === item.uid);
-						if (!pair) {
-							toKeep.push(item);
-							continue;
-						}
-						if (autoStrategy === 'skip') {
-							log(item.uid, null, `skipped due to name conflict: ${item.fileName}`);
-						} else if (autoStrategy === 'overwrite') {
-							item.conflictStrategy = 'overwrite';
-							item.conflictExistingSlug = pair[1].slug;
-							toKeep.push(item);
-						} else if (autoStrategy === 'keep_both') {
-							item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
-							toKeep.push(item);
-						}
-					}
-					newItems.length = 0;
-					newItems.push(...toKeep);
-				} else {
-					const results = await _onNameConflicts(
-						conflictPairs.map(([item, existing]) => ({
-							uid: item.uid,
-							fileName: item.fileName,
-							fileSize: item.fileSize,
-							existingSlug: existing.slug
-						}))
-					);
-
-					const toKeep: UploadItem[] = [];
-					for (const item of newItems) {
-						const result = results.get(item.uid);
-						if (!result) {
-							toKeep.push(item);
-							continue;
-						}
-						switch (result.strategy) {
-							case 'skip':
-								log(item.uid, null, `skipped due to name conflict: ${item.fileName}`);
-								break;
-							case 'overwrite': {
-								const pair = conflictPairs.find((p) => p[0].uid === item.uid);
-								if (pair) {
-									item.conflictStrategy = 'overwrite';
-									item.conflictExistingSlug = pair[1].slug;
-								}
-								toKeep.push(item);
-								break;
-							}
-							case 'keep_both': {
-								item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
-								toKeep.push(item);
-								break;
-							}
-						}
-					}
-					newItems.length = 0;
-					newItems.push(...toKeep);
-				}
-			}
-		}
-
 		uploadItems = [...uploadItems, ...newItems];
 		for (const item of newItems) {
 			log(item.uid, null, `selected: ${item.fileName} (${fmtSize(item.fileSize)})`);
@@ -438,6 +407,12 @@ export function createUploadManager(opts: {
 
 		void startUploadQueue();
 		return newItems.length;
+	}
+
+	function removeItemSilently(uid: string, reason: string) {
+		const item = uploadItems.find((i) => i.uid === uid);
+		if (item) log(uid, null, reason);
+		uploadItems = uploadItems.filter((i) => i.uid !== uid);
 	}
 
 	async function onPick(e: Event) {
@@ -488,7 +463,7 @@ export function createUploadManager(opts: {
 			fileSize: f.file.size,
 			fileHash: '',
 			preHash: '',
-			phase: 'hashing',
+			phase: 'queued',
 			progress: 0,
 			hashProgress: 0,
 			uploadedBytes: 0,
@@ -518,16 +493,21 @@ export function createUploadManager(opts: {
 	}
 
 	function pumpQueue() {
-		const waiting = uploadItems.filter((i) => (i.phase === 'hashing' || i.phase === 'pending') && !processing.has(i.uid));
+		const isReady = (i: UploadItem) =>
+			(i.phase === 'queued' || i.phase === 'pending') && !processing.has(i.uid);
+		const waiting = uploadItems.filter(isReady);
 		if (waiting.length > 0 || runningCount > 0) {
 			log('pump', null, `running=${runningCount} max=${maxConcurrent} waiting=${waiting.length} total=${uploadItems.length}`);
 		}
 		while (runningCount < maxConcurrent) {
-			const idx = uploadItems.findIndex((i) => (i.phase === 'hashing' || i.phase === 'pending') && !processing.has(i.uid));
+			const idx = uploadItems.findIndex(isReady);
 			if (idx === -1) break;
 			const item = uploadItems[idx];
 			processing.add(item.uid);
 			runningCount++;
+			if (item.phase === 'queued') {
+				item.phase = 'hashing';
+			}
 			log(item.uid, item.uploadSlug, `pumping: starting processFile (phase=${item.phase})`);
 			processFile(item).finally(() => {
 				processing.delete(item.uid);
@@ -563,6 +543,11 @@ export function createUploadManager(opts: {
 			log(item.uid, null, 'config unavailable, rejecting');
 			return;
 		}
+
+		// Per-file name-conflict resolution: only happens when this file's slot opens.
+		// Queued files in the back of the line do nothing until their turn.
+		const skipped = await resolveItemNameConflict(item);
+		if (skipped) return;
 
 		try {
 			const t0 = Date.now();
@@ -935,7 +920,7 @@ export function createUploadManager(opts: {
 		const snap = restoreSnapshot();
 		_hydrated = true;
 		if (snap.length === 0) return;
-		const activePhases = new Set(['hashing', 'pending', 'verifying', 'uploading', 'paused']);
+		const activePhases = new Set(['queued', 'hashing', 'pending', 'verifying', 'uploading', 'paused']);
 		const restored: UploadItem[] = snap.map((s) => ({
 			uid: s.uid,
 			file: null as unknown as File,
@@ -968,7 +953,7 @@ export function createUploadManager(opts: {
 		if (!item) return;
 		item.file = file;
 		item.errorMsg = null;
-		item.phase = 'hashing';
+		item.phase = 'queued';
 		item.hashProgress = 0;
 		item.progress = 0;
 		item.uploadedBytes = 0;

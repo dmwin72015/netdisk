@@ -14,7 +14,7 @@
 	const FALLBACK_VIEWPORT_HEIGHT = 640;
 	const EMPTY_LINE = String.fromCharCode(160);
 
-	let { content, ariaLabel = 'Text preview' }: { content: string; ariaLabel?: string } = $props();
+	let { content, ariaLabel = 'Text preview', wrap = false }: { content: string; ariaLabel?: string; wrap?: boolean } = $props();
 
 	let viewport = $state<HTMLDivElement | undefined>(undefined);
 	let scrollTop = $state(0);
@@ -68,6 +68,7 @@
 
 	$effect(() => {
 		content;
+		wrap;
 		if (!viewport) return;
 		viewport.scrollTop = 0;
 		scrollTop = 0;
@@ -89,23 +90,36 @@
 	});
 </script>
 
-<div
-	bind:this={viewport}
-	role="region"
-	aria-label={ariaLabel}
-	onscroll={handleScroll}
-	class="max-h-[80vh] overflow-auto bg-white font-mono text-sm text-gray-700"
->
-	<div class="relative min-w-full" style={`height: ${totalHeight}px;`}>
-		<div class="absolute left-0 top-0 min-w-full" style={`transform: translateY(${offsetY}px);`}>
-			{#each visibleRows as row (row.key)}
-				<div class="flex min-w-max" style={`height: ${ROW_HEIGHT}px; line-height: ${ROW_HEIGHT}px;`}>
-					<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-gray-100 bg-gray-50 px-3 text-right text-xs text-gray-400">
-						{row.continuation ? '·' : row.lineNumber}
-					</span>
-					<code class="block whitespace-pre px-4">{row.text || EMPTY_LINE}</code>
-				</div>
-			{/each}
+{#if wrap}
+	<div role="region" aria-label={ariaLabel} class="bg-white font-mono text-sm text-gray-700">
+		{#each rows as row (row.key)}
+			<div class="flex items-start" style={`min-height: ${ROW_HEIGHT}px; line-height: ${ROW_HEIGHT}px;`}>
+				<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-gray-100 bg-gray-50 px-3 text-right text-xs text-gray-400">
+					{row.continuation ? '·' : row.lineNumber}
+				</span>
+				<code class="block flex-1 whitespace-pre-wrap break-words px-4">{row.text || EMPTY_LINE}</code>
+			</div>
+		{/each}
+	</div>
+{:else}
+	<div
+		bind:this={viewport}
+		role="region"
+		aria-label={ariaLabel}
+		onscroll={handleScroll}
+		class="max-h-[80vh] overflow-auto bg-white font-mono text-sm text-gray-700"
+	>
+		<div class="relative min-w-full" style={`height: ${totalHeight}px;`}>
+			<div class="absolute left-0 top-0 min-w-full" style={`transform: translateY(${offsetY}px);`}>
+				{#each visibleRows as row (row.key)}
+					<div class="flex min-w-max" style={`height: ${ROW_HEIGHT}px; line-height: ${ROW_HEIGHT}px;`}>
+						<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-gray-100 bg-gray-50 px-3 text-right text-xs text-gray-400">
+							{row.continuation ? '·' : row.lineNumber}
+						</span>
+						<code class="block whitespace-pre px-4">{row.text || EMPTY_LINE}</code>
+					</div>
+				{/each}
+			</div>
 		</div>
 	</div>
-</div>
+{/if}

@@ -99,7 +99,9 @@
 									</div>
 								</div>
 								<div class="flex shrink-0 items-center gap-1.5">
-									{#if item.phase === 'hashing'}
+									{#if item.phase === 'queued'}
+									<span class="text-xs text-gray-400">{m.upload_waiting()}</span>
+								{:else if item.phase === 'hashing'}
 										<span class="text-xs text-gray-400">{m.hashing()} {item.hashProgress > 0 ? `${item.hashProgress}%` : ''}</span>
 										<LoaderCircle size={14} class="animate-spin text-gray-300" />
 									{:else if item.phase === 'verifying'}

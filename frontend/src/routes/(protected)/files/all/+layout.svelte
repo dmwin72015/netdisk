@@ -67,34 +67,51 @@
 	const upload = getContext<UploadManager>('upload');
 
 	// --- Conflict resolution dialog ---
+	type ConflictRequest = {
+		conflicts: NameConflictInfo[];
+		resolve: (results: Map<string, NameConflictResult>) => void;
+	};
 	let conflictDialogOpen = $state(false);
 	let conflictDialogConflicts = $state<NameConflictInfo[]>([]);
-	let resolveConflicts: ((results: Map<string, NameConflictResult>) => void) | null = null;
+	let conflictQueue: ConflictRequest[] = [];
+	let activeConflict: ConflictRequest | null = null;
+
+	function showNextConflict() {
+		if (activeConflict || conflictQueue.length === 0) return;
+		activeConflict = conflictQueue.shift()!;
+		conflictDialogConflicts = activeConflict.conflicts;
+		conflictDialogOpen = true;
+	}
 
 	$effect(() => {
 		upload.updateMaxConcurrent(getUploadConcurrency());
 		upload.setGetCurrentSlug(() => currentSlug);
 		upload.setOnCompleted(() => refresh());
-		upload.setOnNameConflicts(async (conflicts) => {
-			conflictDialogConflicts = conflicts;
-			conflictDialogOpen = true;
+		upload.setOnNameConflicts((conflicts) => {
 			return new Promise<Map<string, NameConflictResult>>((resolve) => {
-				resolveConflicts = resolve;
+				conflictQueue.push({ conflicts, resolve });
+				showNextConflict();
 			});
 		});
 	});
 
+	function finishActiveConflict(results: Map<string, NameConflictResult>) {
+		const current = activeConflict;
+		activeConflict = null;
+		conflictDialogConflicts = [];
+		current?.resolve(results);
+		showNextConflict();
+	}
+
 	function onConflictResolve(results: Map<string, NameConflictResult>) {
-		resolveConflicts?.(results);
-		resolveConflicts = null;
+		finishActiveConflict(results);
 	}
 
 	function onConflictCancel() {
 		const allSkipped = new Map<string, NameConflictResult>(
-			conflictDialogConflicts.map((c) => [c.uid, { strategy: 'skip' as const, applyToAll: false }])
+			(activeConflict?.conflicts ?? []).map((c) => [c.uid, { strategy: 'skip' as const, applyToAll: false }])
 		);
-		resolveConflicts?.(allSkipped);
-		resolveConflicts = null;
+		finishActiveConflict(allSkipped);
 	}
 
 	let fileInput: HTMLInputElement | undefined = $state();
