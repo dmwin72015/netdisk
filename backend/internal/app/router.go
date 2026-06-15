@@ -15,6 +15,7 @@ import (
 	"github.com/netdisk/server/internal/config"
 	"github.com/netdisk/server/internal/db/sqlc"
 	mw "github.com/netdisk/server/internal/middleware"
+	"github.com/netdisk/server/internal/storage"
 	"github.com/netdisk/server/internal/web"
 	"github.com/netdisk/server/pkg/jwtutil"
 )
@@ -67,13 +68,14 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// Static avatar serving
 	avatarDir := filepath.Join(cfg.Storage.Root, cfg.Storage.AvatarsDir)
-	avatars := api.Group("/avatars", func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Response().Header().Set("Cache-Control", "public, max-age=86400, immutable")
-			return next(c)
+	api.GET("/avatars/*", func(c echo.Context) error {
+		rel := storage.SafePath(c.Param("*"))
+		if rel == "" {
+			return echo.NewHTTPError(http.StatusNotFound)
 		}
+		c.Response().Header().Set("Cache-Control", "public, max-age=86400, immutable")
+		return c.File(filepath.Join(avatarDir, rel))
 	})
-	avatars.Static("", avatarDir)
 
 	// File routes
 	files := authed.Group("/files")
