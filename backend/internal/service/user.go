@@ -2,13 +2,14 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,6 +18,7 @@ import (
 	"github.com/netdisk/server/internal/config"
 	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/internal/model"
+	"github.com/netdisk/server/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -244,10 +246,26 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 	maxAvatarSize := s.cfg.Limits.AvatarMaxSize
 	limitedReader := io.LimitReader(reader, maxAvatarSize+1)
 
-	user, err := s.queries.GetUserByID(ctx, userID)
-	if err != nil {
+	if _, err := s.queries.GetUserByID(ctx, userID); err != nil {
 		return "", fmt.Errorf("get user: %w", err)
 	}
+
+	tmpDir := filepath.Join(s.cfg.Storage.Root, s.cfg.Storage.TmpDir)
+	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+		return "", fmt.Errorf("create avatar temp dir: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp(tmpDir, "avatar-*")
+	if err != nil {
+		return "", fmt.Errorf("create avatar temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	keepTemp := false
+	defer func() {
+		if !keepTemp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
 
 	ext := ".jpg"
 	switch mimeType {
@@ -257,41 +275,44 @@ func (s *UserService) UploadAvatar(ctx context.Context, userID int64, reader io.
 		ext = ".webp"
 	}
 
-	// Determine next version from current avatar path (/api/v1/avatars/{slug}/2.jpg)
-	version := 1
-	profile, err := s.queries.GetProfileByUserID(ctx, userID)
-	if err == nil && profile.AvatarPath.Valid && profile.AvatarPath.String != "" {
-		raw := strings.TrimSuffix(filepath.Base(profile.AvatarPath.String), filepath.Ext(profile.AvatarPath.String))
-		if v, err := strconv.Atoi(raw); err == nil {
-			version = v + 1
-		}
+	hash := sha256.New()
+	written, err := io.Copy(io.MultiWriter(tmpFile, hash), limitedReader)
+	if err != nil {
+		_ = tmpFile.Close()
+		return "", fmt.Errorf("write avatar: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return "", fmt.Errorf("close avatar temp file: %w", err)
+	}
+	if written > maxAvatarSize {
+		return "", model.ErrFileTooLarge
+	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		return "", fmt.Errorf("chmod avatar temp file: %w", err)
 	}
 
-	userDir := filepath.Join(s.cfg.Storage.Root, s.cfg.Storage.AvatarsDir, user.Slug)
-	if err := os.MkdirAll(userDir, 0o755); err != nil {
+	avatarHash := hex.EncodeToString(hash.Sum(nil))
+	avatarRelPath := storage.StoragePath(avatarHash, s.cfg.Storage.AvatarsDir) + ext
+	avatarPath := filepath.Join(s.cfg.Storage.Root, avatarRelPath)
+	if err := os.MkdirAll(filepath.Dir(avatarPath), 0o755); err != nil {
 		return "", fmt.Errorf("create avatar dir: %w", err)
 	}
 
-	filename := fmt.Sprintf("%d%s", version, ext)
-	path := filepath.Join(userDir, filename)
-
-	f, err := os.Create(path)
-	if err != nil {
-		return "", fmt.Errorf("create avatar: %w", err)
-	}
-	defer f.Close()
-
-	written, err := io.Copy(f, limitedReader)
-	if err != nil {
-		return "", fmt.Errorf("write avatar: %w", err)
-	}
-	if written > maxAvatarSize {
-		os.Remove(path)
-		return "", model.ErrFileTooLarge
+	if _, err := os.Stat(avatarPath); err == nil {
+		return path.Join("/api/v1", filepath.ToSlash(avatarRelPath)), nil
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("stat avatar: %w", err)
 	}
 
-	avatarURL := fmt.Sprintf("/api/v1/avatars/%s/%s", user.Slug, filename)
-	return avatarURL, nil
+	if err := os.Rename(tmpPath, avatarPath); err != nil {
+		if _, statErr := os.Stat(avatarPath); statErr == nil {
+			return path.Join("/api/v1", filepath.ToSlash(avatarRelPath)), nil
+		}
+		return "", fmt.Errorf("move avatar: %w", err)
+	}
+	keepTemp = true
+
+	return path.Join("/api/v1", filepath.ToSlash(avatarRelPath)), nil
 }
 
 func (s *UserService) ListTransactions(ctx context.Context, userID int64, page, pageSize int) ([]sqlc.UserTransaction, int, error) {
