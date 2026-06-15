@@ -6,12 +6,13 @@
 	import { getVideo, uploadThumbnail, captureFrameThumbnail } from '$lib/api/videos';
 	import { ApiError, getAccessToken } from '$lib/api/client';
 	import type { Task } from '$lib/api/tasks';
-	import { fmtDurationText, authedUrl } from '$lib/utils/format';
+	import { fmtDurationText, authedUrl, copyToClipboard, clipboardUnavailableReason } from '$lib/utils/format';
 	import * as m from '$lib/paraglide/messages';
 
 	let task = $state<Task | null>(null);
 	let error = $state<string | null>(null);
 	let copied = $state(false);
+	let copyError = $state<string | null>(null);
 	let video: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
 	let thumbInput: HTMLInputElement | undefined = $state();
@@ -74,9 +75,15 @@
 
 	async function copyUrl() {
 		if (!task?.m3u8Url) return;
-		await navigator.clipboard.writeText(task.m3u8Url);
-		copied = true;
-		setTimeout(() => (copied = false), 1500);
+		const ok = await copyToClipboard(task.m3u8Url);
+		if (ok) {
+			copied = true;
+			copyError = null;
+			setTimeout(() => (copied = false), 1500);
+		} else {
+			copyError = clipboardUnavailableReason();
+			setTimeout(() => (copyError = null), 3000);
+		}
 	}
 
 	function pickThumbnailFile() {
@@ -154,6 +161,9 @@
 			>
 				<Copy size={12} /> {copied ? m.copied() : m.copy_m3u8()}
 			</button>
+			{#if copyError}
+				<span class="text-xs text-red-500">{copyError}</span>
+			{/if}
 		</div>
 	{/if}
 

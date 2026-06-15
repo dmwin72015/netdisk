@@ -6,7 +6,7 @@
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import { toast } from 'svelte-sonner';
 	import { cancelShare, deleteShare, listShares, updateShare, type ShareItem } from '$lib/api/shares';
-	import { copyToClipboard, fmtSize, fmtTime } from '$lib/utils/format';
+	import { copyToClipboard, clipboardUnavailableReason, fmtSize, fmtTime } from '$lib/utils/format';
 	import AlertDialog from '$lib/ui/alert-dialog/AlertDialog.svelte';
 
 	const expiryLabels: Record<ExpiryChoice, string> = {
@@ -141,6 +141,7 @@
 	async function copyShareLink(share: ShareItem) {
 		const ok = await copyToClipboard(shareLink(share.slug));
 		if (ok) toast.success('分享链接已复制');
+		else toast.error(clipboardUnavailableReason());
 	}
 
 	function navigateToFile(file: { parentSlug: string }) {
@@ -231,7 +232,7 @@
 									<span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 font-medium text-purple-700 ring-1 ring-purple-200">
 										<Lock size={13} /> 私密 {share.passwordCode ? `· 提取码 ${share.passwordCode}` : ''}
 										{#if share.passwordCode}
-											<button type="button" onclick={async () => { const ok = await copyToClipboard(share.passwordCode!); if (ok) toast.success('提取码已复制'); }} class="-mr-0.5 ml-0.5 inline-flex cursor-pointer items-center justify-center rounded-md p-0.5 text-purple-400 transition-colors hover:bg-purple-200 hover:text-purple-700">
+											<button type="button" onclick={async () => { const ok = await copyToClipboard(share.passwordCode!); if (ok) toast.success('提取码已复制'); else toast.error(clipboardUnavailableReason()); }} class="-mr-0.5 ml-0.5 inline-flex cursor-pointer items-center justify-center rounded-md p-0.5 text-purple-400 transition-colors hover:bg-purple-200 hover:text-purple-700">
 												<Copy size={12} />
 											</button>
 										{/if}

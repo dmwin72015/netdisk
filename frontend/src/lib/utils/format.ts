@@ -71,29 +71,25 @@ export function authedUrl(url: string): string {
 }
 
 /**
- * Copy text to clipboard with fallback for non-secure contexts.
- * Uses navigator.clipboard first, falls back to execCommand('copy').
+ * Copy text to clipboard. Requires a secure context (HTTPS or localhost).
+ * Returns false when the browser refuses or the API is unavailable; callers
+ * should surface a failure message rather than pretending it succeeded.
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
+	if (typeof window === 'undefined') return false;
+	if (!window.isSecureContext || !navigator.clipboard?.writeText) return false;
 	try {
 		await navigator.clipboard.writeText(text);
 		return true;
 	} catch {
-		// Fallback for HTTP and older browsers
-		try {
-			const textarea = document.createElement('textarea');
-			textarea.value = text;
-			textarea.style.position = 'fixed';
-			textarea.style.opacity = '0';
-			textarea.style.pointerEvents = 'none';
-			document.body.appendChild(textarea);
-			textarea.focus();
-			textarea.select();
-			document.execCommand('copy');
-			document.body.removeChild(textarea);
-			return true;
-		} catch {
-			return false;
-		}
+		return false;
 	}
+}
+
+/** Friendly failure reason when copyToClipboard returns false. */
+export function clipboardUnavailableReason(): string {
+	if (typeof window === 'undefined') return '复制失败';
+	if (!window.isSecureContext) return '复制失败：当前页面非 HTTPS，浏览器禁止访问剪贴板';
+	if (!navigator.clipboard?.writeText) return '复制失败：浏览器不支持剪贴板写入';
+	return '复制失败';
 }

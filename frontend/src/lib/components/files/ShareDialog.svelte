@@ -5,7 +5,7 @@
 	import { Dialog } from '$lib/ui/dialog';
 	import { createShare, type ShareItem } from '$lib/api/shares';
 	import type { NormalizedFile } from '$lib/types/file';
-	import { copyToClipboard, fmtSize } from '$lib/utils/format';
+	import { copyToClipboard, clipboardUnavailableReason, fmtSize } from '$lib/utils/format';
 	import { qrCodeDataUrl } from '$lib/utils/qrcode';
 
 	type ExpiryOption = '1d' | '7d' | '30d' | 'forever' | 'custom';
@@ -99,6 +99,8 @@
 			copied = true;
 			toast.success('链接已复制');
 			setTimeout(() => (copied = false), 1200);
+		} else {
+			toast.error(clipboardUnavailableReason());
 		}
 	}
 
@@ -106,6 +108,7 @@
 		if (!share?.hasPassword) return;
 		const ok = await copyToClipboard(passwordCode);
 		if (ok) toast.success('提取码已复制');
+		else toast.error(clipboardUnavailableReason());
 	}
 </script>
 
