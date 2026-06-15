@@ -8,8 +8,10 @@
   import { Tooltip } from "$lib/ui/tooltip";
   import { Dialog } from "$lib/ui/dialog";
   import { getAccessToken } from "$lib/api/client";
+  import { thumbnailUrl } from "$lib/api/photos";
   import { toast } from "svelte-sonner";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
+  import LazyThumbnail from "./LazyThumbnail.svelte";
   import MoveDialog from "./MoveDialog.svelte";
   import { isTextPreviewFile } from "$lib/utils/code-files";
 
@@ -186,6 +188,14 @@
     return `${url}${sep}access_token=${encodeURIComponent(token)}`;
   }
 
+  function authedThumbnailUrl(file: NormalizedFile): string {
+    const token = getAccessToken();
+    const url = thumbnailUrl(file.id);
+    if (!token) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}access_token=${encodeURIComponent(token)}`;
+  }
+
   function isImageFile(file: NormalizedFile): boolean {
     if (file.fileCategory === "image") return true;
     if (file.mimeType?.startsWith("image/")) return true;
@@ -307,12 +317,11 @@
           />
         </div>
         {#if showThumbnail(f)}
-          <img
-            src={authedFileUrl(f)}
-            alt=""
-            loading="lazy"
-            class="h-12 w-12 rounded-lg border border-gray-100 object-cover bg-gray-50 shadow-sm"
-            onerror={() => markThumbnailFailed(f.id)}
+          <LazyThumbnail
+            src={authedThumbnailUrl(f)}
+            containerClass="flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50 shadow-sm"
+            imgClass="h-full w-full object-cover"
+            onError={() => markThumbnailFailed(f.id)}
           />
         {:else}
           <MimeIcon
@@ -395,12 +404,11 @@
                 {/if}
                 <span class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50">
                   {#if showThumbnail(f)}
-                    <img
-                      src={authedFileUrl(f)}
-                      alt=""
-                      loading="lazy"
-                      class="h-full w-full object-cover"
-                      onerror={() => markThumbnailFailed(f.id)}
+                    <LazyThumbnail
+                      src={authedThumbnailUrl(f)}
+                      containerClass="flex h-full w-full"
+                      imgClass="h-full w-full object-cover"
+                      onError={() => markThumbnailFailed(f.id)}
                     />
                   {:else}
                     <MimeIcon
