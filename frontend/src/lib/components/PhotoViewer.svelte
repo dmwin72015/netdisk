@@ -41,7 +41,9 @@
 	// svelte-ignore state_referenced_locally
 	let currentIndex = $state(index);
 	let currentSlug = $derived(fileSlugs[currentIndex] ?? slug);
+	let visibleSlug = $state<string | null>(null);
 	let loading = $state(true);
+	let isSwitchingImage = $state(false);
 	let scale = $state(1);
 	let rotation = $state(0);
 	let offsetX = $state(0);
@@ -59,11 +61,64 @@
 	let zoomLabel = $derived(`${Math.round(scale * 100)}%`);
 
 	let currentPhoto = $derived(photos.find(p => p.slug === currentSlug));
+	let visiblePhoto = $derived(photos.find(p => p.slug === visibleSlug));
+	let requestedSlug: string | null = null;
+	let imageLoadToken = 0;
 
 	$effect(() => {
 		currentIndex = index;
+	});
+
+	$effect(() => {
+		const nextSlug = currentSlug;
+		if (!nextSlug || nextSlug === requestedSlug) return;
+
+		requestedSlug = nextSlug;
 		loading = true;
+		isSwitchingImage = true;
 		resetTransform();
+
+		const token = ++imageLoadToken;
+		const image = new Image();
+		let cancelled = false;
+
+		const revealImage = async () => {
+			try {
+				await image.decode();
+			} catch {
+				// Some browsers reject decode() for cached or partially decoded images.
+			}
+
+			if (cancelled || token !== imageLoadToken) return;
+			visibleSlug = nextSlug;
+			loading = false;
+			requestAnimationFrame(() => {
+				if (!cancelled && token === imageLoadToken) {
+					isSwitchingImage = false;
+				}
+			});
+		};
+
+		image.onload = () => {
+			void revealImage();
+		};
+		image.onerror = () => {
+			if (cancelled || token !== imageLoadToken) return;
+			visibleSlug = nextSlug;
+			loading = false;
+			isSwitchingImage = false;
+		};
+		image.decoding = 'async';
+		image.src = authedUrl(downloadUrl(nextSlug));
+		if (image.complete) {
+			void revealImage();
+		}
+
+		return () => {
+			cancelled = true;
+			image.onload = null;
+			image.onerror = null;
+		};
 	});
 
 	function clampScale(value: number) {
@@ -296,39 +351,41 @@
 			>
 				<ChevronRight size={28} />
 			</button>
-		{/if}
-
-		<!-- Image -->
-		<div class="flex h-full w-full items-center justify-center overflow-hidden p-4" onwheel={handleWheel}>
-			{#if loading}
-				<div class="flex items-center justify-center p-16">
-					<ImageIcon size={40} class="animate-pulse text-gray-500" />
-				</div>
 			{/if}
-			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-			<div
-					bind:this={imageFrame}
-					role="presentation"
-					class:hidden={loading}
-					class="inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
-					style:transform={panTransform}
-					onclick={stopPropagation}
-					onpointerdown={startPan}
-					onpointermove={movePan}
-					onpointerup={endPan}
-					onpointercancel={endPan}
-			>
-						<img
-							src={authedUrl(downloadUrl(currentSlug))}
-							alt={currentPhoto?.fileName ?? ''}
-							loading="lazy"
-							class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl will-change-transform {isWheelZooming || isPanning ? '' : 'transition-transform duration-150 ease-out'}"
-						style:transform={imageTransform}
-					draggable="false"
-					onload={() => (loading = false)}
-				/>
+
+			<!-- Image -->
+			<div class="relative flex h-full w-full items-center justify-center overflow-hidden p-4" onwheel={handleWheel}>
+				{#if loading}
+					<div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+						<ImageIcon size={40} class="animate-pulse text-gray-500" />
+					</div>
+				{/if}
+				{#if visibleSlug}
+					<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+					<div
+						bind:this={imageFrame}
+						role="presentation"
+						class="inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
+						style:transform={panTransform}
+						onclick={stopPropagation}
+						onpointerdown={startPan}
+						onpointermove={movePan}
+						onpointerup={endPan}
+						onpointercancel={endPan}
+					>
+						{#key visibleSlug}
+							<img
+								src={authedUrl(downloadUrl(visibleSlug))}
+								alt={visiblePhoto?.fileName ?? ''}
+								loading="eager"
+								class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
+								style:transform={imageTransform}
+								draggable="false"
+							/>
+						{/key}
+					</div>
+				{/if}
 			</div>
-		</div>
 
 		<!-- Toolbar -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
