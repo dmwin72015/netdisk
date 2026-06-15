@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -164,21 +163,29 @@ func (h *ShareHandler) VerifyPublicShare(c echo.Context) error {
 func (h *ShareHandler) ServePublicFile(c echo.Context) error {
 	passwordCode := c.QueryParam("code")
 	fileSlug := c.QueryParam("fileSlug")
-	file, name, mimeType, err := h.svc.OpenSharedFile(c.Request().Context(), c.Param("slug"), passwordCode, fileSlug)
+	res, err := h.svc.OpenSharedFile(c.Request().Context(), c.Param("slug"), passwordCode, fileSlug)
 	if err != nil {
 		return err
+	}
+	defer res.File.Close()
+
+	stat, err := res.File.Stat()
+	if err != nil {
+		return fmt.Errorf("stat shared file: %w", err)
 	}
 
 	disposition := "inline"
 	if c.QueryParam("download") == "1" || c.QueryParam("download") == "true" {
 		disposition = "attachment"
 	}
-	c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf(`%s; filename="%s"`, disposition, name))
-	c.Response().Header().Set(echo.HeaderContentType, mimeType)
-	c.Response().WriteHeader(http.StatusOK)
+	resp := c.Response()
+	resp.Header().Set(echo.HeaderContentDisposition, fmt.Sprintf(`%s; filename="%s"`, disposition, res.Name))
+	resp.Header().Set(echo.HeaderContentType, res.MimeType)
+	resp.Header().Set("Cache-Control", "public, max-age=3600")
+	resp.Header().Set("ETag", `"`+res.FileHash+`"`)
 
-	_, err = io.Copy(c.Response().Writer, file)
-	return err
+	http.ServeContent(resp, c.Request(), res.Name, stat.ModTime(), res.File)
+	return nil
 }
 
 func parseOptionalShareTime(value *string) (*time.Time, error) {

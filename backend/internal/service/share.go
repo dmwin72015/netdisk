@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -333,15 +333,22 @@ func (s *ShareService) VerifyPublicPassword(ctx context.Context, slug string, pa
 	return info, nil
 }
 
-func (s *ShareService) OpenSharedFile(ctx context.Context, slug string, passwordCode string, fileSlug string) (io.ReadSeeker, string, string, error) {
+type SharedFileResult struct {
+	File     *os.File
+	Name     string
+	MimeType string
+	FileHash string
+}
+
+func (s *ShareService) OpenSharedFile(ctx context.Context, slug string, passwordCode string, fileSlug string) (*SharedFileResult, error) {
 	passwordCode = strings.TrimSpace(passwordCode)
 
 	record, _, err := s.getPublicShareData(ctx, slug, nil, false)
 	if err != nil {
-		return nil, "", "", err
+		return nil, err
 	}
 	if !matchesSharePassword(record.PasswordCode, passwordCode) {
-		return nil, "", "", model.ErrForbidden
+		return nil, model.ErrForbidden
 	}
 
 	targetFileSlug := strings.TrimSpace(fileSlug)
@@ -354,13 +361,13 @@ func (s *ShareService) OpenSharedFile(ctx context.Context, slug string, password
 			}
 		}
 		if targetFile.FileSlug == "" && targetFileSlug != record.Files[0].FileSlug {
-			return nil, "", "", model.ErrNotFound
+			return nil, model.ErrNotFound
 		}
 	}
 
 	file, err := s.store.Open(targetFile.FileHash)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("open shared file: %w", err)
+		return nil, fmt.Errorf("open shared file: %w", err)
 	}
 
 	mimeType := targetFile.MimeType
@@ -368,7 +375,12 @@ func (s *ShareService) OpenSharedFile(ctx context.Context, slug string, password
 		mimeType = "application/octet-stream"
 	}
 
-	return file, safeFilename(targetFile.FileName), mimeType, nil
+	return &SharedFileResult{
+		File:     file,
+		Name:     safeFilename(targetFile.FileName),
+		MimeType: mimeType,
+		FileHash: targetFile.FileHash,
+	}, nil
 }
 
 type publicShareRecord struct {

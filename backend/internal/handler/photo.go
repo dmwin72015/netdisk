@@ -56,14 +56,15 @@ func (h *PhotoHandler) ServeThumbnail(c echo.Context) error {
 	}
 
 	fileSlug := c.Param("file_slug")
-	thumbPath, err := h.svc.GetThumbnailPath(c.Request().Context(), userID, fileSlug)
+	res, err := h.svc.GetThumbnailPath(c.Request().Context(), userID, fileSlug)
 	if err != nil {
 		return err
 	}
 
 	c.Response().Header().Set(echo.HeaderContentType, "image/jpeg")
-	c.Response().Header().Set("Cache-Control", "public, max-age=86400")
-	return c.File(thumbPath)
+	c.Response().Header().Set("Cache-Control", "public, max-age=86400, immutable")
+	c.Response().Header().Set("ETag", `"`+res.FileHash+`"`)
+	return c.File(res.Path)
 }
 
 // Album handlers

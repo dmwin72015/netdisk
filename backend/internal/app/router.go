@@ -67,7 +67,13 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// Static avatar serving
 	avatarDir := filepath.Join(cfg.Storage.Root, cfg.Storage.AvatarsDir)
-	api.Static("/avatars", avatarDir)
+	avatars := api.Group("/avatars", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Response().Header().Set("Cache-Control", "public, max-age=86400, immutable")
+			return next(c)
+		}
+	})
+	avatars.Static("", avatarDir)
 
 	// File routes
 	files := authed.Group("/files")

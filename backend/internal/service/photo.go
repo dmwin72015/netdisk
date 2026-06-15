@@ -105,33 +105,38 @@ func (s *PhotoService) ListPhotos(ctx context.Context, userID int64, page, pageS
 	}, nil
 }
 
-func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, fileSlug string) (string, error) {
+type ThumbnailResult struct {
+	Path     string
+	FileHash string
+}
+
+func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, fileSlug string) (*ThumbnailResult, error) {
 	uf, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", model.ErrNotFound
+			return nil, model.ErrNotFound
 		}
-		return "", fmt.Errorf("get file: %w", err)
+		return nil, fmt.Errorf("get file: %w", err)
 	}
 
 	if !uf.PhysicalFileID.Valid {
-		return "", model.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 
 	pf, err := s.queries.GetPhysicalFileByID(ctx, uf.PhysicalFileID.Int64)
 	if err != nil {
-		return "", fmt.Errorf("get physical file: %w", err)
+		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
 	thumbPath, err := storage.ServeThumbnail(s.cfg.Storage.Root, s.cfg.Storage.FilesDir, pf.FileHash)
 	if err != nil {
-		return "", fmt.Errorf("serve thumbnail: %w", err)
+		return nil, fmt.Errorf("serve thumbnail: %w", err)
 	}
 
-	return thumbPath, nil
+	return &ThumbnailResult{Path: thumbPath, FileHash: pf.FileHash}, nil
 }
 
 func (s *PhotoService) GetPhotoDetail(ctx context.Context, userID int64, fileSlug string) (*PhotoItem, error) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -885,29 +884,36 @@ func (s *FilesService) SetStarred(ctx context.Context, userID int64, fileSlug st
 	})
 }
 
-func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug string) (io.ReadSeeker, string, string, error) {
+type DownloadFileResult struct {
+	File     *os.File
+	Name     string
+	MimeType string
+	FileHash string
+}
+
+func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug string) (*DownloadFileResult, error) {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, "", "", model.ErrNotFound
+			return nil, model.ErrNotFound
 		}
-		return nil, "", "", fmt.Errorf("get file: %w", err)
+		return nil, fmt.Errorf("get file: %w", err)
 	}
 	if f.IsDir || f.IsTrashed || !f.PhysicalFileID.Valid {
-		return nil, "", "", model.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 
 	pf, err := s.queries.GetPhysicalFileByID(ctx, f.PhysicalFileID.Int64)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("get physical file: %w", err)
+		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
 	file, err := s.store.Open(pf.FileHash)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("open file: %w", err)
+		return nil, fmt.Errorf("open file: %w", err)
 	}
 
 	mimeType := "application/octet-stream"
@@ -915,8 +921,12 @@ func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug 
 		mimeType = f.MimeType.String
 	}
 
-	safeName := safeFilename(f.FileName)
-	return file, safeName, mimeType, nil
+	return &DownloadFileResult{
+		File:     file,
+		Name:     safeFilename(f.FileName),
+		MimeType: mimeType,
+		FileHash: pf.FileHash,
+	}, nil
 }
 
 func fileRowsToItems(files []db.FileRow) []FileItem {

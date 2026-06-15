@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -178,9 +180,23 @@ func (h *MediaHandler) ServePoster(c echo.Context) error {
 		return err
 	}
 
-	c.Response().Header().Set(echo.HeaderContentType, "image/jpeg")
-	c.Response().Header().Set("Cache-Control", "public, max-age=86400")
-	return c.File(filePath)
+	f, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	stat, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	resp := c.Response()
+	resp.Header().Set(echo.HeaderContentType, "image/jpeg")
+	resp.Header().Set("Cache-Control", "public, max-age=86400, immutable")
+	resp.Header().Set("ETag", fmt.Sprintf(`"%s-%d"`, mediaSlug, stat.ModTime().Unix()))
+
+	http.ServeContent(resp, c.Request(), filepath.Base(filePath), stat.ModTime(), f)
+	return nil
 }
 
 func (h *MediaHandler) ServeHLS(c echo.Context) error {

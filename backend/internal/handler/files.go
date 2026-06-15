@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -357,17 +356,25 @@ func (h *FilesHandler) DownloadFile(c echo.Context) error {
 	}
 
 	slug := c.Param("slug")
-	file, name, mimeType, err := h.svc.DownloadFile(c.Request().Context(), userID, slug)
+	res, err := h.svc.DownloadFile(c.Request().Context(), userID, slug)
 	if err != nil {
 		return err
 	}
+	defer res.File.Close()
 
-	c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf(`attachment; filename="%s"`, name))
-	c.Response().Header().Set(echo.HeaderContentType, mimeType)
-	c.Response().WriteHeader(http.StatusOK)
+	stat, err := res.File.Stat()
+	if err != nil {
+		return fmt.Errorf("stat download file: %w", err)
+	}
 
-	_, err = io.Copy(c.Response().Writer, file)
-	return err
+	resp := c.Response()
+	resp.Header().Set(echo.HeaderContentDisposition, fmt.Sprintf(`attachment; filename="%s"`, res.Name))
+	resp.Header().Set(echo.HeaderContentType, res.MimeType)
+	resp.Header().Set("Cache-Control", "private, max-age=3600")
+	resp.Header().Set("ETag", `"`+res.FileHash+`"`)
+
+	http.ServeContent(resp, c.Request(), res.Name, stat.ModTime(), res.File)
+	return nil
 }
 
 func (h *FilesHandler) ListTrashed(c echo.Context) error {
