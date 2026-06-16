@@ -164,6 +164,12 @@ export async function unlockDirectory(slug: string, password: string, ttlHours: 
 	});
 }
 
+export async function forceDeleteDir(slug: string) {
+	return api(`/api/v1/files/${slug}/force`, {
+		method: 'DELETE'
+	});
+}
+
 export async function listTrashed(page = 1, pageSize = 50) {
 	return api<{ files: FileItem[]; total: number }>(`/api/v1/files/trash?page=${page}&pageSize=${pageSize}`);
 }

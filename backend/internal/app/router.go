@@ -96,6 +96,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	files.DELETE("/:slug", h.Files.TrashFile)
 	files.POST("/:slug/restore", h.Files.RestoreFile)
 	files.DELETE("/:slug/permanent", h.Files.PermanentDelete)
+	files.DELETE("/:slug/force", h.Files.ForceDeleteDir)
 	files.POST("/:slug/rename", h.Files.RenameFile)
 	files.POST("/:slug/move", h.Files.MoveFile)
 	files.POST("/:slug/star", h.Files.SetStarred)

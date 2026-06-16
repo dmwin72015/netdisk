@@ -42,6 +42,7 @@
     onShare,
     onSetDirectoryLock,
     onClearDirectoryLock,
+    onForceDeleteDir,
     loadFolderSummary,
   }: {
     files: NormalizedFile[];
@@ -64,6 +65,7 @@
     onShare?: (file: NormalizedFile) => void;
     onSetDirectoryLock?: (file: NormalizedFile) => void;
     onClearDirectoryLock?: (file: NormalizedFile) => void;
+    onForceDeleteDir?: (file: NormalizedFile) => void;
     loadFolderSummary?: (id: string) => Promise<FolderSummary>;
   } = $props();
 
@@ -317,6 +319,7 @@
             {onShare}
             {onSetDirectoryLock}
             {onClearDirectoryLock}
+            {onForceDeleteDir}
             onShowDetails={showDetails}
             onCopyLink={copyFileLink}
             triggerClass="rounded-lg bg-white/90 p-1 text-gray-400 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-gray-600"
@@ -458,6 +461,7 @@
                     {onShare}
                     {onSetDirectoryLock}
                     {onClearDirectoryLock}
+                    {onForceDeleteDir}
                     onShowDetails={showDetails}
                     onCopyLink={copyFileLink}
                     triggerClass="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"

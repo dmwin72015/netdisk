@@ -880,6 +880,107 @@ func (s *FilesService) PermanentDelete(ctx context.Context, userID int64, fileSl
 	return nil
 }
 
+func (s *FilesService) ForceDeleteDir(ctx context.Context, userID int64, sessionID, dirSlug string) error {
+	dir, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{Slug: dirSlug, UserID: userID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get directory: %w", err)
+	}
+	if !dir.IsDir || dir.IsTrashed {
+		return model.ErrNotFound
+	}
+	if dir.IsSystem {
+		return model.ErrSystemFileLocked
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, dir.ID); err != nil {
+		return err
+	}
+
+	// Get all descendant file IDs and their physical file info via recursive CTE.
+	rows, err := s.pg.Query(ctx, `
+		WITH RECURSIVE subtree AS (
+			SELECT id, is_dir, physical_file_id, file_size, 0 AS depth
+			FROM user_files
+			WHERE id = $1 AND user_id = $2
+			UNION ALL
+			SELECT f.id, f.is_dir, f.physical_file_id, f.file_size, s.depth + 1
+			FROM user_files f
+			JOIN subtree s ON s.id = f.parent_id
+			WHERE f.user_id = $2 AND s.depth < 50
+		)
+		SELECT id, is_dir, physical_file_id, file_size FROM subtree ORDER BY depth DESC
+	`, dir.ID, userID)
+	if err != nil {
+		return fmt.Errorf("query subtree: %w", err)
+	}
+	defer rows.Close()
+
+	type subtreeFile struct {
+		ID             int64
+		IsDir          bool
+		PhysicalFileID pgtype.Int8
+		FileSize       int64
+	}
+	var allFiles []subtreeFile
+	var fileIDs []int64
+	var reclaimSize int64
+	var physicalIDs []int64
+
+	for rows.Next() {
+		var f subtreeFile
+		if err := rows.Scan(&f.ID, &f.IsDir, &f.PhysicalFileID, &f.FileSize); err != nil {
+			return fmt.Errorf("scan subtree file: %w", err)
+		}
+		allFiles = append(allFiles, f)
+		fileIDs = append(fileIDs, f.ID)
+		if !f.IsDir && f.PhysicalFileID.Valid {
+			reclaimSize += f.FileSize
+			physicalIDs = append(physicalIDs, f.PhysicalFileID.Int64)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(fileIDs) == 0 {
+		return model.ErrNotFound
+	}
+
+	// Delete all subtree files in a single query.
+	_, err = s.pg.Exec(ctx, `DELETE FROM user_files WHERE id = ANY($1::bigint[]) AND user_id = $2`, fileIDs, userID)
+	if err != nil {
+		return fmt.Errorf("delete subtree: %w", err)
+	}
+
+	// Decrement storage.
+	if reclaimSize > 0 {
+		if _, err := s.queries.AtomicIncrementStorage(ctx, sqlc.AtomicIncrementStorageParams{
+			UserID:      userID,
+			StorageUsed: -reclaimSize,
+		}); err != nil {
+			slog.Warn("force delete: decrement storage", "userID", userID, "error", err)
+		}
+	}
+
+	// Clean up unreferenced physical files.
+	for _, pfID := range physicalIDs {
+		refCount, err := s.queries.CountReferencesByFileID(ctx, pgtype.Int8{Int64: pfID, Valid: true})
+		if err != nil {
+			continue
+		}
+		if refCount == 0 {
+			pf, err := s.queries.GetPhysicalFileByID(ctx, pfID)
+			if err == nil {
+				_ = s.store.Delete(pf.FileHash)
+				_ = s.queries.DeletePhysicalFile(ctx, pf.ID)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (s *FilesService) EmptyTrash(ctx context.Context, userID int64) (int, error) {
 	// Get all trashed files
 	rows, err := s.pg.Query(ctx,

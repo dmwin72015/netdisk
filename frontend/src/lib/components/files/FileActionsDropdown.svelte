@@ -14,6 +14,7 @@
     FolderInput,
     Lock,
     LockOpen,
+    Trash,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
@@ -32,6 +33,7 @@
     onShare,
     onSetDirectoryLock,
     onClearDirectoryLock,
+    onForceDeleteDir,
     triggerClass = "",
   }: {
     file: NormalizedFile;
@@ -47,6 +49,7 @@
     onShare?: (file: NormalizedFile) => void;
     onSetDirectoryLock?: (file: NormalizedFile) => void;
     onClearDirectoryLock?: (file: NormalizedFile) => void;
+    onForceDeleteDir?: (file: NormalizedFile) => void;
     triggerClass?: string;
   } = $props();
 
@@ -129,6 +132,12 @@
           {#snippet children()}设置目录密码{/snippet}
         </DropdownBase.Item>
       {/if}
+    {/if}
+    {#if file.isDir && !file.isSystem && onForceDeleteDir}
+      <DropdownBase.Item variant="destructive" onSelect={() => onForceDeleteDir(file)}>
+        {#snippet icon()}<Trash size={14} />{/snippet}
+        {#snippet children()}强制删除{/snippet}
+      </DropdownBase.Item>
     {/if}
     {#if !file.isSystem}
       <DropdownBase.Item variant="destructive" onSelect={() => onDelete(file.id, file.name)}>

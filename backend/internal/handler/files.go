@@ -287,6 +287,20 @@ func (h *FilesHandler) PermanentDelete(c echo.Context) error {
 	return OK(c, map[string]string{"message": "file permanently deleted"})
 }
 
+func (h *FilesHandler) ForceDeleteDir(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	slug := c.Param("slug")
+	if err := h.svc.ForceDeleteDir(c.Request().Context(), userID, middleware.SessionID(c), slug); err != nil {
+		return err
+	}
+
+	return OK(c, map[string]string{"message": "directory force deleted"})
+}
+
 func (h *FilesHandler) RenameFile(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

@@ -42,7 +42,8 @@ func filterLockedFileIDs(ctx context.Context, pg *pgxpool.Pool, userID int64, se
 
 	// Collect all locked ancestor directories in one query.
 	rows, err := pg.Query(ctx, `
-		WITH locked_dirs AS (
+		WITH RECURSIVE
+			locked_dirs AS (
 			SELECT DISTINCT ld.id
 			FROM user_files ld
 			WHERE ld.user_id = $1

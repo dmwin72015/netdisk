@@ -7,7 +7,7 @@
 	import {
 		listFiles, mkdir, trashFile, batchTrashFiles, renameFile, setStarred,
 		downloadUrl, getBreadcrumb, moveFile, setDirectoryLock, clearDirectoryLock,
-		unlockDirectory, type FileItem
+		unlockDirectory, forceDeleteDir, type FileItem
 	} from '$lib/api/files';
 	import { ApiError } from '$lib/api/client';
 	import type { NormalizedFile } from '$lib/types/file';
@@ -319,6 +319,20 @@
 		}
 	}
 
+	async function forceRemoveDir(file: NormalizedFile) {
+		if (!(await confirmDelete(`确认强制删除目录「${file.name}」及其所有内容？此操作不可恢复。`))) return;
+		deleting = true;
+		try {
+			await forceDeleteDir(file.id);
+			toast.success(`目录「${file.name}」已强制删除`);
+			await refresh();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '强制删除失败');
+		} finally {
+			deleting = false;
+		}
+	}
+
 	async function batchRemove(ids: string[]) {
 		const files = ids.map(id => normalizedFiles.find(f => f.id === id)).filter(Boolean) as NormalizedFile[];
 		if (files.length === 0) return;
@@ -497,6 +511,7 @@
 					onShare={onShare}
 					onSetDirectoryLock={setDirLock}
 					onClearDirectoryLock={clearDirLock}
+					onForceDeleteDir={forceRemoveDir}
 					{loadFolderSummary}
 				/>
 		</div>
