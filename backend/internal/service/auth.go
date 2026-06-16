@@ -11,6 +11,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -376,6 +378,7 @@ type OAuthUserInfo struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
 	AvatarURL string `json:"avatar_url"`
+	Email     string `json:"email"`
 }
 
 // OAuthAuthorize returns the authorization URL for the given provider.
@@ -407,6 +410,38 @@ type OAuthCallbackResult struct {
 	NewUser bool
 	User    *UserResponse
 	Tokens  *TokenPair
+	// Bind flow fields
+	IsBind        bool   // true when this is a bind (not login) result
+	Provider      string // the provider that was bound
+	Conflict      bool   // true when the OAuth account is already bound to another user
+	ConflictToken string // token to confirm the rebind
+}
+
+// OAuthAuthorizeForBind returns the authorization URL for binding an OAuth account to the current user.
+func (s *AuthService) OAuthAuthorizeForBind(ctx context.Context, provider string, userID int64) (string, error) {
+	prov, ok := s.cfg.OAuth2.Providers[provider]
+	if !ok {
+		return "", fmt.Errorf("unknown OAuth provider: %s", provider)
+	}
+
+	state := makeState()
+	// Store state with bind mode and user ID
+	stateValue := fmt.Sprintf("%s:bind:%d", provider, userID)
+	if err := s.rdb.Set(ctx, "nd:oauth:state:"+state, stateValue, 10*time.Minute).Err(); err != nil {
+		return "", fmt.Errorf("store oauth state: %w", err)
+	}
+
+	redirectURI := s.cfg.OAuth2.RedirectBaseURL + "/api/v1/auth/oauth/" + provider + "/callback"
+
+	params := url.Values{
+		"client_id":     {prov.ClientID},
+		"redirect_uri":  {redirectURI},
+		"response_type": {"code"},
+		"scope":         {prov.Scope},
+		"state":         {state},
+	}
+
+	return prov.AuthURL + "?" + params.Encode(), nil
 }
 
 // OAuthCallback handles the OAuth callback after user authorization.
@@ -416,10 +451,22 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 	if err != nil {
 		return nil, model.ErrUnauthorized
 	}
-	if expected != provider {
+	s.rdb.Del(ctx, "nd:oauth:state:"+state)
+
+	// Check if this is a bind flow
+	var bindUserID int64
+	parts := strings.SplitN(expected, ":", 3)
+	if len(parts) == 3 && parts[1] == "bind" {
+		if parts[0] != provider {
+			return nil, model.ErrUnauthorized
+		}
+		bindUserID, err = strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return nil, model.ErrUnauthorized
+		}
+	} else if expected != provider {
 		return nil, model.ErrUnauthorized
 	}
-	s.rdb.Del(ctx, "nd:oauth:state:"+state)
 
 	prov, ok := s.cfg.OAuth2.Providers[provider]
 	if !ok {
@@ -435,24 +482,65 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 	}
 
 	// Get user info
-	userInfo, err := getUserInfo(prov, tokenResp.AccessToken)
+	userInfo, err := getUserInfo(prov, tokenResp.AccessToken, provider)
 	if err != nil {
 		return nil, fmt.Errorf("get user info: %w", err)
 	}
 
-	// Find or create local user
-	existingUser, err := s.queries.GetUserByEmail(ctx, oauthEmail(provider, userInfo.ID))
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("find user: %w", err)
+	// Bind flow: link OAuth account to existing user without creating user or issuing tokens
+	if bindUserID != 0 {
+		// Check if OAuth account is already bound to another user
+		existing, err := s.queries.GetOAuthAccountByProviderAndID(ctx, sqlc.GetOAuthAccountByProviderAndIDParams{
+			Provider:          provider,
+			ProviderAccountID: userInfo.ID,
+		})
+		if err == nil {
+			if existing.UserID != bindUserID {
+				// Conflict: already bound to another user — store confirm token
+				confirmToken := makeState()
+				confirmVal := fmt.Sprintf("%s:%d:%s:%s:%s", provider, bindUserID, userInfo.ID, userInfo.Email, tokenResp.AccessToken)
+				if err := s.rdb.Set(ctx, "nd:oauth:confirm:"+confirmToken, confirmVal, 10*time.Minute).Err(); err != nil {
+					return nil, fmt.Errorf("store confirm token: %w", err)
+				}
+				return &OAuthCallbackResult{
+					IsBind:        true,
+					Provider:      provider,
+					Conflict:      true,
+					ConflictToken: confirmToken,
+				}, nil
+			}
+			return &OAuthCallbackResult{IsBind: true, Provider: provider}, errors.New("this " + provider + " account is already linked to your account")
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("find oauth account: %w", err)
+		}
+
+		// Not bound yet — insert
+		if err := s.upsertOAuthAccount(ctx, bindUserID, provider, userInfo.ID, userInfo.Email, tokenResp.AccessToken); err != nil {
+			return nil, fmt.Errorf("upsert oauth account: %w", err)
+		}
+
+		// Sync avatar if user doesn't have one yet
+		if userInfo.AvatarURL != "" {
+			existingProfile, _ := s.queries.GetProfileByUserID(ctx, bindUserID)
+			if existingProfile.ID == 0 || existingProfile.AvatarPath.String == "" {
+				_ = s.queries.UpdateAvatarPath(ctx, sqlc.UpdateAvatarPathParams{
+					UserID:     bindUserID,
+					AvatarPath: pgtype.Text{String: userInfo.AvatarURL, Valid: true},
+				})
+			}
+		}
+
+		return &OAuthCallbackResult{IsBind: true, Provider: provider}, nil
 	}
 
-	var user sqlc.User
-	isNew := false
+	// Find or create local user by OAuth binding first, then by email
+	user, err := s.resolveOAuthUser(ctx, provider, userInfo)
+	if err != nil {
+		return nil, err
+	}
+	isNew := user == nil
 
-	if err == nil {
-		user = existingUser
-	} else {
-		isNew = true
+	if isNew {
 		slug, err := gonanoid.New(21)
 		if err != nil {
 			return nil, fmt.Errorf("generate slug: %w", err)
@@ -464,43 +552,51 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		}
 		defer tx.Rollback(ctx)
 
-		qtx := s.queries.WithTx(tx)
-
-		user, err = qtx.CreateUser(ctx, sqlc.CreateUserParams{
-			Slug:         slug,
-			Username:     userInfo.Username,
-			Email:        oauthEmail(provider, userInfo.ID),
-			PasswordHash: randomPasswordHash(),
-		})
+		// Use raw SQL to support NULL email
+		var registerMethod string
+		if userInfo.Email != "" {
+			registerMethod = "oauth"
+		} else {
+			registerMethod = "oauth_noemail"
+		}
+		var newUser sqlc.User
+		err = tx.QueryRow(ctx, `
+			INSERT INTO users (slug, username, email, password_hash, register_method)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id, slug, username, email, password_hash, status, created_at, updated_at, register_method, role
+		`, slug, userInfo.Username, nullIfEmpty(userInfo.Email), randomPasswordHash(), registerMethod).Scan(
+			&newUser.ID, &newUser.Slug, &newUser.Username, &newUser.Email, &newUser.PasswordHash,
+			&newUser.Status, &newUser.CreatedAt, &newUser.UpdatedAt, &newUser.RegisterMethod, &newUser.Role,
+		)
 		if err != nil {
 			if isUniqueViolation(err) {
 				return nil, model.ErrAlreadyExists
 			}
 			return nil, fmt.Errorf("create user: %w", err)
 		}
+		user = &newUser
 
 		displayName := userInfo.Username
-		_, err = qtx.CreateProfile(ctx, sqlc.CreateProfileParams{
-			UserID:      user.ID,
-			DisplayName: pgtypeText(displayName),
-		})
+		_, err = tx.Exec(ctx, `
+			INSERT INTO user_profiles (user_id, display_name)
+			VALUES ($1, $2)
+		`, user.ID, displayName)
 		if err != nil {
 			return nil, fmt.Errorf("create profile: %w", err)
 		}
 
-		_, err = qtx.CreateStorageStats(ctx, sqlc.CreateStorageStatsParams{
-			UserID:       user.ID,
-			StorageQuota: s.cfg.Limits.DefaultStorageQuota,
-		})
+		_, err = tx.Exec(ctx, `
+			INSERT INTO user_storage_stats (user_id, storage_used, storage_quota)
+			VALUES ($1, 0, $2)
+		`, user.ID, s.cfg.Limits.DefaultStorageQuota)
 		if err != nil {
 			return nil, fmt.Errorf("create storage stats: %w", err)
 		}
 
-		_, err = qtx.CreateLevel(ctx, sqlc.CreateLevelParams{
-			UserID:    user.ID,
-			LevelCode: "vip1",
-			LevelName: "VIP1",
-		})
+		_, err = tx.Exec(ctx, `
+			INSERT INTO user_levels (user_id, level_code, level_name)
+			VALUES ($1, 'vip1', 'VIP1')
+		`, user.ID)
 		if err != nil {
 			return nil, fmt.Errorf("create level: %w", err)
 		}
@@ -508,36 +604,10 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		if err := tx.Commit(ctx); err != nil {
 			return nil, fmt.Errorf("commit: %w", err)
 		}
-
-		// Record the OAuth account binding
-		_, err = s.queries.CreateOAuthAccount(ctx, sqlc.CreateOAuthAccountParams{
-			UserID:            user.ID,
-			Provider:          provider,
-			ProviderAccountID: userInfo.ID,
-			AccessToken:       tokenResp.AccessToken,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("create oauth account: %w", err)
-		}
 	}
 
-	// Ensure OAuth account record exists for existing users
-	if !isNew {
-		_, err := s.queries.GetOAuthAccountByProviderAndID(ctx, sqlc.GetOAuthAccountByProviderAndIDParams{
-			Provider:          provider,
-			ProviderAccountID: userInfo.ID,
-		})
-		if err != nil {
-			_, err = s.queries.CreateOAuthAccount(ctx, sqlc.CreateOAuthAccountParams{
-				UserID:            user.ID,
-				Provider:          provider,
-				ProviderAccountID: userInfo.ID,
-				AccessToken:       tokenResp.AccessToken,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("create oauth account for existing user: %w", err)
-			}
-		}
+	if err := s.upsertOAuthAccount(ctx, user.ID, provider, userInfo.ID, userInfo.Email, tokenResp.AccessToken); err != nil {
+		return nil, fmt.Errorf("upsert oauth account: %w", err)
 	}
 
 	// Sync avatar from provider if available
@@ -603,14 +673,102 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 	return &OAuthCallbackResult{NewUser: isNew, User: resp, Tokens: tokens}, nil
 }
 
+func (s *AuthService) upsertOAuthAccount(ctx context.Context, userID int64, provider, providerAccountID, oauthEmail, accessToken string) error {
+	if oauthEmail != "" {
+		_, err := s.pg.Exec(ctx, `
+			INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, access_token, oauth_email, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+			ON CONFLICT (provider, provider_account_id)
+			DO UPDATE SET access_token = EXCLUDED.access_token, updated_at = NOW()
+		`, userID, provider, providerAccountID, accessToken, oauthEmail)
+		return err
+	}
+	_, err := s.pg.Exec(ctx, `
+		INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, access_token, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		ON CONFLICT (provider, provider_account_id)
+		DO UPDATE SET access_token = EXCLUDED.access_token, updated_at = NOW()
+	`, userID, provider, providerAccountID, accessToken)
+	return err
+}
+
+func (s *AuthService) OAuthUnlink(ctx context.Context, userID int64, provider string) error {
+	user, err := s.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user: %w", err)
+	}
+
+	accounts, err := s.queries.GetOAuthAccountsByUserID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get oauth accounts: %w", err)
+	}
+
+	var found bool
+	for _, a := range accounts {
+		if a.Provider == provider {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return model.ErrNotFound
+	}
+
+	// If user has no email and this is the only OAuth login method, block unlinking
+	if user.Email == "" && len(accounts) == 1 {
+		return model.ErrForbidden
+	}
+
+	_, err = s.pg.Exec(ctx, `DELETE FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2`, userID, provider)
+	if err != nil {
+		return fmt.Errorf("delete oauth account: %w", err)
+	}
+	return nil
+}
+
+func (s *AuthService) resolveOAuthUser(ctx context.Context, provider string, userInfo *OAuthUserInfo) (*sqlc.User, error) {
+	// 1. Look up by OAuth account binding
+	oa, err := s.queries.GetOAuthAccountByProviderAndID(ctx, sqlc.GetOAuthAccountByProviderAndIDParams{
+		Provider:          provider,
+		ProviderAccountID: userInfo.ID,
+	})
+	if err == nil {
+		u, err := s.queries.GetUserByID(ctx, oa.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("get oauth user: %w", err)
+		}
+		return &u, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("find oauth account: %w", err)
+	}
+
+	// 2. Look up by real email (link existing email-registered user)
+	if userInfo.Email != "" {
+		existing, err := s.queries.GetUserByEmail(ctx, userInfo.Email)
+		if err == nil {
+			return &existing, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("find user by email: %w", err)
+		}
+	}
+
+	// 3. New user
+	return nil, nil
+}
+
 func makeState() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-func oauthEmail(provider, accountID string) string {
-	return fmt.Sprintf("oauth_%s_%s@oauth.local", provider, accountID)
+func nullIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func randomPasswordHash() string {
@@ -629,7 +787,14 @@ func exchangeCode(prov config.OAuth2ProviderConfig, redirectURI, code string) (*
 		"redirect_uri":  {redirectURI},
 	}
 
-	resp, err := http.PostForm(prov.TokenURL, form)
+	req, err := http.NewRequest("POST", prov.TokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("create token request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token request: %w", err)
 	}
@@ -661,12 +826,13 @@ func exchangeCode(prov config.OAuth2ProviderConfig, redirectURI, code string) (*
 	return &token, nil
 }
 
-func getUserInfo(prov config.OAuth2ProviderConfig, accessToken string) (*OAuthUserInfo, error) {
+func getUserInfo(prov config.OAuth2ProviderConfig, accessToken, provider string) (*OAuthUserInfo, error) {
 	req, err := http.NewRequest("GET", prov.UserInfoURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create userinfo request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -681,6 +847,27 @@ func getUserInfo(prov config.OAuth2ProviderConfig, accessToken string) (*OAuthUs
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("userinfo endpoint returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Provider-specific parsing
+	switch provider {
+	case "github":
+		var gh struct {
+			ID        int64  `json:"id"`
+			Login     string `json:"login"`
+			AvatarURL string `json:"avatar_url"`
+		}
+		if err := json.Unmarshal(body, &gh); err != nil {
+			return nil, fmt.Errorf("parse github userinfo: %w", err)
+		}
+		info := &OAuthUserInfo{
+			ID:        strconv.FormatInt(gh.ID, 10),
+			Username:  gh.Login,
+			AvatarURL: gh.AvatarURL,
+		}
+		// Fetch primary verified email from /user/emails
+		info.Email = fetchGitHubPrimaryEmail(accessToken)
+		return info, nil
 	}
 
 	// Try wrapper format first
@@ -698,6 +885,52 @@ func getUserInfo(prov config.OAuth2ProviderConfig, accessToken string) (*OAuthUs
 		return nil, fmt.Errorf("parse userinfo response: %w", err)
 	}
 	return &info, nil
+}
+
+func fetchGitHubPrimaryEmail(accessToken string) string {
+	req, err := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	if err := json.Unmarshal(body, &emails); err != nil {
+		return ""
+	}
+
+	for _, e := range emails {
+		if e.Primary && e.Verified {
+			return e.Email
+		}
+	}
+	// Fall back to any verified email
+	for _, e := range emails {
+		if e.Verified {
+			return e.Email
+		}
+	}
+	return ""
 }
 
 func hashToken(token string) string {

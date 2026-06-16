@@ -48,6 +48,7 @@
 
 	let usedBytes = $derived(profile?.storage?.storageUsed ?? 0);
 	let quotaBytes = $derived(profile?.storage?.storageQuota ?? 0);
+	let oauthAccounts = $derived(profile?.oauthAccounts ?? []);
 	const appVersion = __APP_VERSION__;
 	const appBuildTime = __APP_BUILD_TIME__;
 </script>
@@ -68,6 +69,8 @@
 			levelName={profile?.level?.levelName ?? $user.level?.levelName ?? null}
 			levelExpiresAt={profile?.level?.expiresAt ?? $user.level?.expiresAt ?? null}
 			createdAt={profile?.createdAt ?? $user.createdAt}
+			{oauthAccounts}
+			onRefresh={refreshProfile}
 		/>
 
 		<StorageCard

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -72,9 +73,37 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	return OK(c, map[string]string{"message": "logged out"})
 }
 
+func (h *AuthHandler) OAuthUnlink(c echo.Context) error {
+	provider := c.Param("provider")
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	if err := h.svc.OAuthUnlink(c.Request().Context(), userID, provider); err != nil {
+		if errors.Is(err, model.ErrForbidden) {
+			return echo.NewHTTPError(http.StatusForbidden, "cannot unlink the only login method. Please bind an email address first")
+		}
+		return err
+	}
+	return OK(c, map[string]string{"message": "unlinked"})
+}
+
 func (h *AuthHandler) OAuthRedirect(c echo.Context) error {
 	provider := c.Param("provider")
 	authURL, err := h.svc.OAuthAuthorize(c.Request().Context(), provider)
+	if err != nil {
+		return err
+	}
+	return c.Redirect(http.StatusFound, authURL)
+}
+
+func (h *AuthHandler) OAuthBind(c echo.Context) error {
+	provider := c.Param("provider")
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	authURL, err := h.svc.OAuthAuthorizeForBind(c.Request().Context(), provider, userID)
 	if err != nil {
 		return err
 	}
@@ -98,9 +127,17 @@ func (h *AuthHandler) OAuthCallback(c echo.Context) error {
 
 	result, err := h.svc.OAuthCallback(c.Request().Context(), provider, code, state)
 	if err != nil {
-		// Redirect to frontend with error on failure
+		if result != nil && result.IsBind {
+			h.renderBindResult(c, result.Provider, err.Error())
+			return nil
+		}
 		frontendURL := h.svc.Cfg().OAuth2.FrontendURL
 		return c.Redirect(http.StatusFound, frontendURL+"/oauth/callback?error="+url.QueryEscape(err.Error()))
+	}
+
+	if result.IsBind {
+		h.renderBindResult(c, result.Provider, "")
+		return nil
 	}
 
 	frontendURL := h.svc.Cfg().OAuth2.FrontendURL
@@ -111,4 +148,16 @@ func (h *AuthHandler) OAuthCallback(c echo.Context) error {
 		url.QueryEscape(result.Tokens.RefreshToken),
 	)
 	return c.Redirect(http.StatusFound, redirectURL)
+}
+
+func (h *AuthHandler) renderBindResult(c echo.Context, provider, errMsg string) {
+	frontendURL := h.svc.Cfg().OAuth2.FrontendURL
+	html := fmt.Sprintf(`<!DOCTYPE html><html><body><script>
+		(function(){
+			var msg = { bound: true, provider: %q, error: %q };
+			try { if (window.opener) { window.opener.postMessage(msg, %q); } } catch(e) {}
+			setTimeout(function(){ window.close(); }, 100);
+		})();
+	</script></body></html>`, provider, errMsg, frontendURL)
+	c.HTML(http.StatusOK, html)
 }

@@ -15,6 +15,17 @@
 		const accessToken = page.url.searchParams.get('accessToken');
 		const refreshToken = page.url.searchParams.get('refreshToken');
 		const error = page.url.searchParams.get('error');
+		const mode = page.url.searchParams.get('mode');
+
+	if (mode === 'bind') {
+		const provider = page.url.searchParams.get('provider') ?? '';
+		if (window.opener) {
+			window.opener.postMessage({ bound: true, provider, error: error || null }, location.origin);
+			return;
+		}
+		status = error || 'Account linked successfully';
+		return;
+	}
 
 		if (error) {
 			status = error;

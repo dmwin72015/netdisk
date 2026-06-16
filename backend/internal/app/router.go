@@ -49,6 +49,9 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	auth.GET("/oauth/:provider/authorize", h.Auth.OAuthRedirect)
 	auth.GET("/oauth/:provider/callback", h.Auth.OAuthCallback)
 
+	// OAuth bind (requires auth)
+	auth.GET("/oauth/:provider/bind", h.Auth.OAuthBind, mw.JWT(jwtMgr))
+
 	// Public share routes
 	publicShares := api.Group("/public/shares")
 	publicShares.GET("/:slug", h.Share.GetPublicShare)
@@ -63,6 +66,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	authed.GET("/user/storage-breakdown", h.User.GetStorageBreakdown)
 	authed.PATCH("/user/profile", h.User.UpdateProfile)
 	authed.POST("/user/me/password", h.User.ChangePassword)
+	authed.DELETE("/user/oauth/:provider", h.Auth.OAuthUnlink)
 	authed.POST("/user/me/avatar", h.User.UploadAvatar)
 	authed.GET("/user/settings", h.User.GetSettings)
 	authed.PUT("/user/settings", h.User.UpdateSettings)

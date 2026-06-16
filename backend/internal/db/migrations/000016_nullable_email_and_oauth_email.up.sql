@@ -1,0 +1,2 @@
+ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE user_oauth_accounts ADD COLUMN oauth_email VARCHAR(256);

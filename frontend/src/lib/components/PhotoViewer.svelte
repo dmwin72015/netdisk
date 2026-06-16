@@ -12,8 +12,10 @@
 		ZoomOut,
 		RotateCcw,
 		RotateCw,
-		RefreshCcw
+		RefreshCcw,
+		FolderOpen
 	} from '@lucide/svelte';
+	import { goto } from '$app/navigation';
 	import { downloadUrl, setStarred } from '$lib/api/files';
 	import { toast } from 'svelte-sonner';
 	import type { PhotoItem } from '$lib/api/photos';
@@ -281,6 +283,17 @@
 		}
 	}
 
+	function handleOpenFolder(e: Event) {
+		e.stopPropagation();
+		const parentSlug = currentPhoto?.parentSlug;
+		if (parentSlug) {
+			void goto('/files/all/' + parentSlug);
+		} else {
+			void goto('/files/all');
+		}
+		close();
+	}
+
 	function stopPropagation(e: Event) {
 		e.stopPropagation();
 	}
@@ -307,6 +320,14 @@
 				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
 			>
 				<Star size={20} class={currentPhoto?.isStarred ? 'fill-amber-400 text-amber-400' : ''} />
+			</button>
+			<button
+				type="button"
+				onclick={handleOpenFolder}
+				title="打开所在目录"
+				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+			>
+				<FolderOpen size={20} />
 			</button>
 			<button
 				type="button"

@@ -76,3 +76,10 @@ oauth2:
       token_url: "https://2libra.com/api/oauth/token"
       user_info_url: "https://2libra.com/api/oauth/me"
       scope: "profile"
+    "github":
+      client_id: ""
+      client_secret: ""
+      auth_url: "https://github.com/login/oauth/authorize"
+      token_url: "https://github.com/login/oauth/access_token"
+      user_info_url: "https://api.github.com/user"
+      scope: "read:user user:email"

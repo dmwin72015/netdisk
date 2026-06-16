@@ -44,6 +44,7 @@ type PhotoItem struct {
 	UpdatedAt    string  `json:"updatedAt"`
 	ThumbnailURL string  `json:"thumbnailUrl"`
 	FileHash     *string `json:"fileHash"`
+	ParentSlug   *string `json:"parentSlug"`
 }
 
 type PhotoListResponse struct {
@@ -121,7 +122,7 @@ func (s *PhotoService) ListPhotos(ctx context.Context, userID int64, sessionID s
 func (s *PhotoService) fetchImageRows(ctx context.Context, ids []int64) ([]PhotoItem, error) {
 	rows, err := s.pg.Query(ctx, `
 		SELECT uf.id, uf.slug, uf.file_name, uf.file_size, uf.mime_type,
-		       uf.is_starred, uf.created_at, uf.updated_at, pf.file_hash
+		       uf.is_starred, uf.created_at, uf.updated_at, pf.file_hash, uf.parent_slug
 		FROM user_files uf
 		LEFT JOIN physical_files pf ON pf.id = uf.physical_file_id
 		WHERE uf.id = ANY($1::bigint[])
@@ -132,21 +133,22 @@ func (s *PhotoService) fetchImageRows(ctx context.Context, ids []int64) ([]Photo
 	defer rows.Close()
 
 	type imageRow struct {
-		ID        int64
-		Slug      string
-		FileName  string
-		FileSize  int64
-		MimeType  pgtype.Text
-		IsStarred bool
-		CreatedAt pgtype.Timestamptz
-		UpdatedAt pgtype.Timestamptz
-		FileHash  pgtype.Text
+		ID         int64
+		Slug       string
+		FileName   string
+		FileSize   int64
+		MimeType   pgtype.Text
+		IsStarred  bool
+		CreatedAt  pgtype.Timestamptz
+		UpdatedAt  pgtype.Timestamptz
+		FileHash   pgtype.Text
+		ParentSlug pgtype.Text
 	}
 	rowMap := make(map[int64]imageRow, len(ids))
 	for rows.Next() {
 		var r imageRow
 		if err := rows.Scan(&r.ID, &r.Slug, &r.FileName, &r.FileSize, &r.MimeType,
-			&r.IsStarred, &r.CreatedAt, &r.UpdatedAt, &r.FileHash); err != nil {
+			&r.IsStarred, &r.CreatedAt, &r.UpdatedAt, &r.FileHash, &r.ParentSlug); err != nil {
 			return nil, fmt.Errorf("scan image row: %w", err)
 		}
 		rowMap[r.ID] = r
@@ -177,6 +179,10 @@ func (s *PhotoService) fetchImageRows(ctx context.Context, ids []int64) ([]Photo
 			h := r.FileHash.String
 			item.FileHash = &h
 			item.ThumbnailURL = fmt.Sprintf("/api/v1/photos/%s/thumbnail", r.Slug)
+		}
+		if r.ParentSlug.Valid && r.ParentSlug.String != "" {
+			ps := r.ParentSlug.String
+			item.ParentSlug = &ps
 		}
 		items = append(items, item)
 	}
@@ -534,7 +540,7 @@ func (s *PhotoService) ListAlbumPhotos(ctx context.Context, userID int64, sessio
 func (s *PhotoService) fetchAlbumItemRows(ctx context.Context, ids []int64) ([]PhotoItem, error) {
 	rows, err := s.pg.Query(ctx, `
 		SELECT uf.id, uf.slug, uf.file_name, uf.file_size, uf.mime_type,
-		       uf.created_at, pf.file_hash
+		       uf.created_at, pf.file_hash, uf.parent_slug
 		FROM user_files uf
 		LEFT JOIN physical_files pf ON pf.id = uf.physical_file_id
 		WHERE uf.id = ANY($1::bigint[])
@@ -552,12 +558,13 @@ func (s *PhotoService) fetchAlbumItemRows(ctx context.Context, ids []int64) ([]P
 		MimeType      pgtype.Text
 		FileCreatedAt pgtype.Timestamptz
 		FileHash      pgtype.Text
+		ParentSlug    pgtype.Text
 	}
 	rowMap := make(map[int64]albumItemRow, len(ids))
 	for rows.Next() {
 		var r albumItemRow
 		if err := rows.Scan(&r.FileID, &r.FileSlug, &r.FileName, &r.FileSize, &r.MimeType,
-			&r.FileCreatedAt, &r.FileHash); err != nil {
+			&r.FileCreatedAt, &r.FileHash, &r.ParentSlug); err != nil {
 			return nil, fmt.Errorf("scan album item row: %w", err)
 		}
 		rowMap[r.FileID] = r
@@ -586,6 +593,10 @@ func (s *PhotoService) fetchAlbumItemRows(ctx context.Context, ids []int64) ([]P
 			h := r.FileHash.String
 			item.FileHash = &h
 			item.ThumbnailURL = fmt.Sprintf("/api/v1/photos/%s/thumbnail", r.FileSlug)
+		}
+		if r.ParentSlug.Valid && r.ParentSlug.String != "" {
+			ps := r.ParentSlug.String
+			item.ParentSlug = &ps
 		}
 		items = append(items, item)
 	}

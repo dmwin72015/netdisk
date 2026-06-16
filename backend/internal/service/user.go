@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,17 +33,25 @@ func NewUserService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config)
 	return &UserService{queries: queries, pg: pg, cfg: cfg}
 }
 
+type OAuthAccountInfo struct {
+	Provider          string `json:"provider"`
+	ProviderAccountID string `json:"providerAccountId"`
+	OAuthEmail        string `json:"oauthEmail,omitempty"`
+	CreatedAt         string `json:"createdAt"`
+}
+
 type UserMeResponse struct {
-	Slug           string      `json:"slug"`
-	Username       string      `json:"username"`
-	Email          string      `json:"email"`
-	Status         int16       `json:"status"`
-	Role           string      `json:"role"`
-	RegisterMethod string      `json:"registerMethod"`
-	Profile        ProfileData `json:"profile"`
-	Storage        StorageData `json:"storage"`
-	Level          LevelData   `json:"level"`
-	CreatedAt      string      `json:"createdAt"`
+	Slug           string             `json:"slug"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	Status         int16              `json:"status"`
+	Role           string             `json:"role"`
+	RegisterMethod string             `json:"registerMethod"`
+	Profile        ProfileData        `json:"profile"`
+	Storage        StorageData        `json:"storage"`
+	Level          LevelData          `json:"level"`
+	OAuthAccounts  []OAuthAccountInfo `json:"oauthAccounts"`
+	CreatedAt      string             `json:"createdAt"`
 }
 
 type ProfileData struct {
@@ -86,6 +95,8 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 		return nil, fmt.Errorf("get level: %w", err)
 	}
 
+	oauthInfos := s.getOAuthAccounts(ctx, userID)
+
 	resp := &UserMeResponse{
 		Slug:           user.Slug,
 		Username:       user.Username,
@@ -93,6 +104,7 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 		Status:         user.Status,
 		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
+		OAuthAccounts:  oauthInfos,
 		CreatedAt:      user.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
 	}
 
@@ -128,6 +140,35 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 	}
 
 	return resp, nil
+}
+
+func (s *UserService) getOAuthAccounts(ctx context.Context, userID int64) []OAuthAccountInfo {
+	rows, err := s.pg.Query(ctx, `
+		SELECT provider, provider_account_id, COALESCE(oauth_email, ''), created_at
+		FROM user_oauth_accounts
+		WHERE user_id = $1
+		ORDER BY created_at ASC
+	`, userID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var infos []OAuthAccountInfo
+	for rows.Next() {
+		var provider, providerAccountID, oauthEmail string
+		var createdAt time.Time
+		if err := rows.Scan(&provider, &providerAccountID, &oauthEmail, &createdAt); err != nil {
+			continue
+		}
+		infos = append(infos, OAuthAccountInfo{
+			Provider:          provider,
+			ProviderAccountID: providerAccountID,
+			OAuthEmail:        oauthEmail,
+			CreatedAt:         createdAt.Format(time.RFC3339),
+		})
+	}
+	return infos
 }
 
 type CategoryStat struct {

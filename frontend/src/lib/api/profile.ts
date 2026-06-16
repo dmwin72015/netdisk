@@ -1,5 +1,12 @@
 import { api } from './client';
 
+export type OAuthAccountInfo = {
+	provider: string;
+	providerAccountId: string;
+	oauthEmail?: string;
+	createdAt: string;
+};
+
 export type ProfileData = {
 	slug: string;
 	username: string;
@@ -18,6 +25,7 @@ export type ProfileData = {
 		levelName: string;
 		expiresAt: string | null;
 	};
+	oauthAccounts: OAuthAccountInfo[];
 	createdAt: string;
 };
 
@@ -47,6 +55,12 @@ export type CategoryStat = {
 	bytes: number;
 	count: number;
 };
+
+export async function unlinkOAuth(provider: string): Promise<void> {
+	await api<{ message: string }>(`/api/v1/user/oauth/${provider}`, {
+		method: 'DELETE',
+	});
+}
 
 export async function getStorageBreakdown(): Promise<CategoryStat[]> {
 	const data = await api<{ categories: CategoryStat[] }>('/api/v1/user/storage-breakdown');

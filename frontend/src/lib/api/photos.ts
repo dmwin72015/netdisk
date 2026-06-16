@@ -3,14 +3,13 @@ import { api } from './client';
 export type PhotoItem = {
 	slug: string;
 	fileName: string;
-	mimeType: string;
+	mimeType: string | null;
 	fileSize: number;
-	width: number;
-	height: number;
-	fileHash: string;
+	fileHash: string | null;
 	isStarred: boolean;
 	createdAt: string;
-	albums: { slug: string; title: string }[];
+	parentSlug?: string | null;
+	albums?: { slug: string; title: string }[];
 };
 
 export type PhotoListResponse = {
