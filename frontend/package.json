@@ -4,8 +4,8 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
+		"dev": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide && vite dev",
+		"build": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide && vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
