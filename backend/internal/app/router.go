@@ -64,6 +64,8 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	authed.PATCH("/user/profile", h.User.UpdateProfile)
 	authed.POST("/user/me/password", h.User.ChangePassword)
 	authed.POST("/user/me/avatar", h.User.UploadAvatar)
+	authed.GET("/user/settings", h.User.GetSettings)
+	authed.PUT("/user/settings", h.User.UpdateSettings)
 	authed.GET("/user/transactions", h.User.ListTransactions)
 
 	// Static avatar serving
@@ -97,6 +99,9 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	files.POST("/:slug/rename", h.Files.RenameFile)
 	files.POST("/:slug/move", h.Files.MoveFile)
 	files.POST("/:slug/star", h.Files.SetStarred)
+	files.POST("/:slug/lock", h.Files.SetDirectoryLock)
+	files.DELETE("/:slug/lock", h.Files.ClearDirectoryLock)
+	files.POST("/:slug/unlock", h.Files.UnlockDirectory)
 	files.GET("/:slug/download", h.Files.DownloadFile)
 
 	// Share routes

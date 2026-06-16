@@ -15,7 +15,7 @@ func newTestManager(t *testing.T) *Manager {
 func TestAccessTokenRoundtrip(t *testing.T) {
 	m := newTestManager(t)
 	var uid int64 = 4711
-	tok, exp, err := m.GenerateAccessToken(uid)
+	tok, exp, err := m.GenerateAccessToken(uid, "session-1")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -32,6 +32,9 @@ func TestAccessTokenRoundtrip(t *testing.T) {
 	if c.Type != TokenTypeAccess {
 		t.Fatalf("type mismatch: got %q", c.Type)
 	}
+	if c.SID != "session-1" {
+		t.Fatalf("sid mismatch: got %q", c.SID)
+	}
 	if c.Subject != "4711" {
 		t.Fatalf("subject should match uid as string, got %q", c.Subject)
 	}
@@ -39,7 +42,7 @@ func TestAccessTokenRoundtrip(t *testing.T) {
 
 func TestRefreshTokenIsRefreshType(t *testing.T) {
 	m := newTestManager(t)
-	tok, jti, _, err := m.GenerateRefreshToken(int64(1))
+	tok, jti, _, err := m.GenerateRefreshToken(int64(1), "session-2")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -53,11 +56,14 @@ func TestRefreshTokenIsRefreshType(t *testing.T) {
 	if c.Type != TokenTypeRefresh {
 		t.Fatalf("type mismatch: got %q", c.Type)
 	}
+	if c.SID != "session-2" {
+		t.Fatalf("sid mismatch: got %q", c.SID)
+	}
 }
 
 func TestExpiredTokenIsRejected(t *testing.T) {
 	m := NewManager("k", -time.Minute, -time.Minute)
-	tok, _, err := m.GenerateAccessToken(1)
+	tok, _, err := m.GenerateAccessToken(1, "session")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -69,7 +75,7 @@ func TestExpiredTokenIsRejected(t *testing.T) {
 
 func TestTamperedSignatureIsRejected(t *testing.T) {
 	m := newTestManager(t)
-	tok, _, err := m.GenerateAccessToken(1)
+	tok, _, err := m.GenerateAccessToken(1, "session")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -85,7 +91,7 @@ func TestTamperedSignatureIsRejected(t *testing.T) {
 func TestForeignSignerIsRejected(t *testing.T) {
 	m := newTestManager(t)
 	other := NewManager("different-secret", 15*time.Minute, 7*24*time.Hour)
-	tok, _, err := other.GenerateAccessToken(1)
+	tok, _, err := other.GenerateAccessToken(1, "session")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}

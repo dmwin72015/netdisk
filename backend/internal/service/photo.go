@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,15 +35,15 @@ func NewPhotoService(queries *sqlc.Queries, pg *pgxpool.Pool, cfg *config.Config
 }
 
 type PhotoItem struct {
-	Slug        string  `json:"slug"`
-	FileName    string  `json:"fileName"`
-	FileSize    int64   `json:"fileSize"`
-	MimeType    *string `json:"mimeType"`
-	IsStarred   bool    `json:"isStarred"`
-	CreatedAt   string  `json:"createdAt"`
-	UpdatedAt   string  `json:"updatedAt"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	FileHash    *string `json:"fileHash"`
+	Slug         string  `json:"slug"`
+	FileName     string  `json:"fileName"`
+	FileSize     int64   `json:"fileSize"`
+	MimeType     *string `json:"mimeType"`
+	IsStarred    bool    `json:"isStarred"`
+	CreatedAt    string  `json:"createdAt"`
+	UpdatedAt    string  `json:"updatedAt"`
+	ThumbnailURL string  `json:"thumbnailUrl"`
+	FileHash     *string `json:"fileHash"`
 }
 
 type PhotoListResponse struct {
@@ -54,7 +52,7 @@ type PhotoListResponse struct {
 	Page  int         `json:"page"`
 }
 
-func (s *PhotoService) ListPhotos(ctx context.Context, userID int64, page, pageSize int) (*PhotoListResponse, error) {
+func (s *PhotoService) ListPhotos(ctx context.Context, userID int64, sessionID string, page, pageSize int) (*PhotoListResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -62,22 +60,107 @@ func (s *PhotoService) ListPhotos(ctx context.Context, userID int64, page, pageS
 		pageSize = 50
 	}
 
-	total, err := s.queries.CountImageFiles(ctx, userID)
+	// Phase 1: fetch all candidate IDs ordered by created_at DESC.
+	idRows, err := s.pg.Query(ctx, `
+		SELECT uf.id FROM user_files uf
+		WHERE uf.user_id = $1
+		  AND uf.is_dir = FALSE
+		  AND uf.is_trashed = FALSE
+		  AND uf.file_category = 'image'
+		ORDER BY uf.created_at DESC
+	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("count images: %w", err)
+		return nil, fmt.Errorf("list image ids: %w", err)
+	}
+	var allIDs []int64
+	for idRows.Next() {
+		var id int64
+		if err := idRows.Scan(&id); err != nil {
+			idRows.Close()
+			return nil, fmt.Errorf("scan image id: %w", err)
+		}
+		allIDs = append(allIDs, id)
+	}
+	idRows.Close()
+	if err := idRows.Err(); err != nil {
+		return nil, err
 	}
 
-	rows, err := s.queries.ListImageFiles(ctx, sqlc.ListImageFilesParams{
-		UserID: userID,
-		Limit:  int32(pageSize),
-		Offset: int32((page - 1) * pageSize),
-	})
+	// Phase 2: filter out files hidden by locked directories.
+	visibleIDs, err := filterLockedFileIDs(ctx, s.pg, userID, sessionID, allIDs)
 	if err != nil {
-		return nil, fmt.Errorf("list images: %w", err)
+		return nil, fmt.Errorf("filter locked photos: %w", err)
+	}
+	total := len(visibleIDs)
+
+	// Phase 3: paginate the visible IDs.
+	start := (page - 1) * pageSize
+	if start >= len(visibleIDs) {
+		return &PhotoListResponse{Items: []PhotoItem{}, Total: total, Page: page}, nil
+	}
+	end := start + pageSize
+	if end > len(visibleIDs) {
+		end = len(visibleIDs)
+	}
+	pageIDs := visibleIDs[start:end]
+
+	if len(pageIDs) == 0 {
+		return &PhotoListResponse{Items: []PhotoItem{}, Total: total, Page: page}, nil
 	}
 
-	items := make([]PhotoItem, 0, len(rows))
-	for _, r := range rows {
+	// Phase 4: fetch full row data for only the visible page IDs, preserving order.
+	items, err := s.fetchImageRows(ctx, pageIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PhotoListResponse{Items: items, Total: total, Page: page}, nil
+}
+
+// fetchImageRows fetches full image row data for the given file IDs, preserving the input order.
+func (s *PhotoService) fetchImageRows(ctx context.Context, ids []int64) ([]PhotoItem, error) {
+	rows, err := s.pg.Query(ctx, `
+		SELECT uf.id, uf.slug, uf.file_name, uf.file_size, uf.mime_type,
+		       uf.is_starred, uf.created_at, uf.updated_at, pf.file_hash
+		FROM user_files uf
+		LEFT JOIN physical_files pf ON pf.id = uf.physical_file_id
+		WHERE uf.id = ANY($1::bigint[])
+	`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("fetch image rows: %w", err)
+	}
+	defer rows.Close()
+
+	type imageRow struct {
+		ID        int64
+		Slug      string
+		FileName  string
+		FileSize  int64
+		MimeType  pgtype.Text
+		IsStarred bool
+		CreatedAt pgtype.Timestamptz
+		UpdatedAt pgtype.Timestamptz
+		FileHash  pgtype.Text
+	}
+	rowMap := make(map[int64]imageRow, len(ids))
+	for rows.Next() {
+		var r imageRow
+		if err := rows.Scan(&r.ID, &r.Slug, &r.FileName, &r.FileSize, &r.MimeType,
+			&r.IsStarred, &r.CreatedAt, &r.UpdatedAt, &r.FileHash); err != nil {
+			return nil, fmt.Errorf("scan image row: %w", err)
+		}
+		rowMap[r.ID] = r
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	items := make([]PhotoItem, 0, len(ids))
+	for _, id := range ids {
+		r, ok := rowMap[id]
+		if !ok {
+			continue
+		}
 		item := PhotoItem{
 			Slug:      r.Slug,
 			FileName:  r.FileName,
@@ -97,12 +180,7 @@ func (s *PhotoService) ListPhotos(ctx context.Context, userID int64, page, pageS
 		}
 		items = append(items, item)
 	}
-
-	return &PhotoListResponse{
-		Items: items,
-		Total: int(total),
-		Page:  page,
-	}, nil
+	return items, nil
 }
 
 type ThumbnailResult struct {
@@ -110,7 +188,7 @@ type ThumbnailResult struct {
 	FileHash string
 }
 
-func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, fileSlug string) (*ThumbnailResult, error) {
+func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, sessionID, fileSlug string) (*ThumbnailResult, error) {
 	uf, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
@@ -124,6 +202,9 @@ func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, fileS
 
 	if !uf.PhysicalFileID.Valid {
 		return nil, model.ErrNotFound
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, uf.ID); err != nil {
+		return nil, err
 	}
 
 	pf, err := s.queries.GetPhysicalFileByID(ctx, uf.PhysicalFileID.Int64)
@@ -139,7 +220,7 @@ func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, fileS
 	return &ThumbnailResult{Path: thumbPath, FileHash: pf.FileHash}, nil
 }
 
-func (s *PhotoService) GetPhotoDetail(ctx context.Context, userID int64, fileSlug string) (*PhotoItem, error) {
+func (s *PhotoService) GetPhotoDetail(ctx context.Context, userID int64, sessionID, fileSlug string) (*PhotoItem, error) {
 	uf, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
@@ -153,6 +234,9 @@ func (s *PhotoService) GetPhotoDetail(ctx context.Context, userID int64, fileSlu
 
 	if uf.IsDir || uf.IsTrashed || uf.FileCategory != "image" {
 		return nil, model.ErrNotFound
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, uf.ID); err != nil {
+		return nil, err
 	}
 
 	item := PhotoItem{
@@ -309,14 +393,14 @@ func (s *PhotoService) DeleteAlbum(ctx context.Context, userID int64, slug strin
 }
 
 type AlbumItemResponse struct {
-	ID          int64   `json:"id"`
-	FileSlug    string  `json:"fileSlug"`
-	FileName    string  `json:"fileName"`
-	FileSize    int64   `json:"fileSize"`
-	MimeType    *string `json:"mimeType"`
-	CreatedAt   string  `json:"createdAt"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	FileHash    *string `json:"fileHash"`
+	ID           int64   `json:"id"`
+	FileSlug     string  `json:"fileSlug"`
+	FileName     string  `json:"fileName"`
+	FileSize     int64   `json:"fileSize"`
+	MimeType     *string `json:"mimeType"`
+	CreatedAt    string  `json:"createdAt"`
+	ThumbnailURL string  `json:"thumbnailUrl"`
+	FileHash     *string `json:"fileHash"`
 }
 
 func (s *PhotoService) AddPhotosToAlbum(ctx context.Context, userID int64, albumSlug string, fileSlugs []string) error {
@@ -372,7 +456,7 @@ func (s *PhotoService) RemovePhotoFromAlbum(ctx context.Context, userID int64, a
 	return nil
 }
 
-func (s *PhotoService) ListAlbumPhotos(ctx context.Context, userID int64, albumSlug string, page, pageSize int) (*PhotoListResponse, error) {
+func (s *PhotoService) ListAlbumPhotos(ctx context.Context, userID int64, sessionID, albumSlug string, page, pageSize int) (*PhotoListResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -391,26 +475,107 @@ func (s *PhotoService) ListAlbumPhotos(ctx context.Context, userID int64, albumS
 		return nil, fmt.Errorf("get album: %w", err)
 	}
 
-	total, err := s.queries.CountPhotoAlbumItems(ctx, album.ID)
+	// Phase 1: fetch all candidate file IDs ordered by sort_order, added_at.
+	idRows, err := s.pg.Query(ctx, `
+		SELECT uf.id FROM photo_album_items pai
+		JOIN user_files uf ON uf.slug = pai.file_slug
+		WHERE pai.album_id = $1
+		ORDER BY pai.sort_order ASC, pai.added_at DESC
+	`, album.ID)
 	if err != nil {
-		return nil, fmt.Errorf("count album items: %w", err)
+		return nil, fmt.Errorf("list album item ids: %w", err)
+	}
+	var allIDs []int64
+	for idRows.Next() {
+		var id int64
+		if err := idRows.Scan(&id); err != nil {
+			idRows.Close()
+			return nil, fmt.Errorf("scan album item id: %w", err)
+		}
+		allIDs = append(allIDs, id)
+	}
+	idRows.Close()
+	if err := idRows.Err(); err != nil {
+		return nil, err
 	}
 
-	rows, err := s.queries.ListPhotoAlbumItems(ctx, sqlc.ListPhotoAlbumItemsParams{
-		AlbumID: album.ID,
-		Limit:   int32(pageSize),
-		Offset:  int32((page - 1) * pageSize),
-	})
+	// Phase 2: filter out files hidden by locked directories.
+	visibleIDs, err := filterLockedFileIDs(ctx, s.pg, userID, sessionID, allIDs)
 	if err != nil {
-		return nil, fmt.Errorf("list album items: %w", err)
+		return nil, fmt.Errorf("filter locked album photos: %w", err)
+	}
+	total := len(visibleIDs)
+
+	// Phase 3: paginate the visible IDs.
+	start := (page - 1) * pageSize
+	if start >= len(visibleIDs) {
+		return &PhotoListResponse{Items: []PhotoItem{}, Total: total, Page: page}, nil
+	}
+	end := start + pageSize
+	if end > len(visibleIDs) {
+		end = len(visibleIDs)
+	}
+	pageIDs := visibleIDs[start:end]
+
+	if len(pageIDs) == 0 {
+		return &PhotoListResponse{Items: []PhotoItem{}, Total: total, Page: page}, nil
 	}
 
-	items := make([]PhotoItem, 0, len(rows))
-	for _, r := range rows {
+	// Phase 4: fetch full row data for only the visible page IDs, preserving order.
+	items, err := s.fetchAlbumItemRows(ctx, pageIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PhotoListResponse{Items: items, Total: total, Page: page}, nil
+}
+
+// fetchAlbumItemRows fetches full album item row data for the given file IDs, preserving input order.
+func (s *PhotoService) fetchAlbumItemRows(ctx context.Context, ids []int64) ([]PhotoItem, error) {
+	rows, err := s.pg.Query(ctx, `
+		SELECT uf.id, uf.slug, uf.file_name, uf.file_size, uf.mime_type,
+		       uf.created_at, pf.file_hash
+		FROM user_files uf
+		LEFT JOIN physical_files pf ON pf.id = uf.physical_file_id
+		WHERE uf.id = ANY($1::bigint[])
+	`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("fetch album item rows: %w", err)
+	}
+	defer rows.Close()
+
+	type albumItemRow struct {
+		FileID        int64
+		FileSlug      string
+		FileName      string
+		FileSize      int64
+		MimeType      pgtype.Text
+		FileCreatedAt pgtype.Timestamptz
+		FileHash      pgtype.Text
+	}
+	rowMap := make(map[int64]albumItemRow, len(ids))
+	for rows.Next() {
+		var r albumItemRow
+		if err := rows.Scan(&r.FileID, &r.FileSlug, &r.FileName, &r.FileSize, &r.MimeType,
+			&r.FileCreatedAt, &r.FileHash); err != nil {
+			return nil, fmt.Errorf("scan album item row: %w", err)
+		}
+		rowMap[r.FileID] = r
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	items := make([]PhotoItem, 0, len(ids))
+	for _, id := range ids {
+		r, ok := rowMap[id]
+		if !ok {
+			continue
+		}
 		item := PhotoItem{
-			Slug:     r.FileSlug,
-			FileName: r.FileName,
-			FileSize: r.FileSize,
+			Slug:      r.FileSlug,
+			FileName:  r.FileName,
+			FileSize:  r.FileSize,
 			CreatedAt: r.FileCreatedAt.Time.Format("2006-01-02T15:04:05Z"),
 		}
 		if r.MimeType.Valid {
@@ -424,8 +589,7 @@ func (s *PhotoService) ListAlbumPhotos(ctx context.Context, userID int64, albumS
 		}
 		items = append(items, item)
 	}
-
-	return &PhotoListResponse{Items: items, Total: int(total), Page: page}, nil
+	return items, nil
 }
 
 func (s *PhotoService) ListPhotoAlbums(ctx context.Context, userID int64, fileSlug string) ([]AlbumResponse, error) {
@@ -476,6 +640,3 @@ func containsStr(s, substr string) bool {
 	}
 	return false
 }
-
-// Ensure Math import is used
-var _ = math.MaxInt64

@@ -92,6 +92,8 @@ func MapError(err error) (int, int, string) {
 		return http.StatusBadRequest, model.ErrCodeUnsupportedImage, "only JPEG, PNG and WebP are supported"
 	case errors.Is(err, model.ErrSystemFileLocked):
 		return http.StatusForbidden, model.ErrCodeSystemFileLocked, "system file cannot be modified"
+	case errors.Is(err, model.ErrDirectoryLocked):
+		return http.StatusLocked, model.ErrCodeDirectoryLocked, "directory is locked"
 	default:
 		return http.StatusInternalServerError, model.ErrCodeInternal, "internal error"
 	}

@@ -74,7 +74,7 @@ INSERT INTO user_files (
     system_kind
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind
+RETURNING id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind, lock_password_hash, locked_at
 `
 
 type CreateFileParams struct {
@@ -127,6 +127,8 @@ func (q *Queries) CreateFile(ctx context.Context, arg CreateFileParams) (UserFil
 		&i.ParentSlug,
 		&i.IsSystem,
 		&i.SystemKind,
+		&i.LockPasswordHash,
+		&i.LockedAt,
 	)
 	return i, err
 }
@@ -141,7 +143,7 @@ func (q *Queries) DeleteFile(ctx context.Context, id int64) error {
 }
 
 const getActiveFileByMediaUploadIdentity = `-- name: GetActiveFileByMediaUploadIdentity :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind, lock_password_hash, locked_at FROM user_files
 WHERE user_id = $1
   AND parent_id = $2
   AND physical_file_id = $3
@@ -186,6 +188,8 @@ func (q *Queries) GetActiveFileByMediaUploadIdentity(ctx context.Context, arg Ge
 		&i.ParentSlug,
 		&i.IsSystem,
 		&i.SystemKind,
+		&i.LockPasswordHash,
+		&i.LockedAt,
 	)
 	return i, err
 }
@@ -279,7 +283,7 @@ func (q *Queries) GetExpiredTrashedFiles(ctx context.Context) ([]GetExpiredTrash
 }
 
 const getFileByID = `-- name: GetFileByID :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files WHERE id = $1 LIMIT 1
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind, lock_password_hash, locked_at FROM user_files WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetFileByID(ctx context.Context, id int64) (UserFile, error) {
@@ -304,12 +308,14 @@ func (q *Queries) GetFileByID(ctx context.Context, id int64) (UserFile, error) {
 		&i.ParentSlug,
 		&i.IsSystem,
 		&i.SystemKind,
+		&i.LockPasswordHash,
+		&i.LockedAt,
 	)
 	return i, err
 }
 
 const getFileBySlug = `-- name: GetFileBySlug :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files WHERE slug = $1 LIMIT 1
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind, lock_password_hash, locked_at FROM user_files WHERE slug = $1 LIMIT 1
 `
 
 func (q *Queries) GetFileBySlug(ctx context.Context, slug string) (UserFile, error) {
@@ -334,12 +340,14 @@ func (q *Queries) GetFileBySlug(ctx context.Context, slug string) (UserFile, err
 		&i.ParentSlug,
 		&i.IsSystem,
 		&i.SystemKind,
+		&i.LockPasswordHash,
+		&i.LockedAt,
 	)
 	return i, err
 }
 
 const getFileBySlugForUser = `-- name: GetFileBySlugForUser :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files WHERE slug = $1 AND user_id = $2 LIMIT 1
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind, lock_password_hash, locked_at FROM user_files WHERE slug = $1 AND user_id = $2 LIMIT 1
 `
 
 type GetFileBySlugForUserParams struct {
@@ -369,12 +377,14 @@ func (q *Queries) GetFileBySlugForUser(ctx context.Context, arg GetFileBySlugFor
 		&i.ParentSlug,
 		&i.IsSystem,
 		&i.SystemKind,
+		&i.LockPasswordHash,
+		&i.LockedAt,
 	)
 	return i, err
 }
 
 const getSystemDirByKind = `-- name: GetSystemDirByKind :one
-SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind FROM user_files
+SELECT id, slug, user_id, physical_file_id, parent_id, file_name, is_dir, file_size, mime_type, is_starred, is_trashed, trashed_at, created_at, updated_at, file_category, parent_slug, is_system, system_kind, lock_password_hash, locked_at FROM user_files
 WHERE user_id = $1
   AND is_trashed = FALSE
   AND is_dir = TRUE
@@ -416,6 +426,8 @@ func (q *Queries) GetSystemDirByKind(ctx context.Context, arg GetSystemDirByKind
 		&i.ParentSlug,
 		&i.IsSystem,
 		&i.SystemKind,
+		&i.LockPasswordHash,
+		&i.LockedAt,
 	)
 	return i, err
 }

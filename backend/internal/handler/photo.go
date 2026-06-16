@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/middleware"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
@@ -26,7 +27,7 @@ func (h *PhotoHandler) ListPhotos(c echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
-	resp, err := h.svc.ListPhotos(c.Request().Context(), userID, page, pageSize)
+	resp, err := h.svc.ListPhotos(c.Request().Context(), userID, middleware.SessionID(c), page, pageSize)
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (h *PhotoHandler) GetPhotoDetail(c echo.Context) error {
 	}
 
 	fileSlug := c.Param("file_slug")
-	item, err := h.svc.GetPhotoDetail(c.Request().Context(), userID, fileSlug)
+	item, err := h.svc.GetPhotoDetail(c.Request().Context(), userID, middleware.SessionID(c), fileSlug)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (h *PhotoHandler) ServeThumbnail(c echo.Context) error {
 	}
 
 	fileSlug := c.Param("file_slug")
-	res, err := h.svc.GetThumbnailPath(c.Request().Context(), userID, fileSlug)
+	res, err := h.svc.GetThumbnailPath(c.Request().Context(), userID, middleware.SessionID(c), fileSlug)
 	if err != nil {
 		return err
 	}
@@ -201,7 +202,7 @@ func (h *PhotoHandler) ListAlbumPhotos(c echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
 
-	resp, err := h.svc.ListAlbumPhotos(c.Request().Context(), userID, albumSlug, page, pageSize)
+	resp, err := h.svc.ListAlbumPhotos(c.Request().Context(), userID, middleware.SessionID(c), albumSlug, page, pageSize)
 	if err != nil {
 		return err
 	}

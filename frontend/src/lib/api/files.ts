@@ -4,6 +4,7 @@ export type FileItem = {
 	slug: string;
 	fileName: string;
 	isDir: boolean;
+	isLocked: boolean;
 	fileSize: number;
 	mimeType: string | null;
 	fileCategory: string;
@@ -139,6 +140,27 @@ export async function setStarred(slug: string, starred: boolean) {
 	return api(`/api/v1/files/${slug}/star`, {
 		method: 'POST',
 		body: JSON.stringify({ starred })
+	});
+}
+
+export async function setDirectoryLock(slug: string, password: string) {
+	return api(`/api/v1/files/${slug}/lock`, {
+		method: 'POST',
+		body: JSON.stringify({ password })
+	});
+}
+
+export async function clearDirectoryLock(slug: string, password: string) {
+	return api(`/api/v1/files/${slug}/lock`, {
+		method: 'DELETE',
+		body: JSON.stringify({ password })
+	});
+}
+
+export async function unlockDirectory(slug: string, password: string, ttlHours: number) {
+	return api(`/api/v1/files/${slug}/unlock`, {
+		method: 'POST',
+		body: JSON.stringify({ password, ttlHours })
 	});
 }
 

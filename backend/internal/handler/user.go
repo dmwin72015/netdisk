@@ -93,6 +93,34 @@ func (h *UserHandler) ChangePassword(c echo.Context) error {
 	return OK(c, map[string]string{"message": "password changed"})
 }
 
+func (h *UserHandler) GetSettings(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	settings, err := h.svc.GetSettings(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	return OK(c, settings)
+}
+
+func (h *UserHandler) UpdateSettings(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	var input service.UserSettings
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	settings, err := h.svc.SaveSettings(c.Request().Context(), userID, input)
+	if err != nil {
+		return err
+	}
+	return OK(c, settings)
+}
+
 func (h *UserHandler) UploadAvatar(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

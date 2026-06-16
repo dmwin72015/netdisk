@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/middleware"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
@@ -63,7 +64,9 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	if err := c.Bind(&input); err != nil {
 		return model.ErrInvalidInput
 	}
-	if err := h.svc.Logout(c.Request().Context(), input.RefreshToken); err != nil {
+	userID, _ := requireUserID(c)
+	sessionID := middleware.SessionID(c)
+	if err := h.svc.Logout(c.Request().Context(), input.RefreshToken, userID, sessionID); err != nil {
 		return err
 	}
 	return OK(c, map[string]string{"message": "logged out"})

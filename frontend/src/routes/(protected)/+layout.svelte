@@ -5,6 +5,7 @@
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { fetchConfig } from '$lib/stores/config';
+	import { loadPreferencesFromServer } from '$lib/stores/file-preferences.svelte';
 	import AppShell from '$lib/components/AppShell.svelte';
 	import UploadPanel from '$lib/components/files/UploadPanel.svelte';
 	import { createUploadManager } from '$lib/upload-manager.svelte';
@@ -40,6 +41,7 @@
 			return;
 		}
 		void fetchConfig();
+		void loadPreferencesFromServer();
 		upload.restore();
 	});
 </script>

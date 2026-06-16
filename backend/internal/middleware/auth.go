@@ -11,6 +11,7 @@ import (
 )
 
 const ctxKeyUserID = "auth.user_id"
+const ctxKeySessionID = "auth.session_id"
 
 func JWT(jm *jwtutil.Manager) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -26,7 +27,12 @@ func JWT(jm *jwtutil.Manager) echo.MiddlewareFunc {
 			if claims.Type != jwtutil.TokenTypeAccess {
 				return echo.NewHTTPError(http.StatusUnauthorized, "wrong token type")
 			}
+			sessionID := claims.SID
+			if sessionID == "" {
+				sessionID = claims.ID
+			}
 			c.Set(ctxKeyUserID, claims.UserID)
+			c.Set(ctxKeySessionID, sessionID)
 			return next(c)
 		}
 	}
@@ -50,6 +56,11 @@ func extractToken(c echo.Context) string {
 func UserID(c echo.Context) (int64, bool) {
 	v, ok := c.Get(ctxKeyUserID).(int64)
 	return v, ok
+}
+
+func SessionID(c echo.Context) string {
+	v, _ := c.Get(ctxKeySessionID).(string)
+	return v
 }
 
 func AdminRequired(queries *sqlc.Queries) echo.MiddlewareFunc {

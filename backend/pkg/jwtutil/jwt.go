@@ -23,6 +23,7 @@ var (
 type Claims struct {
 	UserID int64  `json:"uid"`
 	Type   string `json:"typ"`
+	SID    string `json:"sid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -42,12 +43,13 @@ func NewManager(secret string, accessTTL, refreshTTL time.Duration) *Manager {
 	}
 }
 
-func (m *Manager) GenerateAccessToken(userID int64) (string, time.Time, error) {
+func (m *Manager) GenerateAccessToken(userID int64, sessionID string) (string, time.Time, error) {
 	now := time.Now()
 	expires := now.Add(m.accessTTL)
 	c := Claims{
 		UserID: userID,
 		Type:   TokenTypeAccess,
+		SID:    sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    m.issuer,
 			Subject:   strconv.FormatInt(userID, 10),
@@ -64,13 +66,14 @@ func (m *Manager) GenerateAccessToken(userID int64) (string, time.Time, error) {
 	return signed, expires, nil
 }
 
-func (m *Manager) GenerateRefreshToken(userID int64) (string, string, time.Time, error) {
+func (m *Manager) GenerateRefreshToken(userID int64, sessionID string) (string, string, time.Time, error) {
 	now := time.Now()
 	expires := now.Add(m.refreshTTL)
 	jti := uuid.NewString()
 	c := Claims{
 		UserID: userID,
 		Type:   TokenTypeRefresh,
+		SID:    sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    m.issuer,
 			Subject:   strconv.FormatInt(userID, 10),

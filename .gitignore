@@ -6,6 +6,7 @@ backend/internal/web/build/
 backend/server.pid
 backend/data
 backend/data/*
+backend/nohup.out
 data
 
 # Frontend
@@ -33,3 +34,5 @@ backend/config.yaml
 # .kiro
 docs
 .superpowers
+.pnpm-store/
+.claude/worktrees/

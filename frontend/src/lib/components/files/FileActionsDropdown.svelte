@@ -12,6 +12,8 @@
     Link,
     Share2,
     FolderInput,
+    Lock,
+    LockOpen,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
@@ -28,6 +30,8 @@
     onShowDetails,
     onCopyLink,
     onShare,
+    onSetDirectoryLock,
+    onClearDirectoryLock,
     triggerClass = "",
   }: {
     file: NormalizedFile;
@@ -41,6 +45,8 @@
     onShowDetails?: (file: NormalizedFile) => void;
     onCopyLink?: (file: NormalizedFile) => void;
     onShare?: (file: NormalizedFile) => void;
+    onSetDirectoryLock?: (file: NormalizedFile) => void;
+    onClearDirectoryLock?: (file: NormalizedFile) => void;
     triggerClass?: string;
   } = $props();
 
@@ -110,6 +116,19 @@
         {#snippet icon()}<FolderInput size={14} class="text-gray-400" />{/snippet}
         {#snippet children()}{m.move_to()}{/snippet}
       </DropdownBase.Item>
+    {/if}
+    {#if file.isDir && !file.isSystem}
+      {#if file.isLocked && onClearDirectoryLock}
+        <DropdownBase.Item onSelect={() => onClearDirectoryLock(file)}>
+          {#snippet icon()}<LockOpen size={14} class="text-gray-400" />{/snippet}
+          {#snippet children()}取消目录密码{/snippet}
+        </DropdownBase.Item>
+      {:else if onSetDirectoryLock}
+        <DropdownBase.Item onSelect={() => onSetDirectoryLock(file)}>
+          {#snippet icon()}<Lock size={14} class="text-gray-400" />{/snippet}
+          {#snippet children()}设置目录密码{/snippet}
+        </DropdownBase.Item>
+      {/if}
     {/if}
     {#if !file.isSystem}
       <DropdownBase.Item variant="destructive" onSelect={() => onDelete(file.id, file.name)}>

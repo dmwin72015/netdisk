@@ -6,7 +6,8 @@
 	import { user, authReady } from '$lib/stores/auth';
 	import {
 		listFiles, mkdir, trashFile, batchTrashFiles, renameFile, setStarred,
-		downloadUrl, getBreadcrumb, moveFile, type FileItem
+		downloadUrl, getBreadcrumb, moveFile, setDirectoryLock, clearDirectoryLock,
+		unlockDirectory, type FileItem
 	} from '$lib/api/files';
 	import { ApiError } from '$lib/api/client';
 	import type { NormalizedFile } from '$lib/types/file';
@@ -21,7 +22,7 @@
 	import type { NameConflictInfo, NameConflictResult } from '$lib/upload-manager.svelte';
 	import PasteUploadProvider from '$lib/components/files/PasteUploadProvider.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
-	import { getShowSystemDirs, setShowSystemDirs, getUploadConcurrency } from '$lib/stores/file-preferences.svelte';
+	import { getShowSystemDirs, setShowSystemDirs, getUploadConcurrency, getDirectoryUnlockTtlHours } from '$lib/stores/file-preferences.svelte';
 	import FilesToolbar, { type SortField, type ViewMode } from '$lib/components/files/FilesToolbar.svelte';
 	import { confirmDelete, promptInput } from '$lib/dialog';
 	import { FileQuestionMark, LoaderCircle } from '@lucide/svelte';
@@ -148,10 +149,29 @@
 	let breadcrumbRef: Breadcrumb | undefined = $state();
 	let pasteTargetLabel = $derived(crumbs.at(-1)?.name ?? m.nav_files());
 
-	function navigateToDir(slug: string) {
+	async function unlockDir(slug: string, name?: string) {
+		const password = await promptInput('目录密码', `请输入${name ? `「${name}」` : '目录'}的密码`, undefined, 128);
+		if (!password) return false;
+		try {
+			await unlockDirectory(slug, password, getDirectoryUnlockTtlHours());
+			toast.success('目录已解锁');
+			return true;
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '目录密码错误');
+			return false;
+		}
+	}
+
+	async function navigateToDirInternal(slug: string) {
+		const file = normalizedFiles.find((item) => item.id === slug);
+		if (file?.isLocked && !(await unlockDir(slug, file.name))) return;
 		loading = true;
 		files = [];
 		void goto('/files/all/' + slug, { keepFocus: true, noScroll: true });
+	}
+
+	function navigateToDir(slug: string) {
+		void navigateToDirInternal(slug);
 	}
 
 	async function fetchBreadcrumb(dirSlug: string) {
@@ -203,6 +223,10 @@
 			if (id !== refreshId) return;
 			if (e instanceof ApiError && e.status === 404) {
 				notFound = true;
+			} else if (e instanceof ApiError && e.status === 423 && currentSlug) {
+				if (await unlockDir(currentSlug, crumbs.at(-1)?.name)) {
+					void refresh(showLoading);
+				}
 			} else {
 				toast.error(e instanceof Error ? e.message : m.load_failed());
 			}
@@ -343,6 +367,30 @@
 		}
 	}
 
+	async function setDirLock(file: NormalizedFile) {
+		const password = await promptInput('设置目录密码', `请输入「${file.name}」的目录密码（至少 4 位）`, undefined, 128);
+		if (!password) return;
+		try {
+			await setDirectoryLock(file.id, password);
+			toast.success('目录密码已设置');
+			await refresh();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '设置目录密码失败');
+		}
+	}
+
+	async function clearDirLock(file: NormalizedFile) {
+		const password = await promptInput('取消目录密码', `请输入「${file.name}」的目录密码`, undefined, 128);
+		if (!password) return;
+		try {
+			await clearDirectoryLock(file.id, password);
+			toast.success('目录密码已取消');
+			await refresh();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '取消目录密码失败');
+		}
+	}
+
 	// --- Preview ---
 		let previewFile = $state<{ slug: string; name: string; mimeType: string; size: number } | null>(null);
 		let shareOpen = $state(false);
@@ -447,6 +495,8 @@
 					onMove={move}
 					onAddToMedia={onAddToMedia}
 					onShare={onShare}
+					onSetDirectoryLock={setDirLock}
+					onClearDirectoryLock={clearDirLock}
 					{loadFolderSummary}
 				/>
 		</div>

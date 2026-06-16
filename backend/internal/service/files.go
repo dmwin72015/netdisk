@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,6 +21,7 @@ import (
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/storage"
 	"github.com/netdisk/server/pkg/fileutil"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type FilesService struct {
@@ -38,6 +41,7 @@ type FileItem struct {
 	Slug         string  `json:"slug"`
 	FileName     string  `json:"fileName"`
 	IsDir        bool    `json:"isDir"`
+	IsLocked     bool    `json:"isLocked"`
 	FileSize     int64   `json:"fileSize"`
 	MimeType     *string `json:"mimeType"`
 	FileCategory string  `json:"fileCategory"`
@@ -67,7 +71,167 @@ type ImportResponse struct {
 	FileName string `json:"fileName"`
 }
 
-// ResolveParent looks up a parent directory by slug, verifying it exists and is not trashed.
+func (s *FilesService) SetDirectoryLock(ctx context.Context, userID int64, sessionID, dirSlug, password string) error {
+	if dirSlug == "" || len(password) < 4 || len(password) > 128 {
+		return model.ErrInvalidInput
+	}
+	dir, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{Slug: dirSlug, UserID: userID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get directory: %w", err)
+	}
+	if !dir.IsDir || dir.IsTrashed || dir.IsSystem {
+		return model.ErrInvalidInput
+	}
+
+	// If the directory already has a lock, verify the old password before changing it.
+	// This is consistent with ClearDirectoryLock and avoids the unlock-then-set two-step.
+	if dir.LockPasswordHash.Valid && dir.LockPasswordHash.String != "" {
+		if password == "" {
+			return model.ErrInvalidInput
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(dir.LockPasswordHash.String), []byte(password)); err != nil {
+			return model.ErrUnauthorized
+		}
+	} else {
+		// No existing lock — only check parent directories are not locked.
+		if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, dir.ID); err != nil {
+			return err
+		}
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), s.cfg.Limits.BcryptCost)
+	if err != nil {
+		return fmt.Errorf("hash directory password: %w", err)
+	}
+	_, err = s.pg.Exec(ctx, `
+		UPDATE user_files
+		SET lock_password_hash = $1, locked_at = NOW(), updated_at = NOW()
+		WHERE id = $2 AND user_id = $3 AND is_dir = TRUE
+	`, string(hash), dir.ID, userID)
+	if err != nil {
+		return fmt.Errorf("set directory lock: %w", err)
+	}
+	if sessionID != "" {
+		if _, err := s.pg.Exec(ctx, `DELETE FROM user_directory_unlocks WHERE user_id = $1 AND directory_id = $2 AND session_id = $3`, userID, dir.ID, sessionID); err != nil {
+			slog.Warn("failed to remove directory unlock after setting lock", "userID", userID, "dirID", dir.ID, "error", err)
+		}
+	}
+	return nil
+}
+
+func (s *FilesService) ClearDirectoryLock(ctx context.Context, userID int64, sessionID, dirSlug, password string) error {
+	dir, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{Slug: dirSlug, UserID: userID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get directory: %w", err)
+	}
+	if !dir.IsDir || dir.IsTrashed || dir.IsSystem {
+		return model.ErrInvalidInput
+	}
+	locked, err := findLockedAncestor(ctx, s.pg, userID, sessionID, dir.ID)
+	if err != nil {
+		return err
+	}
+	if locked != nil && locked.ID != dir.ID {
+		return model.ErrDirectoryLocked
+	}
+	if dir.LockPasswordHash.Valid && dir.LockPasswordHash.String != "" {
+		if password == "" {
+			return model.ErrInvalidInput
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(dir.LockPasswordHash.String), []byte(password)); err != nil {
+			return model.ErrUnauthorized
+		}
+	}
+	_, err = s.pg.Exec(ctx, `
+		UPDATE user_files
+		SET lock_password_hash = NULL, locked_at = NULL, updated_at = NOW()
+		WHERE id = $1 AND user_id = $2
+	`, dir.ID, userID)
+	if err != nil {
+		return fmt.Errorf("clear directory lock: %w", err)
+	}
+	_, _ = s.pg.Exec(ctx, `DELETE FROM user_directory_unlocks WHERE user_id = $1 AND directory_id = $2`, userID, dir.ID)
+	return nil
+}
+
+func (s *FilesService) UnlockDirectory(ctx context.Context, userID int64, sessionID, dirSlug, password string, ttlHours int) error {
+	if sessionID == "" || dirSlug == "" || password == "" {
+		return model.ErrInvalidInput
+	}
+	dir, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{Slug: dirSlug, UserID: userID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get directory: %w", err)
+	}
+	if !dir.IsDir || dir.IsTrashed {
+		return model.ErrInvalidInput
+	}
+	lockDir := dir
+	var lockedDirID int64
+	var passwordHash string
+	if lockDir.LockPasswordHash.Valid && lockDir.LockPasswordHash.String != "" {
+		lockedDirID = lockDir.ID
+		passwordHash = lockDir.LockPasswordHash.String
+	} else {
+		locked, err := findLockedAncestor(ctx, s.pg, userID, sessionID, dir.ID)
+		if err != nil {
+			return err
+		}
+		if locked == nil {
+			return nil
+		}
+		lockedDirID = locked.ID
+		passwordHash = locked.LockPasswordHash
+	}
+	if passwordHash == "" {
+		return model.ErrInvalidInput
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
+		return model.ErrUnauthorized
+	}
+
+	expiresAt, permanent := directoryUnlockExpiry(ttlHours)
+	if permanent {
+		_, err = s.pg.Exec(ctx, `
+			INSERT INTO user_directory_unlocks (user_id, directory_id, session_id, expires_at, updated_at)
+			VALUES ($1, $2, $3, NULL, NOW())
+			ON CONFLICT (user_id, directory_id, session_id)
+			DO UPDATE SET expires_at = NULL, updated_at = NOW()
+		`, userID, lockedDirID, sessionID)
+	} else {
+		_, err = s.pg.Exec(ctx, `
+			INSERT INTO user_directory_unlocks (user_id, directory_id, session_id, expires_at, updated_at)
+			VALUES ($1, $2, $3, $4, NOW())
+			ON CONFLICT (user_id, directory_id, session_id)
+			DO UPDATE SET expires_at = EXCLUDED.expires_at, updated_at = NOW()
+		`, userID, lockedDirID, sessionID, expiresAt)
+	}
+	if err != nil {
+		return fmt.Errorf("store directory unlock: %w", err)
+	}
+	return nil
+}
+
+func directoryUnlockExpiry(ttlHours int) (time.Time, bool) {
+	if ttlHours == PermanentDirectoryUnlockTTL {
+		return time.Time{}, true
+	}
+	switch ttlHours {
+	case 1, 2, 6, 24:
+	default:
+		ttlHours = DefaultDirectoryUnlockTTLHours
+	}
+	return time.Now().Add(time.Duration(ttlHours) * time.Hour), false
+}
+
 func (s *FilesService) ResolveParent(ctx context.Context, userID int64, parentSlug string) (sqlc.UserFile, error) {
 	parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   parentSlug,
@@ -82,11 +246,24 @@ func (s *FilesService) ResolveParent(ctx context.Context, userID int64, parentSl
 	if parent.IsTrashed {
 		return sqlc.UserFile{}, model.ErrNotFound
 	}
+	if !parent.IsDir {
+		return sqlc.UserFile{}, model.ErrNotFound
+	}
 	return parent, nil
 }
 
 // ListUserFiles is the unified file listing method powered by Squirrel.
-func (s *FilesService) ListUserFiles(ctx context.Context, params db.ListFilesParams) ([]FileItem, int, error) {
+func (s *FilesService) ListUserFiles(ctx context.Context, params db.ListFilesParams, sessionID ...string) ([]FileItem, int, error) {
+	sid := ""
+	if len(sessionID) > 0 {
+		sid = sessionID[0]
+	}
+	if !params.IgnoreParentID && params.ParentID != nil {
+		if err := ensureFileUnlocked(ctx, s.pg, params.UserID, sid, *params.ParentID); err != nil {
+			return nil, 0, err
+		}
+	}
+
 	sql, args, countSql, countArgs, err := db.BuildListFilesQuery(params)
 	if err != nil {
 		return nil, 0, err
@@ -108,11 +285,48 @@ func (s *FilesService) ListUserFiles(ctx context.Context, params db.ListFilesPar
 	if err != nil {
 		return nil, 0, fmt.Errorf("scan files: %w", err)
 	}
+	if params.IgnoreParentID || params.IsTrashed {
+		fileRows, err = s.filterVisibleRows(ctx, params.UserID, sid, fileRows)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
 
 	return fileRowsToItems(fileRows), total, nil
 }
 
-func (s *FilesService) ListRecentFiles(ctx context.Context, userID int64, limit int) ([]FileItem, int, error) {
+func (s *FilesService) filterVisibleRows(ctx context.Context, userID int64, sessionID string, rows []db.FileRow) ([]db.FileRow, error) {
+	if len(rows) == 0 {
+		return rows, nil
+	}
+
+	// Collect file IDs for batch lock filtering.
+	fileIDs := make([]int64, len(rows))
+	for i, row := range rows {
+		fileIDs[i] = row.ID
+	}
+
+	visibleIDs, err := filterLockedFileIDs(ctx, s.pg, userID, sessionID, fileIDs)
+	if err != nil {
+		return nil, err
+	}
+	visibleSet := make(map[int64]bool, len(visibleIDs))
+	for _, id := range visibleIDs {
+		visibleSet[id] = true
+	}
+
+	// Self-locked directories are already visible (filterLockedFileIDs only hides
+	// files whose ancestor is locked, not files that are themselves locked).
+	visible := rows[:0]
+	for _, row := range rows {
+		if visibleSet[row.ID] {
+			visible = append(visible, row)
+		}
+	}
+	return visible, nil
+}
+
+func (s *FilesService) ListRecentFiles(ctx context.Context, userID int64, sessionID string, limit int) ([]FileItem, int, error) {
 	params := db.ListFilesParams{
 		UserID:         userID,
 		IncludeDirs:    false,
@@ -123,7 +337,7 @@ func (s *FilesService) ListRecentFiles(ctx context.Context, userID int64, limit 
 		PageSize:       limit,
 	}
 
-	return s.ListUserFiles(ctx, params)
+	return s.ListUserFiles(ctx, params, sessionID)
 }
 
 func (s *FilesService) EnsureSystemDir(ctx context.Context, userID int64, opts SystemDirOptions) (*FileItem, error) {
@@ -204,7 +418,7 @@ type BreadcrumbItem struct {
 	FileName string `json:"fileName"`
 }
 
-func (s *FilesService) GetBreadcrumb(ctx context.Context, userID int64, slug string) ([]BreadcrumbItem, error) {
+func (s *FilesService) GetBreadcrumb(ctx context.Context, userID int64, sessionID, slug string) ([]BreadcrumbItem, error) {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   slug,
 		UserID: userID,
@@ -214,6 +428,9 @@ func (s *FilesService) GetBreadcrumb(ctx context.Context, userID int64, slug str
 			return nil, model.ErrNotFound
 		}
 		return nil, fmt.Errorf("get file: %w", err)
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+		return nil, err
 	}
 
 	ancestors, err := s.queries.GetAncestors(ctx, f.ID)
@@ -231,13 +448,16 @@ func (s *FilesService) GetBreadcrumb(ctx context.Context, userID int64, slug str
 	return result, nil
 }
 
-func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentSlug string) (*FileItem, error) {
+func (s *FilesService) Mkdir(ctx context.Context, userID int64, sessionID, dirName, parentSlug string) (*FileItem, error) {
 	if dirName == "" || len(dirName) > 100 {
 		return nil, model.ErrInvalidInput
 	}
 
 	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureResolvedParentUnlocked(ctx, userID, sessionID, parentID); err != nil {
 		return nil, err
 	}
 
@@ -288,9 +508,12 @@ func (s *FilesService) Mkdir(ctx context.Context, userID int64, dirName, parentS
 	}, nil
 }
 
-func (s *FilesService) CheckConflict(ctx context.Context, userID int64, fileName, preHash, parentSlug string, fileSize int64) (*ConflictResponse, error) {
+func (s *FilesService) CheckConflict(ctx context.Context, userID int64, sessionID, fileName, preHash, parentSlug string, fileSize int64) (*ConflictResponse, error) {
 	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureResolvedParentUnlocked(ctx, userID, sessionID, parentID); err != nil {
 		return nil, err
 	}
 
@@ -337,11 +560,13 @@ func (s *FilesService) CheckConflict(ctx context.Context, userID int64, fileName
 	return &ConflictResponse{Status: "OK"}, nil
 }
 
-func (s *FilesService) CheckDuplicate(ctx context.Context, userID int64, fileHash, parentSlug string) (*ConflictResponse, error) {
-	if parentSlug != "" {
-		if _, err := s.resolveParentID(ctx, userID, parentSlug); err != nil {
-			return nil, err
-		}
+func (s *FilesService) CheckDuplicate(ctx context.Context, userID int64, sessionID, fileHash, parentSlug string) (*ConflictResponse, error) {
+	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureResolvedParentUnlocked(ctx, userID, sessionID, parentID); err != nil {
+		return nil, err
 	}
 
 	pf, err := s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
@@ -365,7 +590,7 @@ func (s *FilesService) CheckDuplicate(ctx context.Context, userID int64, fileHas
 	}, nil
 }
 
-func (s *FilesService) ImportFile(ctx context.Context, userID int64, physicalFileSlug, fileName, parentSlug string) (*ImportResponse, error) {
+func (s *FilesService) ImportFile(ctx context.Context, userID int64, sessionID, physicalFileSlug, fileName, parentSlug string) (*ImportResponse, error) {
 	if fileName == "" || physicalFileSlug == "" {
 		return nil, model.ErrInvalidInput
 	}
@@ -383,6 +608,9 @@ func (s *FilesService) ImportFile(ctx context.Context, userID int64, physicalFil
 
 	parentID, err := s.resolveParentID(ctx, userID, parentSlug)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureResolvedParentUnlocked(ctx, userID, sessionID, parentID); err != nil {
 		return nil, err
 	}
 
@@ -446,7 +674,7 @@ func (s *FilesService) ImportFile(ctx context.Context, userID int64, physicalFil
 	}, nil
 }
 
-func (s *FilesService) TrashFile(ctx context.Context, userID int64, fileSlug string) error {
+func (s *FilesService) TrashFile(ctx context.Context, userID int64, sessionID, fileSlug string) error {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
@@ -462,6 +690,9 @@ func (s *FilesService) TrashFile(ctx context.Context, userID int64, fileSlug str
 	}
 	if f.IsSystem {
 		return model.ErrSystemFileLocked
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+		return err
 	}
 
 	// Check if directory is empty before trashing
@@ -485,7 +716,7 @@ func (s *FilesService) TrashFile(ctx context.Context, userID int64, fileSlug str
 	})
 }
 
-func (s *FilesService) BatchTrashFiles(ctx context.Context, userID int64, slugs []string) error {
+func (s *FilesService) BatchTrashFiles(ctx context.Context, userID int64, sessionID string, slugs []string) error {
 	if len(slugs) == 0 {
 		return nil
 	}
@@ -539,6 +770,9 @@ func (s *FilesService) BatchTrashFiles(ctx context.Context, userID int64, slugs 
 	for _, f := range files {
 		if f.IsSystem {
 			return fmt.Errorf("batch trash: system file cannot be trashed: %s", f.Slug)
+		}
+		if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+			return err
 		}
 		if f.IsDir {
 			dirIDs = append(dirIDs, f.ID)
@@ -737,7 +971,7 @@ func (s *FilesService) RestoreAll(ctx context.Context, userID int64) (int, error
 	return int(result.RowsAffected()), nil
 }
 
-func (s *FilesService) RenameFile(ctx context.Context, userID int64, fileSlug, newName string) error {
+func (s *FilesService) RenameFile(ctx context.Context, userID int64, sessionID, fileSlug, newName string) error {
 	if newName == "" || len(newName) > 100 {
 		return model.ErrInvalidInput
 	}
@@ -754,6 +988,9 @@ func (s *FilesService) RenameFile(ctx context.Context, userID int64, fileSlug, n
 	}
 	if f.IsSystem {
 		return model.ErrSystemFileLocked
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+		return err
 	}
 
 	conflict, err := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
@@ -775,7 +1012,7 @@ func (s *FilesService) RenameFile(ctx context.Context, userID int64, fileSlug, n
 	})
 }
 
-func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, targetParentSlug string) error {
+func (s *FilesService) MoveFile(ctx context.Context, userID int64, sessionID, fileSlug, targetParentSlug string) error {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
@@ -788,6 +1025,9 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 	}
 	if f.IsSystem {
 		return model.ErrSystemFileLocked
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+		return err
 	}
 
 	var targetParentID pgtype.Int8
@@ -804,6 +1044,9 @@ func (s *FilesService) MoveFile(ctx context.Context, userID int64, fileSlug, tar
 		}
 		if !target.IsDir {
 			return model.ErrInvalidInput
+		}
+		if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, target.ID); err != nil {
+			return err
 		}
 		if f.IsDir {
 			if target.ID == f.ID {
@@ -863,7 +1106,7 @@ func (s *FilesService) isDescendantDir(ctx context.Context, userID, sourceID, ta
 	}
 }
 
-func (s *FilesService) SetStarred(ctx context.Context, userID int64, fileSlug string, starred bool) error {
+func (s *FilesService) SetStarred(ctx context.Context, userID int64, sessionID, fileSlug string, starred bool) error {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
@@ -876,6 +1119,9 @@ func (s *FilesService) SetStarred(ctx context.Context, userID int64, fileSlug st
 	}
 	if f.IsSystem {
 		return model.ErrSystemFileLocked
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+		return err
 	}
 
 	return s.queries.SetStarred(ctx, sqlc.SetStarredParams{
@@ -891,7 +1137,7 @@ type DownloadFileResult struct {
 	FileHash string
 }
 
-func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug string) (*DownloadFileResult, error) {
+func (s *FilesService) DownloadFile(ctx context.Context, userID int64, sessionID, fileSlug string) (*DownloadFileResult, error) {
 	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   fileSlug,
 		UserID: userID,
@@ -904,6 +1150,9 @@ func (s *FilesService) DownloadFile(ctx context.Context, userID int64, fileSlug 
 	}
 	if f.IsDir || f.IsTrashed || !f.PhysicalFileID.Valid {
 		return nil, model.ErrNotFound
+	}
+	if err := ensureFileUnlocked(ctx, s.pg, userID, sessionID, f.ID); err != nil {
+		return nil, err
 	}
 
 	pf, err := s.queries.GetPhysicalFileByID(ctx, f.PhysicalFileID.Int64)
@@ -936,6 +1185,7 @@ func fileRowsToItems(files []db.FileRow) []FileItem {
 			Slug:         f.Slug,
 			FileName:     f.FileName,
 			IsDir:        f.IsDir,
+			IsLocked:     f.LockPasswordHash.Valid && f.LockPasswordHash.String != "",
 			FileSize:     f.FileSize,
 			FileCategory: f.FileCategory,
 			IsStarred:    f.IsStarred,
@@ -981,11 +1231,19 @@ func (s *FilesService) resolveParentID(ctx context.Context, userID int64, parent
 	return pgtype.Int8{Int64: parent.ID, Valid: true}, nil
 }
 
+func (s *FilesService) ensureResolvedParentUnlocked(ctx context.Context, userID int64, sessionID string, parentID pgtype.Int8) error {
+	if !parentID.Valid {
+		return nil
+	}
+	return ensureFileUnlocked(ctx, s.pg, userID, sessionID, parentID.Int64)
+}
+
 func fileToItem(f sqlc.UserFile) FileItem {
 	item := FileItem{
 		Slug:         f.Slug,
 		FileName:     f.FileName,
 		IsDir:        f.IsDir,
+		IsLocked:     f.LockPasswordHash.Valid && f.LockPasswordHash.String != "",
 		FileSize:     f.FileSize,
 		FileCategory: f.FileCategory,
 		IsStarred:    f.IsStarred,

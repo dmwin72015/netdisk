@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X, FolderInput, Share2 } from "@lucide/svelte";
+  import { LoaderCircle, FolderPlus, Star, Check, Download, Trash2, X, FolderInput, Share2, Lock } from "@lucide/svelte";
   import { fade, fly } from "svelte/transition";
   import type { NormalizedFile } from "$lib/types/file";
   import { fmtSize, fmtTime, copyToClipboard } from "$lib/utils/format";
@@ -40,6 +40,8 @@
     onMove,
     onAddToMedia,
     onShare,
+    onSetDirectoryLock,
+    onClearDirectoryLock,
     loadFolderSummary,
   }: {
     files: NormalizedFile[];
@@ -60,6 +62,8 @@
     onMove?: (ids: string[], targetSlug: string) => Promise<void>;
     onAddToMedia?: (file: NormalizedFile) => void;
     onShare?: (file: NormalizedFile) => void;
+    onSetDirectoryLock?: (file: NormalizedFile) => void;
+    onClearDirectoryLock?: (file: NormalizedFile) => void;
     loadFolderSummary?: (id: string) => Promise<FolderSummary>;
   } = $props();
 
@@ -311,6 +315,8 @@
             onMove={onMove ? openSingleMoveDialog : undefined}
             {onAddToMedia}
             {onShare}
+            {onSetDirectoryLock}
+            {onClearDirectoryLock}
             onShowDetails={showDetails}
             onCopyLink={copyFileLink}
             triggerClass="rounded-lg bg-white/90 p-1 text-gray-400 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-gray-600"
@@ -343,6 +349,9 @@
             <span class="shrink-0 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
               {m.system_badge()}
             </span>
+          {/if}
+          {#if f.isLocked}
+            <Lock size={12} class="shrink-0 text-gray-400" />
           {/if}
         </div>
         <p class="mt-0.5 text-xs text-gray-400">
@@ -426,6 +435,9 @@
                     {m.system_badge()}
                   </span>
                 {/if}
+                {#if f.isLocked}
+                  <Lock size={12} class="shrink-0 text-gray-400" />
+                {/if}
                 {#if f.isStarred}
                   <Star size={12} class="shrink-0 text-amber-400" fill="currentColor" />
                 {/if}
@@ -444,6 +456,8 @@
                     onMove={onMove ? openSingleMoveDialog : undefined}
                     {onAddToMedia}
                     {onShare}
+                    {onSetDirectoryLock}
+                    {onClearDirectoryLock}
                     onShowDetails={showDetails}
                     onCopyLink={copyFileLink}
                     triggerClass="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"

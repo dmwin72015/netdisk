@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 
+	"github.com/netdisk/server/internal/middleware"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
@@ -104,7 +105,7 @@ func (h *UploadHandler) Init(c echo.Context) error {
 	}
 	h.logger.Info().Int64("userID", userID).Str("fileName", input.FileName).Int64("fileSize", input.FileSize).Str("mimeType", input.MimeType).Str("parentSlug", input.ParentSlug).Str("fileHash", safeHashPrefix(input.FileHash)).Str("preHash", safeHashPrefix(input.PreHash)).Msg("init: request")
 
-	resp, err := h.svc.Init(c.Request().Context(), userID, input)
+	resp, err := h.svc.Init(c.Request().Context(), userID, middleware.SessionID(c), input)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("fileName", input.FileName).Int64("fileSize", input.FileSize).Err(err).Msg("init: service error")
 		return err
@@ -273,7 +274,7 @@ func (h *UploadHandler) RetryTask(c echo.Context) error {
 		return model.ErrInvalidInput
 	}
 
-	resp, err := h.svc.RetryTask(c.Request().Context(), userID, slug)
+	resp, err := h.svc.RetryTask(c.Request().Context(), userID, middleware.SessionID(c), slug)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,7 @@ const (
 	ErrCodeUnsupportedType  = 2009
 	ErrCodeUnsupportedImage = 2010
 	ErrCodeSystemFileLocked = 2011
+	ErrCodeDirectoryLocked  = 2012
 
 	// Upload
 	ErrCodeChallengeExpired  = 3001
@@ -48,4 +49,5 @@ var (
 	ErrFileRequired      = errors.New("file is required")
 	ErrUnsupportedImage  = errors.New("only JPEG, PNG and WebP are supported")
 	ErrSystemFileLocked  = errors.New("system file cannot be modified")
+	ErrDirectoryLocked   = errors.New("directory is locked")
 )

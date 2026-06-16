@@ -19,11 +19,11 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/netdisk/server/internal/config"
 	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/pkg/jwtutil"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type AuthService struct {
@@ -150,11 +150,11 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 	}
 
 	return &UserResponse{
-		Slug:          user.Slug,
-		Username:      user.Username,
-		Email:         user.Email,
-		Status:        user.Status,
-		Role:          user.Role,
+		Slug:           user.Slug,
+		Username:       user.Username,
+		Email:          user.Email,
+		Status:         user.Status,
+		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
 		Profile: ProfileData{
 			DisplayName: user.Username,
@@ -279,7 +279,7 @@ func (s *AuthService) Refresh(ctx context.Context, input RefreshInput) (*TokenPa
 	}
 
 	// Issue new tokens.
-	tokens, err := s.issueTokens(ctx, claims.UserID)
+	tokens, err := s.issueTokens(ctx, claims.UserID, claims.SID)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +287,7 @@ func (s *AuthService) Refresh(ctx context.Context, input RefreshInput) (*TokenPa
 	return tokens, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+func (s *AuthService) Logout(ctx context.Context, refreshToken string, userID int64, sessionID string) error {
 	if refreshToken == "" {
 		return model.ErrInvalidInput
 	}
@@ -296,21 +296,53 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	rt, err := s.queries.GetRefreshTokenByHash(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil // Already invalid, treat as success.
+			s.cleanDirectoryUnlocks(ctx, userID, sessionID)
+			return nil
 		}
 		return fmt.Errorf("get refresh token: %w", err)
 	}
 
-	return s.queries.RevokeRefreshToken(ctx, rt.ID)
+	err = s.queries.RevokeRefreshToken(ctx, rt.ID)
+
+	// Always clean up directory unlocks for this session, even if revocation fails.
+	s.cleanDirectoryUnlocks(ctx, userID, sessionID)
+
+	return err
 }
 
-func (s *AuthService) issueTokens(ctx context.Context, userID int64) (*TokenPair, error) {
-	accessTok, _, err := s.jwtMgr.GenerateAccessToken(userID)
+// cleanDirectoryUnlocks removes all directory unlocks for a user+session,
+// and also cleans up any expired unlocks for the user.
+func (s *AuthService) cleanDirectoryUnlocks(ctx context.Context, userID int64, sessionID string) {
+	_, _ = s.pg.Exec(ctx,
+		`DELETE FROM user_directory_unlocks
+		 WHERE user_id = $1 AND session_id = $2`,
+		userID, sessionID,
+	)
+	// Also clean up expired unlocks for the user.
+	_, _ = s.pg.Exec(ctx,
+		`DELETE FROM user_directory_unlocks
+		 WHERE user_id = $1
+		   AND expires_at IS NOT NULL
+		   AND expires_at <= NOW()`,
+		userID,
+	)
+}
+
+func (s *AuthService) issueTokens(ctx context.Context, userID int64, sessionID ...string) (*TokenPair, error) {
+	sid := ""
+	if len(sessionID) > 0 {
+		sid = sessionID[0]
+	}
+	if sid == "" {
+		sid = makeState()
+	}
+
+	accessTok, _, err := s.jwtMgr.GenerateAccessToken(userID, sid)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
-	refreshTok, _, expiresAt, err := s.jwtMgr.GenerateRefreshToken(userID)
+	refreshTok, _, expiresAt, err := s.jwtMgr.GenerateRefreshToken(userID, sid)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
@@ -361,11 +393,11 @@ func (s *AuthService) OAuthAuthorize(ctx context.Context, provider string) (stri
 	redirectURI := s.cfg.OAuth2.RedirectBaseURL + "/api/v1/auth/oauth/" + provider + "/callback"
 
 	params := url.Values{
-		"client_id":    {prov.ClientID},
-		"redirect_uri": {redirectURI},
+		"client_id":     {prov.ClientID},
+		"redirect_uri":  {redirectURI},
 		"response_type": {"code"},
-		"scope":        {prov.Scope},
-		"state":        {state},
+		"scope":         {prov.Scope},
+		"state":         {state},
 	}
 
 	return prov.AuthURL + "?" + params.Encode(), nil
@@ -590,11 +622,11 @@ func randomPasswordHash() string {
 
 func exchangeCode(prov config.OAuth2ProviderConfig, redirectURI, code string) (*OAuthTokenResponse, error) {
 	form := url.Values{
-		"grant_type":   {"authorization_code"},
-		"code":         {code},
-		"client_id":    {prov.ClientID},
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"client_id":     {prov.ClientID},
 		"client_secret": {prov.ClientSecret},
-		"redirect_uri": {redirectURI},
+		"redirect_uri":  {redirectURI},
 	}
 
 	resp, err := http.PostForm(prov.TokenURL, form)
@@ -614,7 +646,7 @@ func exchangeCode(prov config.OAuth2ProviderConfig, redirectURI, code string) (*
 
 	// Try wrapper format first: { "c": 0, "d": { ... } }
 	var wrapped struct {
-		C int              `json:"c"`
+		C int                 `json:"c"`
 		D *OAuthTokenResponse `json:"d"`
 	}
 	if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.D != nil {
@@ -653,8 +685,8 @@ func getUserInfo(prov config.OAuth2ProviderConfig, accessToken string) (*OAuthUs
 
 	// Try wrapper format first
 	var wrapped struct {
-		C int              `json:"c"`
-		D *OAuthUserInfo   `json:"d"`
+		C int            `json:"c"`
+		D *OAuthUserInfo `json:"d"`
 	}
 	if err := json.Unmarshal(body, &wrapped); err == nil && wrapped.D != nil {
 		return wrapped.D, nil

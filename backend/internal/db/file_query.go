@@ -135,7 +135,7 @@ func BuildListFilesQuery(p ListFilesParams) (sql string, args []any, countSql st
 	listQuery := psql.Select(
 		"f.id", "f.slug", "f.file_name", "f.is_dir", "f.file_size",
 		"f.mime_type", "f.file_category", "f.is_starred",
-		"f.is_system", "f.system_kind",
+		"f.is_system", "f.system_kind", "f.lock_password_hash",
 		"f.created_at", "f.updated_at", "f.parent_slug",
 		"p.file_name AS parent_name",
 	).

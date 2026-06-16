@@ -240,13 +240,16 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 	}, nil
 }
 
-func (s *UploadService) Init(ctx context.Context, userID int64, req InitRequest) (*InitResponse, error) {
+func (s *UploadService) Init(ctx context.Context, userID int64, sessionID string, req InitRequest) (*InitResponse, error) {
 	if req.PreHash == "" || req.FileSize <= 0 || req.MimeType == "" {
 		s.logger.Warn().Int64("userID", userID).Str("preHash", req.PreHash).Int64("fileSize", req.FileSize).Str("mimeType", req.MimeType).Str("fileName", req.FileName).Msg("init: invalid input - missing required fields")
 		return nil, model.ErrInvalidInput
 	}
 	if req.FileSize > s.cfg.Storage.MaxUploadSize {
 		return nil, model.ErrFileTooLarge
+	}
+	if err := s.ensureUploadParentUnlocked(ctx, userID, sessionID, req.ParentSlug); err != nil {
+		return nil, err
 	}
 
 	// Resume check only when hash is known
@@ -784,7 +787,7 @@ func (s *UploadService) DeleteTasks(ctx context.Context, userID int64, slugs []s
 	return nil
 }
 
-func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug string) (*InitResponse, error) {
+func (s *UploadService) RetryTask(ctx context.Context, userID int64, sessionID, taskSlug string) (*InitResponse, error) {
 	task, err := s.queries.GetUploadTaskBySlug(ctx, taskSlug)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -798,6 +801,11 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 	if task.Status != "failed" {
 		s.logger.Warn().Str("slug", taskSlug).Str("status", task.Status).Msg("retry-task: task not in failed status")
 		return nil, model.ErrInvalidInput
+	}
+	if task.ParentSlug.Valid {
+		if err := s.ensureUploadParentUnlocked(ctx, userID, sessionID, task.ParentSlug.String); err != nil {
+			return nil, err
+		}
 	}
 
 	totalChunks := int32(math.Ceil(float64(task.FileSize) / float64(s.cfg.Upload.ChunkSize)))
@@ -833,4 +841,24 @@ func (s *UploadService) RetryTask(ctx context.Context, userID int64, taskSlug st
 		ChunkSize:       s.cfg.Upload.ChunkSize,
 		CompletedChunks: []int{},
 	}, nil
+}
+
+func (s *UploadService) ensureUploadParentUnlocked(ctx context.Context, userID int64, sessionID, parentSlug string) error {
+	if parentSlug == "" {
+		return nil
+	}
+	parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+		Slug:   parentSlug,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		return fmt.Errorf("get upload parent: %w", err)
+	}
+	if parent.IsTrashed || !parent.IsDir {
+		return model.ErrNotFound
+	}
+	return ensureFileUnlocked(ctx, s.pg, userID, sessionID, parent.ID)
 }

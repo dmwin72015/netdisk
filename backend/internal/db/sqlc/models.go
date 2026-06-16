@@ -8,6 +8,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type FileShare struct {
+	ID           int64              `json:"id"`
+	Slug         string             `json:"slug"`
+	UserID       int64              `json:"userId"`
+	PasswordCode pgtype.Text        `json:"passwordCode"`
+	ExpiresAt    pgtype.Timestamptz `json:"expiresAt"`
+	DisabledAt   pgtype.Timestamptz `json:"disabledAt"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+	DeletedAt    pgtype.Timestamptz `json:"deletedAt"`
+}
+
+type FileShareItem struct {
+	ID        int64              `json:"id"`
+	ShareID   int64              `json:"shareId"`
+	FileID    int64              `json:"fileId"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+}
+
 type MediaItem struct {
 	ID             int64              `json:"id"`
 	Slug           string             `json:"slug"`
@@ -120,25 +139,37 @@ type User struct {
 	Role           string             `json:"role"`
 }
 
+type UserDirectoryUnlock struct {
+	ID          int64              `json:"id"`
+	UserID      int64              `json:"userId"`
+	DirectoryID int64              `json:"directoryId"`
+	SessionID   string             `json:"sessionId"`
+	ExpiresAt   pgtype.Timestamptz `json:"expiresAt"`
+	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt   pgtype.Timestamptz `json:"updatedAt"`
+}
+
 type UserFile struct {
-	ID             int64              `json:"id"`
-	Slug           string             `json:"slug"`
-	UserID         int64              `json:"userId"`
-	PhysicalFileID pgtype.Int8        `json:"physicalFileId"`
-	ParentID       pgtype.Int8        `json:"parentId"`
-	FileName       string             `json:"fileName"`
-	IsDir          bool               `json:"isDir"`
-	FileSize       int64              `json:"fileSize"`
-	MimeType       pgtype.Text        `json:"mimeType"`
-	IsStarred      bool               `json:"isStarred"`
-	IsTrashed      bool               `json:"isTrashed"`
-	TrashedAt      pgtype.Timestamptz `json:"trashedAt"`
-	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`
-	FileCategory   string             `json:"fileCategory"`
-	ParentSlug     pgtype.Text        `json:"parentSlug"`
-	IsSystem       bool               `json:"isSystem"`
-	SystemKind     pgtype.Text        `json:"systemKind"`
+	ID               int64              `json:"id"`
+	Slug             string             `json:"slug"`
+	UserID           int64              `json:"userId"`
+	PhysicalFileID   pgtype.Int8        `json:"physicalFileId"`
+	ParentID         pgtype.Int8        `json:"parentId"`
+	FileName         string             `json:"fileName"`
+	IsDir            bool               `json:"isDir"`
+	FileSize         int64              `json:"fileSize"`
+	MimeType         pgtype.Text        `json:"mimeType"`
+	IsStarred        bool               `json:"isStarred"`
+	IsTrashed        bool               `json:"isTrashed"`
+	TrashedAt        pgtype.Timestamptz `json:"trashedAt"`
+	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
+	FileCategory     string             `json:"fileCategory"`
+	ParentSlug       pgtype.Text        `json:"parentSlug"`
+	IsSystem         bool               `json:"isSystem"`
+	SystemKind       pgtype.Text        `json:"systemKind"`
+	LockPasswordHash pgtype.Text        `json:"lockPasswordHash"`
+	LockedAt         pgtype.Timestamptz `json:"lockedAt"`
 }
 
 type UserLevel struct {
@@ -171,6 +202,12 @@ type UserProfile struct {
 	Bio         pgtype.Text        `json:"bio"`
 	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt   pgtype.Timestamptz `json:"updatedAt"`
+}
+
+type UserSetting struct {
+	UserID    int64              `json:"userId"`
+	Settings  []byte             `json:"settings"`
+	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
 }
 
 type UserStorageStat struct {
