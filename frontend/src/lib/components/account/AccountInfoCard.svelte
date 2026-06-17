@@ -7,6 +7,7 @@
 	import { unlinkOAuth } from '$lib/api/profile';
 	import { ApiError } from '$lib/api/client';
 	import { getAccessToken } from '$lib/api/client';
+	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
 
 	let {
@@ -50,17 +51,28 @@
 	let unlinkTarget = $state<string | null>(null);
 	let unlinkDialogOpen = $state(false);
 	let unlinkBusy = $state(false);
+	let replaceTarget = $state<{
+		provider: string;
+		token: string;
+		oldProviderAccountId?: string;
+		oldOauthEmail?: string;
+	} | null>(null);
+	let replaceDialogOpen = $state(false);
+	let replaceBusy = $state(false);
 
 	async function confirmUnlink() {
 		if (!unlinkTarget) return;
 		unlinkBusy = true;
 		unlinkError = null;
 		try {
-			await unlinkOAuth(unlinkTarget);
+			const target = unlinkTarget;
+			await unlinkOAuth(target);
 			unlinkTarget = null;
 			onRefresh?.();
+			toast.success(`已成功解绑 ${knownProviders[target]?.name ?? target}`);
 		} catch (err) {
 			unlinkError = err instanceof ApiError ? err.message : 'Failed to unlink';
+			toast.error(unlinkError);
 		} finally {
 			unlinkBusy = false;
 		}
@@ -80,20 +92,104 @@
 		);
 	}
 
-	function onMessage(event: MessageEvent) {
-		if (event.origin !== location.origin) return;
-		const { bound, error } = event.data ?? {};
-		if (bound === undefined) return;
+	function closeBindPopup() {
 		if (bindPopup && !bindPopup.closed) {
 			bindPopup.close();
 		}
 		bindPopup = null;
-		if (error) {
-			bindError = error;
+	}
+
+	function onMessage(event: MessageEvent) {
+		if (event.origin !== location.origin) return;
+		const data = event.data ?? {};
+		const {
+			needReplaceConfirm,
+			replaceToken,
+			replaceProvider,
+			oldProviderAccountId,
+			oldOauthEmail,
+			bound,
+			provider,
+			error,
+			alreadyBound
+		} = data as {
+			needReplaceConfirm?: boolean;
+			replaceToken?: string;
+			replaceProvider?: string;
+			oldProviderAccountId?: string;
+			oldOauthEmail?: string;
+			bound?: boolean;
+			provider?: string;
+			error?: string | null;
+			alreadyBound?: boolean;
+		};
+
+		if (needReplaceConfirm) {
+			closeBindPopup();
+			bindError = null;
+			replaceTarget = {
+				provider: replaceProvider ?? provider ?? '',
+				token: replaceToken ?? '',
+				oldProviderAccountId,
+				oldOauthEmail
+			};
+			replaceDialogOpen = true;
 			return;
 		}
+
+		if (bound === undefined) return;
+
+		// Any terminal bind message (success, already-bound, or error) must close
+		// the popup so the user is not stuck looking at the OAuth provider page.
+		closeBindPopup();
+
+		const providerName = knownProviders[provider]?.name ?? provider ?? '';
+
+		if (error) {
+			bindError = error;
+			toast.error(error);
+			return;
+		}
+
 		bindError = null;
+		if (alreadyBound) {
+			toast.info(`该 ${providerName} 账号已绑定到当前账号`);
+		} else {
+			toast.success(`已成功绑定 ${providerName}`);
+		}
 		onRefresh?.();
+	}
+
+	async function confirmReplace() {
+		if (!replaceTarget) return;
+		replaceBusy = true;
+		bindError = null;
+		try {
+			const response = await fetch(
+				`/api/v1/auth/oauth/bind/confirm-replace?token=${encodeURIComponent(replaceTarget.token)}`,
+				{
+					method: 'POST',
+					headers: {
+						'Authorization': `Bearer ${getAccessToken()}`,
+					},
+				}
+			);
+			if (!response.ok) {
+				const data = await response.json().catch(() => ({}));
+				throw new ApiError(data.message || 'Failed to replace binding', response.status, 0);
+			}
+			const providerName =
+				knownProviders[replaceTarget?.provider ?? '']?.name ?? replaceTarget?.provider ?? '';
+			replaceTarget = null;
+			replaceDialogOpen = false;
+			onRefresh?.();
+			toast.success(`已成功绑定 ${providerName}`);
+		} catch (err) {
+			bindError = err instanceof ApiError ? err.message : 'Failed to replace binding';
+			toast.error(bindError);
+		} finally {
+			replaceBusy = false;
+		}
 	}
 
 	onMount(() => {
@@ -193,9 +289,6 @@
 		{/each}
 	</div>
 
-	{#if bindError}
-		<p class="mt-2 text-xs text-red-500">{bindError}</p>
-	{/if}
 	{#if unlinkError}
 		<p class="mt-2 text-xs text-red-500">{unlinkError}</p>
 	{/if}
@@ -209,4 +302,19 @@
 	variant="destructive"
 	onConfirm={confirmUnlink}
 	onCancel={() => { unlinkTarget = null; unlinkDialogOpen = false; }}
+/>
+
+<AlertDialog
+	bind:open={replaceDialogOpen}
+	title="Replace {knownProviders[replaceTarget?.provider ?? '']?.name ?? replaceTarget?.provider ?? ''} binding"
+	description={(() => {
+		const ident = replaceTarget?.oldOauthEmail || replaceTarget?.oldProviderAccountId;
+		return ident
+			? `This account is already linked to another ${knownProviders[replaceTarget?.provider ?? '']?.name ?? replaceTarget?.provider ?? ''} account (${ident}). Replacing it will unbind that account and link the new one to your current account.`
+			: `This account is already linked to another ${knownProviders[replaceTarget?.provider ?? '']?.name ?? replaceTarget?.provider ?? ''} account. Replacing it will unbind that account and link the new one to your current account.`;
+	})()}
+	confirmText={replaceBusy ? 'Replacing...' : 'Replace'}
+	variant="destructive"
+	onConfirm={confirmReplace}
+	onCancel={() => { replaceTarget = null; replaceDialogOpen = false; }}
 />

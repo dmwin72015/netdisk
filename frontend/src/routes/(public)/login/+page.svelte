@@ -2,8 +2,9 @@
 	import { goto } from '$app/navigation';
 	import { login } from '$lib/api/auth';
 	import { setUser } from '$lib/stores/auth';
-	import { ApiError, api, updateTokens, type UserInfo } from '$lib/api/client';
+	import { ApiError, api, updateTokens, type Tokens, type UserInfo } from '$lib/api/client';
 	import AuthShell from '$lib/components/AuthShell.svelte';
+	import AlertDialog from '$lib/ui/alert-dialog/AlertDialog.svelte';
 	import { Cloud, LockKeyhole, Mail, ShieldCheck, Sparkles, ExternalLink } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -12,6 +13,9 @@
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 	let oauthBusy = $state(false);
+	let emailConfirmOpen = $state(false);
+	let emailConfirmTarget = $state<{ token: string; email: string; provider: string } | null>(null);
+	let emailConfirmBusy = $state(false);
 
 	async function submit(e: Event) {
 		e.preventDefault();
@@ -40,15 +44,24 @@
 		);
 
 		if (!popup) {
-			error = 'Popup was blocked. Please allow popups for this site.';
+			error = m.oauth_popup_blocked();
 			return;
 		}
 
 		oauthBusy = true;
 
-		function onMessage(event: MessageEvent) {
+		async function onMessage(event: MessageEvent) {
 			if (event.origin !== location.origin) return;
-			const { accessToken, refreshToken } = event.data ?? {};
+			const data = event.data ?? {};
+			const { accessToken, refreshToken, emailMatchConfirm, confirmToken, email: matchEmail, provider } = data;
+
+			if (emailMatchConfirm && confirmToken) {
+				popup?.close();
+				emailConfirmTarget = { token: confirmToken, email: matchEmail, provider };
+				emailConfirmOpen = true;
+				return;
+			}
+
 			if (!accessToken || !refreshToken) return;
 
 			window.removeEventListener('message', onMessage);
@@ -68,6 +81,35 @@
 		}
 
 		window.addEventListener('message', onMessage);
+
+		const closeCheck = setInterval(() => {
+			if (popup.closed) {
+				clearInterval(closeCheck);
+				window.removeEventListener('message', onMessage);
+				oauthBusy = false;
+			}
+		}, 500);
+	}
+
+	async function confirmEmailLink() {
+		if (!emailConfirmTarget) return;
+		emailConfirmBusy = true;
+		error = null;
+		try {
+			const tokens = await api<Tokens>(
+				`/api/v1/auth/oauth/email-confirm?token=${encodeURIComponent(emailConfirmTarget.token)}`,
+				{ method: 'POST' },
+			);
+			emailConfirmTarget = null;
+			updateTokens(tokens);
+			const userData = await api<UserInfo>('/api/v1/user/me', { method: 'GET' });
+			setUser(userData);
+			await goto('/');
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : m.oauth_link_failed();
+		} finally {
+			emailConfirmBusy = false;
+		}
 	}
 </script>
 
@@ -197,3 +239,14 @@
 		</div>
 	</section>
 </AuthShell>
+
+<AlertDialog
+	bind:open={emailConfirmOpen}
+	title={m.oauth_link_existing_title()}
+	description={emailConfirmTarget
+		? m.oauth_link_existing_desc({ email: emailConfirmTarget.email, provider: emailConfirmTarget.provider })
+		: ''}
+	confirmText={emailConfirmBusy ? m.oauth_linking() : m.oauth_link_login()}
+	onConfirm={confirmEmailLink}
+	onCancel={() => { emailConfirmOpen = false; emailConfirmTarget = null; }}
+/>

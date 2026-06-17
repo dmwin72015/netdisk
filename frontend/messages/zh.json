@@ -409,5 +409,13 @@
   "reading_files": "正在读取文件...",
   "please_login_en": "请先 {link}。",
   "select_date": "选择日期",
-  "no_users": "暂无用户"
+  "no_users": "暂无用户",
+
+  "oauth_popup_blocked": "弹窗被拦截，请允许此网站的弹窗",
+  "oauth_link_existing_title": "关联已有账号？",
+  "oauth_link_existing_desc": "邮箱 {email} 来自 {provider} 已有账号，是否关联此 {provider} 账号并登录？",
+  "oauth_linking": "关联中…",
+  "oauth_link_login": "关联并登录",
+  "oauth_link_failed": "关联账号失败",
+  "oauth_email_registered": "邮箱 {email} 已经注册，请使用邮箱和密码登录后，在设置中关联此账号。"
 }

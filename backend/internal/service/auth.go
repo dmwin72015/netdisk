@@ -411,10 +411,19 @@ type OAuthCallbackResult struct {
 	User    *UserResponse
 	Tokens  *TokenPair
 	// Bind flow fields
-	IsBind        bool   // true when this is a bind (not login) result
-	Provider      string // the provider that was bound
-	Conflict      bool   // true when the OAuth account is already bound to another user
-	ConflictToken string // token to confirm the rebind
+	IsBind               bool   // true when this is a bind (not login) result
+	Provider             string // the provider that was bound
+	AlreadyBound         bool   `json:"alreadyBound"`         // true when bind flow detected the account is already bound to the current user
+	NeedReplaceConfirm   bool   `json:"needReplaceConfirm"`   // true when the current user already has a binding for the same provider with a different third-party account
+	ReplaceToken         string `json:"replaceToken"`         // one-time token to confirm the replacement
+	ReplaceProvider      string `json:"replaceProvider"`      // the provider that would be replaced (mirrors Provider for the frontend)
+	OldProviderAccountID string `json:"oldProviderAccountId"` // the existing provider_account_id that would be replaced (helps UI identify it)
+	OldOAuthEmail        string `json:"oldOauthEmail"`        // the existing oauth_email that would be replaced (helps UI identify it)
+	// Email match confirm flow (login path)
+	EmailMatchConfirm bool   `json:"emailMatchConfirm"` // true when the third-party email matches an existing user, needs confirmation
+	ConfirmToken      string `json:"confirmToken"`      // one-time token to complete the email-match + linking
+	MatchEmail        string `json:"matchEmail"`        // the matched email for display
+	MatchProvider     string `json:"matchProvider"`     // the OAuth provider name for display
 }
 
 // OAuthAuthorizeForBind returns the authorization URL for binding an OAuth account to the current user.
@@ -489,34 +498,55 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 
 	// Bind flow: link OAuth account to existing user without creating user or issuing tokens
 	if bindUserID != 0 {
-		// Check if OAuth account is already bound to another user
+		// 1. Check if the third-party account is already bound somewhere
 		existing, err := s.queries.GetOAuthAccountByProviderAndID(ctx, sqlc.GetOAuthAccountByProviderAndIDParams{
 			Provider:          provider,
 			ProviderAccountID: userInfo.ID,
 		})
 		if err == nil {
 			if existing.UserID != bindUserID {
-				// Conflict: already bound to another user — store confirm token
-				confirmToken := makeState()
-				confirmVal := fmt.Sprintf("%s:%d:%s:%s:%s", provider, bindUserID, userInfo.ID, userInfo.Email, tokenResp.AccessToken)
-				if err := s.rdb.Set(ctx, "nd:oauth:confirm:"+confirmToken, confirmVal, 10*time.Minute).Err(); err != nil {
-					return nil, fmt.Errorf("store confirm token: %w", err)
-				}
-				return &OAuthCallbackResult{
-					IsBind:        true,
-					Provider:      provider,
-					Conflict:      true,
-					ConflictToken: confirmToken,
-				}, nil
+				// Already bound to another user — reject. The user must unbind
+				// it from the original account before binding it here.
+				errMsg := fmt.Sprintf("此 %s 账号已被其他账号关联，请先在原账号解绑后再来关联", provider)
+				return &OAuthCallbackResult{IsBind: true, Provider: provider}, errors.New(errMsg)
 			}
-			return &OAuthCallbackResult{IsBind: true, Provider: provider}, errors.New("this " + provider + " account is already linked to your account")
+			// Already bound to the current user — no-op. The user-facing
+			// email is left untouched; we do not refresh access_token / oauth_email
+			// here per requirements.
+			return &OAuthCallbackResult{IsBind: true, Provider: provider, AlreadyBound: true}, nil
 		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("find oauth account: %w", err)
+			return &OAuthCallbackResult{IsBind: true, Provider: provider}, fmt.Errorf("find oauth account: %w", err)
 		}
 
-		// Not bound yet — insert
+		// 2. Third-party account is free. Check whether the current user already
+		// has a binding for the same provider (a different third-party account).
+		// If so, we need explicit user confirmation before replacing it.
+		oldProviderAccountID, oldOAuthEmail, hasOldForProvider, err := s.findUserOAuthForProvider(ctx, bindUserID, provider)
+		if err != nil {
+			return &OAuthCallbackResult{IsBind: true, Provider: provider}, err
+		}
+
+		if hasOldForProvider {
+			// Mint a one-time replace token (10 min) and ask the user to confirm.
+			replaceToken := makeState()
+			replaceVal := fmt.Sprintf("%s:%d:%s:%s:%s", provider, bindUserID, userInfo.ID, userInfo.Email, tokenResp.AccessToken)
+			if err := s.rdb.Set(ctx, "nd:oauth:bind-replace:"+replaceToken, replaceVal, 10*time.Minute).Err(); err != nil {
+				return &OAuthCallbackResult{IsBind: true, Provider: provider}, fmt.Errorf("store replace token: %w", err)
+			}
+			return &OAuthCallbackResult{
+				IsBind:               true,
+				Provider:             provider,
+				NeedReplaceConfirm:   true,
+				ReplaceToken:         replaceToken,
+				ReplaceProvider:      provider,
+				OldProviderAccountID: oldProviderAccountID,
+				OldOAuthEmail:        oldOAuthEmail,
+			}, nil
+		}
+
+		// 3. No prior binding for this provider — bind directly.
 		if err := s.upsertOAuthAccount(ctx, bindUserID, provider, userInfo.ID, userInfo.Email, tokenResp.AccessToken); err != nil {
-			return nil, fmt.Errorf("upsert oauth account: %w", err)
+			return &OAuthCallbackResult{IsBind: true, Provider: provider}, fmt.Errorf("upsert oauth account: %w", err)
 		}
 
 		// Sync avatar if user doesn't have one yet
@@ -533,77 +563,42 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		return &OAuthCallbackResult{IsBind: true, Provider: provider}, nil
 	}
 
-	// Find or create local user by OAuth binding first, then by email
+	// Login path: look up an existing binding for the third-party account.
+	// If none, auto-create a new local user and bind the OAuth account.
 	user, err := s.resolveOAuthUser(ctx, provider, userInfo)
 	if err != nil {
 		return nil, err
 	}
-	isNew := user == nil
-
-	if isNew {
-		slug, err := gonanoid.New(21)
-		if err != nil {
-			return nil, fmt.Errorf("generate slug: %w", err)
-		}
-
-		tx, err := s.pg.Begin(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("begin tx: %w", err)
-		}
-		defer tx.Rollback(ctx)
-
-		// Use raw SQL to support NULL email
-		var registerMethod string
+	if user == nil {
+		// No prior binding — check whether the email matches an existing
+		// user (e.g. after unbind and re-login). If so, require explicit
+		// confirmation from the user before linking and logging in.
 		if userInfo.Email != "" {
-			registerMethod = "oauth"
-		} else {
-			registerMethod = "oauth_noemail"
-		}
-		var newUser sqlc.User
-		err = tx.QueryRow(ctx, `
-			INSERT INTO users (slug, username, email, password_hash, register_method)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, slug, username, email, password_hash, status, created_at, updated_at, register_method, role
-		`, slug, userInfo.Username, nullIfEmpty(userInfo.Email), randomPasswordHash(), registerMethod).Scan(
-			&newUser.ID, &newUser.Slug, &newUser.Username, &newUser.Email, &newUser.PasswordHash,
-			&newUser.Status, &newUser.CreatedAt, &newUser.UpdatedAt, &newUser.RegisterMethod, &newUser.Role,
-		)
-		if err != nil {
-			if isUniqueViolation(err) {
-				return nil, model.ErrAlreadyExists
+			existingUser, err := s.queries.GetUserByEmail(ctx, userInfo.Email)
+			if err == nil {
+				confirmToken := makeState()
+				confirmVal := fmt.Sprintf("%s:%d:%s:%s:%s", provider, existingUser.ID, userInfo.ID, userInfo.Email, tokenResp.AccessToken)
+				if err := s.rdb.Set(ctx, "nd:oauth:email-confirm:"+confirmToken, confirmVal, 10*time.Minute).Err(); err != nil {
+					return nil, fmt.Errorf("store email confirm token: %w", err)
+				}
+				return &OAuthCallbackResult{
+					EmailMatchConfirm: true,
+					ConfirmToken:      confirmToken,
+					MatchEmail:        userInfo.Email,
+					MatchProvider:     provider,
+				}, nil
 			}
-			return nil, fmt.Errorf("create user: %w", err)
+			if !errors.Is(err, pgx.ErrNoRows) {
+				return nil, fmt.Errorf("find user by email: %w", err)
+			}
 		}
-		user = &newUser
 
-		displayName := userInfo.Username
-		_, err = tx.Exec(ctx, `
-			INSERT INTO user_profiles (user_id, display_name)
-			VALUES ($1, $2)
-		`, user.ID, displayName)
+		// No match — auto-register a new local user.
+		newUser, err := s.createUserFromOAuth(ctx, userInfo)
 		if err != nil {
-			return nil, fmt.Errorf("create profile: %w", err)
+			return nil, err
 		}
-
-		_, err = tx.Exec(ctx, `
-			INSERT INTO user_storage_stats (user_id, storage_used, storage_quota)
-			VALUES ($1, 0, $2)
-		`, user.ID, s.cfg.Limits.DefaultStorageQuota)
-		if err != nil {
-			return nil, fmt.Errorf("create storage stats: %w", err)
-		}
-
-		_, err = tx.Exec(ctx, `
-			INSERT INTO user_levels (user_id, level_code, level_name)
-			VALUES ($1, 'vip1', 'VIP1')
-		`, user.ID)
-		if err != nil {
-			return nil, fmt.Errorf("create level: %w", err)
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return nil, fmt.Errorf("commit: %w", err)
-		}
+		user = newUser
 	}
 
 	if err := s.upsertOAuthAccount(ctx, user.ID, provider, userInfo.ID, userInfo.Email, tokenResp.AccessToken); err != nil {
@@ -670,26 +665,42 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		resp.Level = ld
 	}
 
-	return &OAuthCallbackResult{NewUser: isNew, User: resp, Tokens: tokens}, nil
+	return &OAuthCallbackResult{User: resp, Tokens: tokens, NewUser: true}, nil
 }
 
 func (s *AuthService) upsertOAuthAccount(ctx context.Context, userID int64, provider, providerAccountID, oauthEmail, accessToken string) error {
-	if oauthEmail != "" {
-		_, err := s.pg.Exec(ctx, `
-			INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, access_token, oauth_email, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-			ON CONFLICT (provider, provider_account_id)
-			DO UPDATE SET access_token = EXCLUDED.access_token, updated_at = NOW()
-		`, userID, provider, providerAccountID, accessToken, oauthEmail)
-		return err
-	}
 	_, err := s.pg.Exec(ctx, `
-		INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, access_token, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, access_token, oauth_email, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 		ON CONFLICT (provider, provider_account_id)
-		DO UPDATE SET access_token = EXCLUDED.access_token, updated_at = NOW()
-	`, userID, provider, providerAccountID, accessToken)
-	return err
+		DO UPDATE SET
+			access_token = EXCLUDED.access_token,
+			oauth_email  = COALESCE(EXCLUDED.oauth_email, user_oauth_accounts.oauth_email),
+			updated_at   = NOW()
+	`, userID, provider, providerAccountID, accessToken, nullIfEmpty(oauthEmail))
+	if err != nil {
+		return fmt.Errorf("upsert oauth account: %w", err)
+	}
+	return nil
+}
+
+// findUserOAuthForProvider returns the existing (provider_account_id, oauth_email)
+// for the given user+provider, or ("", "", false, nil) if there is no binding.
+func (s *AuthService) findUserOAuthForProvider(ctx context.Context, userID int64, provider string) (string, string, bool, error) {
+	var providerAccountID, oauthEmail string
+	err := s.pg.QueryRow(ctx, `
+		SELECT provider_account_id, COALESCE(oauth_email, '')
+		FROM user_oauth_accounts
+		WHERE user_id = $1 AND provider = $2
+		LIMIT 1
+	`, userID, provider).Scan(&providerAccountID, &oauthEmail)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", false, nil
+		}
+		return "", "", false, fmt.Errorf("find user oauth: %w", err)
+	}
+	return providerAccountID, oauthEmail, true, nil
 }
 
 func (s *AuthService) OAuthUnlink(ctx context.Context, userID int64, provider string) error {
@@ -726,8 +737,131 @@ func (s *AuthService) OAuthUnlink(ctx context.Context, userID int64, provider st
 	return nil
 }
 
+// ConfirmOAuthBindReplace consumes a one-time replace token and replaces the
+// current user's existing binding for the same provider with the third-party
+// account embedded in the token. It performs the swap atomically and deletes
+// the token to prevent replay.
+func (s *AuthService) ConfirmOAuthBindReplace(ctx context.Context, replaceToken string, userID int64) (string, error) {
+	if replaceToken == "" {
+		return "", model.ErrInvalidInput
+	}
+
+	// Retrieve and delete the token immediately to prevent replay.
+	replaceVal, err := s.rdb.GetDel(ctx, "nd:oauth:bind-replace:"+replaceToken).Result()
+	if err != nil {
+		return "", model.ErrUnauthorized
+	}
+
+	// Parse stored data: provider:bindUserID:providerAccountID:email:accessToken
+	parts := strings.SplitN(replaceVal, ":", 5)
+	if len(parts) != 5 {
+		return "", model.ErrUnauthorized
+	}
+	provider := parts[0]
+	storedBindUserID, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return "", model.ErrUnauthorized
+	}
+	providerAccountID := parts[2]
+	email := parts[3]
+	accessToken := parts[4]
+
+	if storedBindUserID != userID {
+		return "", model.ErrForbidden
+	}
+
+	tx, err := s.pg.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Drop any existing bindings the current user has for this provider.
+	// The new binding has not been written yet, so this only removes the
+	// pre-existing record (its provider_account_id will differ).
+	if _, err := tx.Exec(ctx,
+		`DELETE FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2`,
+		userID, provider,
+	); err != nil {
+		return "", fmt.Errorf("delete existing provider bindings: %w", err)
+	}
+
+	// Insert the new binding inside the same transaction.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_oauth_accounts (user_id, provider, provider_account_id, access_token, oauth_email, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+		ON CONFLICT (provider, provider_account_id)
+		DO UPDATE SET
+			access_token = EXCLUDED.access_token,
+			oauth_email  = COALESCE(EXCLUDED.oauth_email, user_oauth_accounts.oauth_email),
+			updated_at   = NOW()
+	`, userID, provider, providerAccountID, accessToken, nullIfEmpty(email)); err != nil {
+		return "", fmt.Errorf("upsert oauth account: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("commit: %w", err)
+	}
+
+	// Best-effort avatar sync (outside the tx). Only fills in an avatar
+	// when the user does not already have one — never overwrites a
+	// user-set avatar.
+	if prov, ok := s.cfg.OAuth2.Providers[provider]; ok {
+		if info, err := getUserInfo(prov, accessToken, provider); err == nil && info.AvatarURL != "" {
+			existingProfile, _ := s.queries.GetProfileByUserID(ctx, userID)
+			if existingProfile.ID == 0 || existingProfile.AvatarPath.String == "" {
+				_ = s.queries.UpdateAvatarPath(ctx, sqlc.UpdateAvatarPathParams{
+					UserID:     userID,
+					AvatarPath: pgtype.Text{String: info.AvatarURL, Valid: true},
+				})
+			}
+		}
+	}
+
+	return provider, nil
+}
+
+// ConfirmEmailOAuthLink consumes a one-time confirm token from the login
+// email-match flow. It links the OAuth account to the existing user and
+// issues tokens atomically, then returns the token pair.
+func (s *AuthService) ConfirmEmailOAuthLink(ctx context.Context, confirmToken string) (*TokenPair, error) {
+	if confirmToken == "" {
+		return nil, model.ErrInvalidInput
+	}
+
+	confirmVal, err := s.rdb.GetDel(ctx, "nd:oauth:email-confirm:"+confirmToken).Result()
+	if err != nil {
+		return nil, model.ErrUnauthorized
+	}
+
+	// Parse stored data: provider:userID:providerAccountID:email:accessToken
+	parts := strings.SplitN(confirmVal, ":", 5)
+	if len(parts) != 5 {
+		return nil, model.ErrUnauthorized
+	}
+	provider := parts[0]
+	userID, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return nil, model.ErrUnauthorized
+	}
+	providerAccountID := parts[2]
+	email := parts[3]
+	accessToken := parts[4]
+
+	if err := s.upsertOAuthAccount(ctx, userID, provider, providerAccountID, email, accessToken); err != nil {
+		return nil, fmt.Errorf("upsert oauth account: %w", err)
+	}
+
+	tokens, err := s.issueTokens(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
+}
+
 func (s *AuthService) resolveOAuthUser(ctx context.Context, provider string, userInfo *OAuthUserInfo) (*sqlc.User, error) {
-	// 1. Look up by OAuth account binding
+	// Look up an existing binding for this third-party account.
 	oa, err := s.queries.GetOAuthAccountByProviderAndID(ctx, sqlc.GetOAuthAccountByProviderAndIDParams{
 		Provider:          provider,
 		ProviderAccountID: userInfo.ID,
@@ -743,19 +877,87 @@ func (s *AuthService) resolveOAuthUser(ctx context.Context, provider string, use
 		return nil, fmt.Errorf("find oauth account: %w", err)
 	}
 
-	// 2. Look up by real email (link existing email-registered user)
-	if userInfo.Email != "" {
-		existing, err := s.queries.GetUserByEmail(ctx, userInfo.Email)
-		if err == nil {
-			return &existing, nil
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("find user by email: %w", err)
-		}
+	// No binding found. The caller (OAuthCallback) will auto-create a
+	// new local user. Email-based matching is intentionally not performed.
+	return nil, nil
+}
+
+// createUserFromOAuth registers a brand-new local user derived from the
+// third-party profile, and persists the corresponding register_method.
+func (s *AuthService) createUserFromOAuth(ctx context.Context, userInfo *OAuthUserInfo) (*sqlc.User, error) {
+	slug, err := gonanoid.New(21)
+	if err != nil {
+		return nil, fmt.Errorf("generate slug: %w", err)
 	}
 
-	// 3. New user
-	return nil, nil
+	username := userInfo.Username
+	if username == "" {
+		// Fall back to a slug-based username when the provider omitted one.
+		username = "user_" + slug[:8]
+	}
+
+	var emailArg string
+	registerMethod := "oauth"
+	if userInfo.Email == "" {
+		registerMethod = "oauth_noemail"
+	} else {
+		emailArg = userInfo.Email
+	}
+
+	tx, err := s.pg.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var user sqlc.User
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO users (slug, username, email, password_hash, register_method)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, slug, username, email, password_hash, status, created_at, updated_at, register_method, role
+	`, slug, username, emailArg, randomPasswordHash(), registerMethod).Scan(
+		&user.ID,
+		&user.Slug,
+		&user.Username,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Status,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.RegisterMethod,
+		&user.Role,
+	); err != nil {
+		if isUniqueViolation(err) {
+			return nil, model.ErrAlreadyExists
+		}
+		return nil, fmt.Errorf("create oauth user: %w", err)
+	}
+
+	// Create the companion profile, storage stats, and level rows so the
+	// new user is functionally identical to one created via /register.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_profiles (user_id, display_name) VALUES ($1, $2)
+	`, user.ID, username); err != nil {
+		return nil, fmt.Errorf("create oauth user profile: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_storage_stats (user_id, storage_quota) VALUES ($1, $2)
+	`, user.ID, s.cfg.Limits.DefaultStorageQuota); err != nil {
+		return nil, fmt.Errorf("create oauth storage stats: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_levels (user_id, level_code, level_name) VALUES ($1, $2, $3)
+	`, user.ID, "vip1", "VIP1"); err != nil {
+		return nil, fmt.Errorf("create oauth user level: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+
+	return &user, nil
 }
 
 func makeState() string {

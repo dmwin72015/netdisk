@@ -426,5 +426,13 @@
   "reading_files": "Reading files...",
   "please_login_en": "Please {link} first.",
   "select_date": "Select date",
-  "no_users": "No users"
+  "no_users": "No users",
+
+  "oauth_popup_blocked": "Popup was blocked. Please allow popups for this site.",
+  "oauth_link_existing_title": "Link existing account?",
+  "oauth_link_existing_desc": "The email {email} from {provider} is already registered. Do you want to link this {provider} account and log in?",
+  "oauth_linking": "Linking...",
+  "oauth_link_login": "Link & Login",
+  "oauth_link_failed": "Failed to link account",
+  "oauth_email_registered": "Email {email} already registered. Log in with your email and password first, then link this account in settings."
 }

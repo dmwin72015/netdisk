@@ -51,6 +51,12 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// OAuth bind (requires auth)
 	auth.GET("/oauth/:provider/bind", h.Auth.OAuthBind, mw.JWT(jwtMgr))
+	// OAuth bind replace-confirm: account page POSTs here after the user
+	// approves replacing their current binding for the same provider.
+	auth.POST("/oauth/bind/confirm-replace", h.Auth.OAuthBindConfirmReplace, mw.JWT(jwtMgr))
+	// OAuth email-confirm: login page POSTs here after the user confirms
+	// linking an OAuth account to an existing local user matched by email.
+	auth.POST("/oauth/email-confirm", h.Auth.OAuthEmailConfirm)
 
 	// Public share routes
 	publicShares := api.Group("/public/shares")
