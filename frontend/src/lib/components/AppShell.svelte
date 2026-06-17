@@ -22,6 +22,7 @@
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import LanguageDropdown from '$lib/components/LanguageDropdown.svelte';
 	import FileSearchDialog from '$lib/components/FileSearchDialog.svelte';
+	import { getFilesUrl } from '$lib/stores/last-section-url';
 	import * as m from '$lib/paraglide/messages';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
@@ -67,6 +68,17 @@
 		return currentPath.startsWith(match);
 	}
 
+	// 点击「文件」tab 时跳到上次离开的子目录（仅普通点击，保留 ⌘/Ctrl+click 等原生行为）。
+	function onFilesClick(event: MouseEvent) {
+		if (event.defaultPrevented) return;
+		if (event.button !== 0) return;
+		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		const target = getFilesUrl();
+		if (currentPath === target) return;
+		event.preventDefault();
+		void goto(target);
+	}
+
 	async function handleLogout() {
 		await logout();
 		setUser(null);
@@ -92,6 +104,7 @@
 				{@const Icon = item.icon}
 				<a
 					href={item.href}
+					onclick={item.match === '/files' ? onFilesClick : undefined}
 					class="relative flex w-13 flex-col items-center gap-1 rounded-xl py-2.5 text-xs transition-colors {isActive(item.match) ? 'bg-blue-50 font-medium text-blue-600' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}"
 				>
 					<Icon size={20} />

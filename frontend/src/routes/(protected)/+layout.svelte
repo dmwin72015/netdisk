@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { setContext } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { user, authReady } from '$lib/stores/auth';
 	import { fetchConfig } from '$lib/stores/config';
 	import { loadPreferencesFromServer } from '$lib/stores/file-preferences.svelte';
+	import { rememberFilesUrl } from '$lib/stores/last-section-url';
 	import AppShell from '$lib/components/AppShell.svelte';
 	import UploadPanel from '$lib/components/files/UploadPanel.svelte';
 	import { createUploadManager } from '$lib/upload-manager.svelte';
@@ -43,6 +44,12 @@
 		void fetchConfig();
 		void loadPreferencesFromServer();
 		upload.restore();
+	});
+
+	// 仅缓存「文件」tab 下的最后一次访问路径，从照片 / 媒体库切回时恢复。
+	afterNavigate(({ to }) => {
+		if (!to) return;
+		rememberFilesUrl(to.url.pathname, to.url.search);
 	});
 </script>
 
