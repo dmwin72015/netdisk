@@ -42,7 +42,7 @@
 		photoSize === 'large'
 			? 'grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
 			: photoSize === 'small'
-				? 'grid-cols-4 gap-1 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8'
+				? 'grid-cols-4 gap-1 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 min-[1920px]:grid-cols-10 min-[2560px]:grid-cols-13 min-[3840px]:grid-cols-19'
 				: 'grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
 	);
 

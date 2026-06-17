@@ -124,7 +124,7 @@
 				<p class="truncate text-sm font-medium text-gray-900" title={$user?.profile?.displayName || $user?.username || ''}>
 					{$user?.profile?.displayName || $user?.username || m.nav_account()}
 				</p>
-				<p class="truncate text-xs text-gray-400">{$user?.email || ''}</p>
+				<p class="truncate text-xs text-gray-400 max-w-46">{$user?.email || ''}</p>
 			</div>
 
 			{#each moreItems as item (item.href)}
