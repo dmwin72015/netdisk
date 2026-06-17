@@ -24,6 +24,12 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    # Sensitive config (DB DSN / JWT secret / OAuth client_id+secret) is
+    # injected from .env via the NETDISK_* variables — see .env.example and
+    # backend/internal/config/config.go. Non-sensitive settings stay in
+    # backend/config.docker.yaml inside the image.
+    env_file:
+      - .env
     volumes:
       - netdiskdata:/data
     healthcheck:

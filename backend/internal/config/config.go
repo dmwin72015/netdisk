@@ -134,9 +134,26 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("log.file_path", "./logs/server.log")
 	v.SetDefault("log.max_size_mb", 5)
 
+	// Sensitive fields are sourced from environment variables so the on-disk
+	// config can be committed without leaking secrets. Non-sensitive fields
+	// (URLs, ports, scopes, paths, ...) stay in YAML where they are easy to
+	// review. Naming convention:
+	//   db.dsn                                  -> NETDISK_DB_DSN
+	//   redis.password                          -> NETDISK_REDIS_PASSWORD
+	//   jwt.secret                              -> NETDISK_JWT_SECRET
+	//   oauth2.providers.<name>.client_id       -> NETDISK_OAUTH2_<NAME>_CLIENT_ID
+	//   oauth2.providers.<name>.client_secret   -> NETDISK_OAUTH2_<NAME>_CLIENT_SECRET
+	// AutomaticEnv() does not look up the map-typed oauth2.providers tree, so
+	// each provider key is bound explicitly below.
+	mustBind(v, "db.dsn", "NETDISK_DB_DSN")
+	mustBind(v, "redis.password", "NETDISK_REDIS_PASSWORD")
+	mustBind(v, "jwt.secret", "NETDISK_JWT_SECRET")
+
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
+
+	bindOAuthProviderEnv(v)
 
 	cfg := &Config{}
 	if err := v.Unmarshal(cfg); err != nil {
@@ -144,7 +161,66 @@ func Load(path string) (*Config, error) {
 	}
 	normalizePaths(path, cfg)
 
+	if err := validateSecrets(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+func mustBind(v *viper.Viper, key, env string) {
+	// viper's BindEnv only fails when no key/env is provided.
+	_ = v.BindEnv(key, env)
+}
+
+// bindOAuthProviderEnv wires every provider declared in the YAML to its
+// matching NETDISK_OAUTH2_<NAME>_CLIENT_{ID,SECRET} env var. It must run after
+// ReadInConfig so the provider names are known.
+func bindOAuthProviderEnv(v *viper.Viper) {
+	providers := v.GetStringMap("oauth2.providers")
+	for name := range providers {
+		envName := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(name))
+		mustBind(v,
+			fmt.Sprintf("oauth2.providers.%s.client_id", name),
+			fmt.Sprintf("NETDISK_OAUTH2_%s_CLIENT_ID", envName),
+		)
+		mustBind(v,
+			fmt.Sprintf("oauth2.providers.%s.client_secret", name),
+			fmt.Sprintf("NETDISK_OAUTH2_%s_CLIENT_SECRET", envName),
+		)
+	}
+}
+
+// validateSecrets fails fast when a secret is still empty after env+yaml are
+// merged. This catches "forgot to set NETDISK_JWT_SECRET in production" early
+// instead of letting the server boot with a blank-string signing key.
+func validateSecrets(cfg *Config) error {
+	var missing []string
+	if strings.TrimSpace(cfg.DB.DSN) == "" {
+		missing = append(missing, "db.dsn (NETDISK_DB_DSN)")
+	}
+	if strings.TrimSpace(cfg.JWT.Secret) == "" {
+		missing = append(missing, "jwt.secret (NETDISK_JWT_SECRET)")
+	}
+	for name, p := range cfg.OAuth2.Providers {
+		// A provider stays optional until either id or secret is set; if one
+		// is set, the other must be set too.
+		hasID := strings.TrimSpace(p.ClientID) != ""
+		hasSecret := strings.TrimSpace(p.ClientSecret) != ""
+		if hasID != hasSecret {
+			envBase := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(name))
+			if !hasID {
+				missing = append(missing, fmt.Sprintf("oauth2.providers.%s.client_id (NETDISK_OAUTH2_%s_CLIENT_ID)", name, envBase))
+			}
+			if !hasSecret {
+				missing = append(missing, fmt.Sprintf("oauth2.providers.%s.client_secret (NETDISK_OAUTH2_%s_CLIENT_SECRET)", name, envBase))
+			}
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("missing required secret(s) — set the environment variable(s): %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 func normalizePaths(configPath string, cfg *Config) {

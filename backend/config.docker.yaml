@@ -9,16 +9,20 @@ server:
     - http://8.130.215.86:8080
 
 db:
-  dsn: "postgres://postgres:root1234@postgres:5432/netdisk?sslmode=disable"
+  # Sensitive: DSN is injected via NETDISK_DB_DSN at runtime.
+  # See docker-compose.yml + .env. Startup fails if empty.
+  dsn: ""
   max_conns: 20
   min_conns: 2
 
 redis:
   addr: "redis:6379"
+  # Optional: NETDISK_REDIS_PASSWORD overrides at runtime.
   db: 0
 
 jwt:
-  secret: "haliluya"
+  # Sensitive: must be provided via NETDISK_JWT_SECRET. Startup fails if empty.
+  secret: ""
   access_ttl_min: 60
   refresh_ttl_hour: 168
 
@@ -72,16 +76,20 @@ oauth2:
   redirect_base_url: "http://8.130.215.86:8080"
   frontend_url: "http://8.130.215.86:8080"
   providers:
+    # Sensitive: client_id / client_secret are injected via env vars.
+    # 2libra   -> NETDISK_OAUTH2_2LIBRA_CLIENT_ID / _CLIENT_SECRET
+    # github   -> NETDISK_OAUTH2_GITHUB_CLIENT_ID / _CLIENT_SECRET
+    # Leave both empty to disable a provider.
     "2libra":
-      client_id: "e6f4d72c30cb420488cc5619e34dea64"
-      client_secret: "2045782b195cf83c8568de8fec4c1fda4ca4db8c7ba713052162d49cc79f2c4d"
+      client_id: ""
+      client_secret: ""
       auth_url: "https://2libra.com/oauth/authorize"
       token_url: "https://2libra.com/api/oauth/token"
       user_info_url: "https://2libra.com/api/oauth/me"
       scope: "profile"
     "github":
-      client_id: "Ov23lilqE8xEwiPIOncB"
-      client_secret: "e441d3e3f59b20df5515d580a60a7de65d4753aa"
+      client_id: ""
+      client_secret: ""
       auth_url: "https://github.com/login/oauth/authorize"
       token_url: "https://github.com/login/oauth/access_token"
       user_info_url: "https://api.github.com/user"

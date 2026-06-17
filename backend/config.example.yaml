@@ -6,16 +6,20 @@ server:
     - http://localhost:5173
 
 db:
-  dsn: "postgres://postgres:root1234@localhost:15432/netdisk?sslmode=disable"
+  # Sensitive: DSN is injected via NETDISK_DB_DSN. Example for local dev:
+  #   export NETDISK_DB_DSN="postgres://postgres:CHANGEME@localhost:15432/netdisk?sslmode=disable"
+  dsn: ""
   max_conns: 20
   min_conns: 2
 
 redis:
   addr: "localhost:16379"
+  # Optional: NETDISK_REDIS_PASSWORD
   db: 0
 
 jwt:
-  secret: "haliluya"
+  # Sensitive: NETDISK_JWT_SECRET (e.g. `openssl rand -hex 32`).
+  secret: ""
   access_ttl_min: 60
   refresh_ttl_hour: 168
 
@@ -69,6 +73,10 @@ oauth2:
   redirect_base_url: "http://localhost:8080"
   frontend_url: "http://localhost:5173"
   providers:
+    # Sensitive: client_id / client_secret -> env vars
+    #   2libra -> NETDISK_OAUTH2_2LIBRA_CLIENT_ID / _CLIENT_SECRET
+    #   github -> NETDISK_OAUTH2_GITHUB_CLIENT_ID / _CLIENT_SECRET
+    # Leave both empty to disable a provider.
     "2libra":
       client_id: ""
       client_secret: ""
