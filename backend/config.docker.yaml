@@ -24,7 +24,7 @@ jwt:
 
 storage:
   root: "/data"
-  max_upload_size: 4294967296  # 4 GiB
+  max_upload_size: 4294967296 # 4 GiB
   tmp_dir: "tmp"
   files_dir: "files"
   avatars_dir: "avatars"
@@ -41,9 +41,9 @@ log:
   max_size_mb: 5
 
 limits:
-  default_storage_quota: 536870912000  # 500 GB
+  default_storage_quota: 536870912000 # 500 GB
   bcrypt_cost: 12
-  avatar_max_size: 2097152  # 2 MB
+  avatar_max_size: 2097152 # 2 MB
   content_detect_bytes: 512
 
 trash:
@@ -51,14 +51,14 @@ trash:
   poll_interval: "1h"
 
 upload:
-  chunk_size: 4194304  # 4 MB
+  chunk_size: 4194304 # 4 MB
   task_expiry_days: 30
   merge_lock_ttl: "10m"
 
 cache:
   challenge_ttl: "2m"
   chunks_ttl: "24h"
-  precache_ttl: "168h"  # 7 days
+  precache_ttl: "168h" # 7 days
 
 media:
   poll_interval: "5s"
@@ -69,13 +69,20 @@ rate_limit:
   auth_requests_per_min: 20
 
 oauth2:
-  redirect_base_url: "http://8.130.215.86:8080"
-  frontend_url: "http://8.130.215.86:8080"
+  redirect_base_url: "http://8.130.215.86:8080/"
+  frontend_url: "http://8.130.215.86:8080/"
   providers:
     "2libra":
-      client_id: ""
-      client_secret: ""
+      client_id: "e6f4d72c30cb420488cc5619e34dea64"
+      client_secret: "2045782b195cf83c8568de8fec4c1fda4ca4db8c7ba713052162d49cc79f2c4d"
       auth_url: "https://2libra.com/oauth/authorize"
       token_url: "https://2libra.com/api/oauth/token"
       user_info_url: "https://2libra.com/api/oauth/me"
       scope: "profile"
+    "github":
+      client_id: "Ov23lilqE8xEwiPIOncB"
+      client_secret: "e441d3e3f59b20df5515d580a60a7de65d4753aa"
+      auth_url: "https://github.com/login/oauth/authorize"
+      token_url: "https://github.com/login/oauth/access_token"
+      user_info_url: "https://api.github.com/user"
+      scope: "read:user user:email"
