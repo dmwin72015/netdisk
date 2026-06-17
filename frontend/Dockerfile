@@ -5,7 +5,7 @@ FROM node:22-alpine AS builder
 WORKDIR /build
 
 COPY .npmrc package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN npm config set registry https://registry.npmmirror.com && corepack enable && pnpm install --frozen-lockfile
 
 COPY . .
 RUN corepack enable && pnpm build
