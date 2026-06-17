@@ -29,10 +29,11 @@ backend/config.yaml
 *.log
 
 # Other
-# .agents
-# .claude
-# .kiro
+.agents
+.claude
+.kiro
 docs
 .superpowers
 .pnpm-store/
 .claude/worktrees/
+.claude/agent-memory

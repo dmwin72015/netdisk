@@ -69,8 +69,8 @@ rate_limit:
   auth_requests_per_min: 20
 
 oauth2:
-  redirect_base_url: "http://8.130.215.86:8080/"
-  frontend_url: "http://8.130.215.86:8080/"
+  redirect_base_url: "http://8.130.215.86:8080"
+  frontend_url: "http://8.130.215.86:8080"
   providers:
     "2libra":
       client_id: "e6f4d72c30cb420488cc5619e34dea64"
