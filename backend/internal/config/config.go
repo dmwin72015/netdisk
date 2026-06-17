@@ -141,6 +141,8 @@ func Load(path string) (*Config, error) {
 	//   db.dsn                                  -> NETDISK_DB_DSN
 	//   redis.password                          -> NETDISK_REDIS_PASSWORD
 	//   jwt.secret                              -> NETDISK_JWT_SECRET
+	//   oauth2.redirect_base_url                 -> NETDISK_OAUTH2_REDIRECT_BASE_URL
+	//   oauth2.frontend_url                      -> NETDISK_OAUTH2_FRONTEND_URL
 	//   oauth2.providers.<name>.client_id       -> NETDISK_OAUTH2_<NAME>_CLIENT_ID
 	//   oauth2.providers.<name>.client_secret   -> NETDISK_OAUTH2_<NAME>_CLIENT_SECRET
 	// AutomaticEnv() does not look up the map-typed oauth2.providers tree, so
@@ -148,6 +150,8 @@ func Load(path string) (*Config, error) {
 	mustBind(v, "db.dsn", "NETDISK_DB_DSN")
 	mustBind(v, "redis.password", "NETDISK_REDIS_PASSWORD")
 	mustBind(v, "jwt.secret", "NETDISK_JWT_SECRET")
+	mustBind(v, "oauth2.redirect_base_url", "NETDISK_OAUTH2_REDIRECT_BASE_URL")
+	mustBind(v, "oauth2.frontend_url", "NETDISK_OAUTH2_FRONTEND_URL")
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)

@@ -32,6 +32,7 @@ backend/config.yaml
 .agents
 .claude
 .kiro
+.codex
 docs
 .superpowers
 .pnpm-store/
