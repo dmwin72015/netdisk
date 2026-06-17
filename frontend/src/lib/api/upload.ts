@@ -163,6 +163,19 @@ export async function completeUpload(uploadSlug: string): Promise<CompleteRespon
 	});
 }
 
+export type URLUploadResponse = {
+  taskSlug: string;
+  status: string;
+};
+
+export async function urlUpload(url: string, fileName?: string, parentSlug?: string) {
+  return api<URLUploadResponse>('/api/v1/upload/from-url', {
+    method: 'POST',
+    body: JSON.stringify({ url, fileName: fileName ?? '', parentSlug: parentSlug ?? '' }),
+    signal: AbortSignal.timeout(30_000),
+  });
+}
+
 export async function getUploadStatus(uploadSlug: string) {
 	return uploadRequestPool.schedule(() => {
 		const signal = AbortSignal.timeout(TIMEOUTS.status);

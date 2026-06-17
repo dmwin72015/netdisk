@@ -3,6 +3,7 @@ package storage
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type ChunkIssue struct {
@@ -392,6 +395,79 @@ func (s *Local) CleanupUpload(uploadSlug string) error {
 	}
 	slog.Debug("cleanup-upload: done", "slug", uploadSlug)
 	return nil
+}
+
+// WriteFromReader streams data from r to a sharded file, computes SHA-256,
+// and returns the hash, storage path, total bytes written, and preHash.
+// Cleans up temp files on error.
+func (s *Local) WriteFromReader(r io.Reader) (fileHash string, storagePath string, fileSize int64, preHash string, err error) {
+	slug, nerr := gonanoid.New(21)
+	if nerr != nil {
+		return "", "", 0, "", fmt.Errorf("generate slug: %w", nerr)
+	}
+
+	tmpDir := filepath.Join(s.root, s.tmpDir, "dl_"+slug)
+	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+		return "", "", 0, "", fmt.Errorf("mkdir temp: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			os.RemoveAll(tmpDir)
+		}
+	}()
+
+	tmpPath := filepath.Join(tmpDir, "download")
+	f, cerr := os.Create(tmpPath)
+	if cerr != nil {
+		return "", "", 0, "", fmt.Errorf("create temp file: %w", cerr)
+	}
+
+	h := sha256.New()
+
+	preHashBuf := make([]byte, 64*1024)
+	n, readErr := io.ReadFull(r, preHashBuf)
+	if readErr != nil && !errors.Is(readErr, io.ErrUnexpectedEOF) && !errors.Is(readErr, io.EOF) {
+		f.Close()
+		os.Remove(tmpPath)
+		return "", "", 0, "", fmt.Errorf("read prehash: %w", readErr)
+	}
+	preHashData := preHashBuf[:n]
+	ph := sha256.Sum256(preHashData)
+	preHashHex := hex.EncodeToString(ph[:])
+
+	writer := io.MultiWriter(f, h)
+	if _, werr := writer.Write(preHashData); werr != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return "", "", 0, "", fmt.Errorf("write first part: %w", werr)
+	}
+
+	copied, copyErr := io.Copy(writer, r)
+	if copyErr != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return "", "", 0, "", fmt.Errorf("copy stream: %w", copyErr)
+	}
+	f.Close()
+
+	fileSize = int64(len(preHashData)) + copied
+	fileHashVal := hex.EncodeToString(h.Sum(nil))
+
+	// Move to final sharded path
+	finalDir := filepath.Join(s.root, StoragePath(fileHashVal, s.filesDir))
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0o755); err != nil {
+		os.Remove(tmpPath)
+		return "", "", 0, "", fmt.Errorf("mkdir final: %w", err)
+	}
+	if err := os.Rename(tmpPath, finalDir); err != nil {
+		os.Remove(tmpPath)
+		return "", "", 0, "", fmt.Errorf("rename to final: %w", err)
+	}
+
+	os.RemoveAll(tmpDir)
+
+	return fileHashVal, StoragePath(fileHashVal, s.filesDir), fileSize, preHashHex, nil
 }
 
 // AbsPath returns the full absolute path for a file hash.

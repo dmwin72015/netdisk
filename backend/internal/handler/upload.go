@@ -23,6 +23,30 @@ func NewUploadHandler(svc *service.UploadService, logger zerolog.Logger) *Upload
 	return &UploadHandler{svc: svc, logger: logger}
 }
 
+func (h *UploadHandler) UploadFromURL(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input service.URLUploadRequest
+	if err := c.Bind(&input); err != nil {
+		h.logger.Warn().Int64("userID", userID).Err(err).Msg("upload-from-url: bind failed")
+		return model.ErrInvalidInput
+	}
+
+	h.logger.Info().Int64("userID", userID).Str("url", input.URL).Str("fileName", input.FileName).Str("parentSlug", input.ParentSlug).Msg("upload-from-url: request")
+
+	resp, err := h.svc.UploadFromURL(c.Request().Context(), userID, middleware.SessionID(c), input)
+	if err != nil {
+		h.logger.Warn().Int64("userID", userID).Str("url", input.URL).Err(err).Msg("upload-from-url: service error")
+		return err
+	}
+
+	h.logger.Info().Int64("userID", userID).Str("taskSlug", resp.TaskSlug).Str("status", resp.Status).Msg("upload-from-url: response")
+	return Accepted(c, resp)
+}
+
 func (h *UploadHandler) PreCheck(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

@@ -9,6 +9,7 @@
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
+    Globe,
   } from "@lucide/svelte";
   import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
   import { Popover } from "$lib/ui/popover";
@@ -37,6 +38,7 @@
     onUploadFiles,
     onUploadFolder,
     onCreateDir,
+    onUploadFromURL,
   }: {
     sortBy: SortField;
     sortDir: "ASC" | "DESC";
@@ -46,6 +48,7 @@
     onUploadFiles: () => void;
     onUploadFolder: () => void;
     onCreateDir: () => void;
+    onUploadFromURL?: () => void;
   } = $props();
 
   let showUploadMenu = $state(false);
@@ -176,6 +179,19 @@
               <FolderOpen size={15} class="text-gray-500" />
               {m.upload_folder()}
             </button>
+            {#if onUploadFromURL}
+              <button
+                type="button"
+                class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+                onclick={() => {
+                  showUploadMenu = false;
+                  onUploadFromURL();
+                }}
+              >
+                <Globe size={15} class="text-gray-500" />
+                {m.remote_upload()}
+              </button>
+            {/if}
             <div class="my-1 border-t border-gray-100"></div>
             <button
               type="button"

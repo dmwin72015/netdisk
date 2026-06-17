@@ -124,6 +124,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// Upload routes
 	upload := authed.Group("/upload")
+	upload.POST("/from-url", h.Upload.UploadFromURL)
 	upload.POST("/pre-check", h.Upload.PreCheck)
 	upload.POST("/request-challenge", h.Upload.RequestChallenge)
 	upload.POST("/verify", h.Upload.Verify)

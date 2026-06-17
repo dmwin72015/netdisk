@@ -7,8 +7,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
+	"mime"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -22,6 +28,7 @@ import (
 	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/storage"
+	"github.com/netdisk/server/pkg/fileutil"
 )
 
 type UploadService struct {
@@ -97,6 +104,458 @@ type StatusResponse struct {
 	Status           string  `json:"status"`
 	PhysicalFileSlug string  `json:"physicalFileSlug,omitempty"`
 	Error            *string `json:"error,omitempty"`
+
+	TaskType      string `json:"taskType,omitempty"`
+	SourceURL     string `json:"sourceUrl,omitempty"`
+	FileName      string `json:"fileName,omitempty"`
+	FileSize      int64  `json:"fileSize,omitempty"`
+	ReceivedBytes int64  `json:"receivedBytes,omitempty"`
+}
+
+type URLUploadRequest struct {
+	URL        string `json:"url"`
+	FileName   string `json:"fileName"`
+	ParentSlug string `json:"parentSlug"`
+}
+
+type URLUploadResponse struct {
+	TaskSlug string `json:"taskSlug"`
+	Status   string `json:"status"`
+}
+
+type downloadTask struct {
+	ID       int64
+	Slug     string
+	UserID   int64
+	SessionID string
+	Req      URLUploadRequest
+}
+
+var errBlockedURL = errors.New("blocked URL")
+
+var defaultTransport = &http.Transport{
+	MaxIdleConns:        10,
+	IdleConnTimeout:     30 * time.Second,
+	DisableCompression:  false,
+}
+
+var httpClient = &http.Client{
+	Transport: defaultTransport,
+	Timeout:   30 * time.Minute,
+}
+
+var blockedSchemes = map[string]bool{
+	"file": true, "ftp": true, "gopher": true, "dict": true,
+}
+
+func isPrivateIP(host string) bool {
+	// Quick check: reject common private / reserved patterns.
+	// Full DNS resolution is deferred to production infrastructure.
+	switch {
+	case strings.HasPrefix(host, "127."),
+		strings.HasPrefix(host, "10."),
+		strings.HasPrefix(host, "192.168."),
+		strings.HasPrefix(host, "172.16."),
+		strings.HasPrefix(host, "172.17."),
+		strings.HasPrefix(host, "172.18."),
+		strings.HasPrefix(host, "172.19."),
+		strings.HasPrefix(host, "172.20."),
+		strings.HasPrefix(host, "172.21."),
+		strings.HasPrefix(host, "172.22."),
+		strings.HasPrefix(host, "172.23."),
+		strings.HasPrefix(host, "172.24."),
+		strings.HasPrefix(host, "172.25."),
+		strings.HasPrefix(host, "172.26."),
+		strings.HasPrefix(host, "172.27."),
+		strings.HasPrefix(host, "172.28."),
+		strings.HasPrefix(host, "172.29."),
+		strings.HasPrefix(host, "172.30."),
+		strings.HasPrefix(host, "172.31."),
+		host == "localhost",
+		host == "0.0.0.0",
+		host == "::1":
+		return true
+	}
+	return false
+}
+
+func (s *UploadService) UploadFromURL(ctx context.Context, userID int64, sessionID string, req URLUploadRequest) (*URLUploadResponse, error) {
+	s.logger.Info().Int64("userID", userID).Str("url", req.URL).Str("fileName", req.FileName).Str("parentSlug", req.ParentSlug).Msg("upload-from-url: request")
+
+	if req.URL == "" {
+		return nil, model.ErrInvalidInput
+	}
+
+	u, err := url.Parse(req.URL)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		s.logger.Warn().Int64("userID", userID).Str("url", req.URL).Err(err).Msg("upload-from-url: invalid URL")
+		return nil, model.ErrInvalidInput
+	}
+
+	if blockedSchemes[u.Scheme] {
+		s.logger.Warn().Int64("userID", userID).Str("url", req.URL).Str("scheme", u.Scheme).Msg("upload-from-url: blocked scheme")
+		return nil, model.ErrInvalidInput
+	}
+
+	if isPrivateIP(u.Hostname()) {
+		s.logger.Warn().Int64("userID", userID).Str("url", req.URL).Str("host", u.Hostname()).Msg("upload-from-url: blocked private IP")
+		return nil, model.ErrInvalidInput
+	}
+
+	// Determine filename for the task record
+	fileName := req.FileName
+	if fileName == "" {
+		fileName = guessFileName(req.FileName, u)
+	}
+
+	// Validate parent directory
+	if req.ParentSlug != "" {
+		if err := s.ensureUploadParentUnlocked(ctx, userID, sessionID, req.ParentSlug); err != nil {
+			return nil, err
+		}
+	}
+
+	slug, nerr := gonanoid.New(21)
+	if nerr != nil {
+		return nil, fmt.Errorf("generate slug: %w", nerr)
+	}
+
+	expiresAt := pgtype.Timestamptz{
+		Time:  time.Now().Add(7 * 24 * time.Hour),
+		Valid: true,
+	}
+
+	task, err := s.queries.CreateUploadTask(ctx, sqlc.CreateUploadTaskParams{
+		Slug:         slug,
+		OwnerUserID:  userID,
+		HashAlgo:     "sha256",
+		FileHash:     "",
+		PreHash:      "",
+		FileSize:     0,
+		MimeType:     "application/octet-stream",
+		OriginalName: fileName,
+		TotalChunks:  0,
+		ChunkSize:    0,
+		Status:       "queued",
+		ExpiresAt:    expiresAt,
+		ParentSlug:   pgtype.Text{String: req.ParentSlug, Valid: req.ParentSlug != ""},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create download task: %w", err)
+	}
+
+	// Mark task type and source URL via raw SQL
+	_, err = s.pg.Exec(ctx,
+		`UPDATE upload_tasks SET task_type = 'url', source_url = $1 WHERE id = $2`,
+		req.URL, task.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("update task type: %w", err)
+	}
+
+	// Spawn background download goroutine
+	go s.runDownload(task.ID, task.Slug, userID, sessionID, req, fileName)
+
+	s.logger.Info().Int64("userID", userID).Str("taskSlug", task.Slug).Int64("taskID", task.ID).Msg("upload-from-url: task created, download queued")
+	return &URLUploadResponse{
+		TaskSlug: task.Slug,
+		Status:   "queued",
+	}, nil
+}
+
+func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64, sessionID string, req URLUploadRequest, fileName string) {
+	ctx := context.Background()
+	s.logger.Info().Str("slug", taskSlug).Int64("taskID", taskID).Str("url", req.URL).Msg("url-download: goroutine started")
+
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error().Str("slug", taskSlug).Int64("taskID", taskID).Interface("panic", r).Msg("url-download: panic recovered")
+			s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'failed', error_msg = 'internal error' WHERE id = $1`, taskID)
+		}
+	}()
+
+	// Mark as downloading
+	_, err := s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'downloading' WHERE id = $1 AND status = 'queued'`, taskID)
+	if err != nil {
+		s.logger.Error().Str("slug", taskSlug).Err(err).Msg("url-download: mark downloading failed")
+		return
+	}
+
+	// If the task was already deleted/cancelled, stop
+	tag, err := s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'downloading' WHERE id = $1 AND status = 'queued'`, taskID)
+	if err != nil || tag.RowsAffected() == 0 {
+		s.logger.Warn().Str("slug", taskSlug).Err(err).Int64("affected", tag.RowsAffected()).Msg("url-download: task no longer in queued state, aborting")
+		return
+	}
+
+	// HTTP GET
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
+	if err != nil {
+		s.markTaskFailed(ctx, taskID, "create request failed")
+		return
+	}
+	httpReq.Header.Set("User-Agent", "Netdisk/1.0")
+
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		s.markTaskFailed(ctx, taskID, "download failed: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		s.markTaskFailed(ctx, taskID, fmt.Sprintf("server returned %d", resp.StatusCode))
+		return
+	}
+
+	if resp.ContentLength > s.cfg.Storage.MaxUploadSize {
+		s.markTaskFailed(ctx, taskID, "content too large")
+		return
+	}
+
+	// Determine MIME type from response
+	mimeType := resp.Header.Get("Content-Type")
+	if mimeType == "" || strings.HasPrefix(mimeType, "application/octet-stream") {
+		if ext := path.Ext(fileName); ext != "" {
+			if t := mime.TypeByExtension(ext); t != "" {
+				mimeType = t
+			}
+		}
+	}
+	if idx := strings.IndexByte(mimeType, ';'); idx >= 0 {
+		mimeType = strings.TrimSpace(mimeType[:idx])
+	}
+
+	// Stream download with progress tracking
+	var reader io.Reader = resp.Body
+	if resp.ContentLength > 0 {
+		reader = io.LimitReader(resp.Body, s.cfg.Storage.MaxUploadSize)
+	}
+
+	cr := &countingReader{r: reader}
+
+	progressCtx, cancelProgress := context.WithCancel(ctx)
+	defer cancelProgress()
+
+	go s.updateProgress(progressCtx, taskID, cr)
+
+	fileHash, storagePath, fileSize, preHash, err := s.store.WriteFromReader(cr)
+	if err != nil {
+		cancelProgress()
+		s.markTaskFailed(ctx, taskID, "store failed: "+err.Error())
+		return
+	}
+	cancelProgress()
+
+	// Final progress update
+	s.pg.Exec(ctx, `UPDATE upload_tasks SET received_bytes = $1 WHERE id = $2`, fileSize, taskID)
+
+	// Dedup
+	pf, err := s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
+		HashAlgo: "sha256",
+		FileHash: fileHash,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.markTaskFailed(ctx, taskID, "dedup check failed: "+err.Error())
+		return
+	}
+
+	if err == nil {
+		if delErr := s.store.Delete(fileHash); delErr != nil {
+			s.logger.Warn().Str("fileHash", fileHash[:16]+"...").Err(delErr).Msg("url-download: cleanup duplicate file failed")
+		}
+		s.logger.Info().Int64("userID", userID).Str("fileHash", fileHash[:16]+"...").Int64("existingPfID", pf.ID).Msg("url-download: dedup hit")
+	} else {
+		pfSlug, nerr := gonanoid.New(21)
+		if nerr != nil {
+			s.markTaskFailed(ctx, taskID, "generate slug failed")
+			return
+		}
+		pf, err = s.queries.CreatePhysicalFile(ctx, sqlc.CreatePhysicalFileParams{
+			Slug:        pfSlug,
+			HashAlgo:    "sha256",
+			FileHash:    fileHash,
+			PreHash:     preHash,
+			FileSize:    fileSize,
+			MimeType:    mimeType,
+			StoragePath: storagePath,
+			Status:      "completed",
+		})
+		if err != nil {
+			s.logger.Warn().Str("fileHash", fileHash[:16]+"...").Err(err).Msg("url-download: create physical file conflict")
+			pf, err = s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
+				HashAlgo: "sha256",
+				FileHash: fileHash,
+			})
+			if err != nil {
+				s.markTaskFailed(ctx, taskID, "get physical file failed: "+err.Error())
+				return
+			}
+		}
+	}
+
+	// Resolve parent
+	parentID := pgtype.Int8{}
+	if req.ParentSlug != "" {
+		parent, pErr := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+			Slug:   req.ParentSlug,
+			UserID: userID,
+		})
+		if pErr != nil {
+			s.markTaskFailed(ctx, taskID, "parent not found")
+			return
+		}
+		if !parent.IsDir {
+			s.markTaskFailed(ctx, taskID, "parent is not a directory")
+			return
+		}
+		parentID = pgtype.Int8{Int64: parent.ID, Valid: true}
+	}
+
+	// Name conflict resolution
+	finalName := fileName
+	conflict, cErr := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
+		UserID:   userID,
+		ParentID: parentID,
+		FileName: finalName,
+		IsSystem: false,
+	})
+	if cErr != nil && !errors.Is(cErr, pgx.ErrNoRows) {
+		s.markTaskFailed(ctx, taskID, "check conflict failed: "+cErr.Error())
+		return
+	}
+	if conflict.ID != 0 {
+		for i := 1; i <= 999; i++ {
+			candidate := withoutExt(fileName) + fmt.Sprintf(" (%d)", i) + extOnly(fileName)
+			c, cErr2 := s.queries.CheckNameConflict(ctx, sqlc.CheckNameConflictParams{
+				UserID:   userID,
+				ParentID: parentID,
+				FileName: candidate,
+				IsSystem: false,
+			})
+			if cErr2 != nil && !errors.Is(cErr2, pgx.ErrNoRows) {
+				s.markTaskFailed(ctx, taskID, "check conflict failed: "+cErr2.Error())
+				return
+			}
+			if c.ID == 0 {
+				finalName = candidate
+				break
+			}
+		}
+		if finalName == fileName {
+			s.markTaskFailed(ctx, taskID, "name conflict")
+			return
+		}
+	}
+
+	// Quota check
+	_, qErr := s.queries.AtomicIncrementStorage(ctx, sqlc.AtomicIncrementStorageParams{
+		UserID:      userID,
+		StorageUsed: fileSize,
+	})
+	if qErr != nil {
+		s.markTaskFailed(ctx, taskID, "quota exceeded")
+		return
+	}
+
+	// Create UserFile
+	fileSlug, nerr := gonanoid.New(21)
+	if nerr != nil {
+		s.markTaskFailed(ctx, taskID, "generate file slug failed")
+		return
+	}
+
+	mimeText := pgtype.Text{}
+	if mimeType != "" {
+		mimeText = pgtype.Text{String: mimeType, Valid: true}
+	}
+
+	uf, cErr := s.queries.CreateFile(ctx, sqlc.CreateFileParams{
+		Slug:           fileSlug,
+		UserID:         userID,
+		PhysicalFileID: pgtype.Int8{Int64: pf.ID, Valid: true},
+		ParentID:       parentID,
+		ParentSlug:     pgtype.Text{String: req.ParentSlug, Valid: req.ParentSlug != ""},
+		FileName:       finalName,
+		IsDir:          false,
+		FileSize:       fileSize,
+		MimeType:       mimeText,
+		FileCategory:   string(fileutil.CategorizeMime(mimeType, false)),
+		IsSystem:       false,
+		SystemKind:     pgtype.Text{},
+	})
+	if cErr != nil {
+		s.markTaskFailed(ctx, taskID, "create file entry failed: "+cErr.Error())
+		return
+	}
+
+	_ = s.cache.PreCache.Set(ctx, fileSize, preHash, pf.Slug)
+
+	_, err = s.pg.Exec(ctx,
+		`UPDATE upload_tasks SET status = 'done', file_hash = $1, pre_hash = $2, file_size = $3, mime_type = $4, physical_file_id = $5, file_hash = $1 WHERE id = $6`,
+		fileHash, preHash, fileSize, mimeType, pf.ID, taskID,
+	)
+	if err != nil {
+		s.logger.Error().Str("slug", taskSlug).Err(err).Msg("url-download: final status update failed")
+		return
+	}
+
+	s.logger.Info().Int64("userID", userID).Str("taskSlug", taskSlug).Str("fileSlug", uf.Slug).Str("fileName", finalName).Int64("fileSize", fileSize).Msg("url-download: complete")
+}
+
+func (s *UploadService) markTaskFailed(ctx context.Context, taskID int64, msg string) {
+	s.logger.Warn().Int64("taskID", taskID).Str("msg", msg).Msg("url-download: task failed")
+	s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'failed', error_msg = $1 WHERE id = $2`, msg, taskID)
+}
+
+type countingReader struct {
+	r     io.Reader
+	total int64
+}
+
+func (cr *countingReader) Read(p []byte) (int, error) {
+	n, err := cr.r.Read(p)
+	cr.total += int64(n)
+	return n, err
+}
+
+func (s *UploadService) updateProgress(ctx context.Context, taskID int64, cr *countingReader) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			n := cr.total
+			s.pg.Exec(ctx, `UPDATE upload_tasks SET received_bytes = $1 WHERE id = $2`, n, taskID)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func guessFileName(hint string, u *url.URL) string {
+	if hint != "" {
+		return hint
+	}
+	segments := strings.Split(strings.TrimRight(u.Path, "/"), "/")
+	if len(segments) > 0 && segments[len(segments)-1] != "" {
+		return segments[len(segments)-1]
+	}
+	return "download"
+}
+
+func withoutExt(name string) string {
+	if i := strings.LastIndex(name, "."); i > 0 {
+		return name[:i]
+	}
+	return name
+}
+
+func extOnly(name string) string {
+	if i := strings.LastIndex(name, "."); i > 0 {
+		return name[i:]
+	}
+	return ""
 }
 
 func (s *UploadService) PreCheck(ctx context.Context, userID int64, req PreCheckRequest) (*PreCheckResponse, error) {
@@ -620,6 +1079,22 @@ func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug 
 
 	resp := &StatusResponse{Status: task.Status}
 
+	// Fetch URL-specific fields
+	var taskType, sourceURL string
+	var receivedBytes int64
+	s.pg.QueryRow(ctx,
+		`SELECT COALESCE(task_type, 'chunk'), COALESCE(source_url, ''), COALESCE(received_bytes, 0) FROM upload_tasks WHERE id = $1`,
+		task.ID,
+	).Scan(&taskType, &sourceURL, &receivedBytes)
+
+	if taskType == "url" {
+		resp.TaskType = taskType
+		resp.SourceURL = sourceURL
+		resp.ReceivedBytes = receivedBytes
+		resp.FileName = task.OriginalName
+		resp.FileSize = task.FileSize
+	}
+
 	if task.Status == "done" && task.PhysicalFileID.Valid {
 		pf, err := s.queries.GetPhysicalFileByID(ctx, task.PhysicalFileID.Int64)
 		if err == nil {
@@ -631,7 +1106,7 @@ func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug 
 		resp.Error = &task.ErrorMsg.String
 	}
 
-	s.logger.Debug().Str("slug", uploadSlug).Str("status", task.Status).Msg("get-status")
+	s.logger.Debug().Str("slug", uploadSlug).Str("status", task.Status).Str("taskType", taskType).Msg("get-status")
 	return resp, nil
 }
 
@@ -648,6 +1123,9 @@ type TaskItem struct {
 	ParentName    *string `json:"parentName,omitempty"`
 	CreatedAt     string  `json:"createdAt"`
 	UpdatedAt     string  `json:"updatedAt"`
+
+	TaskType  string `json:"taskType,omitempty"`
+	SourceURL string `json:"sourceUrl,omitempty"`
 }
 
 type ListTasksResponse struct {
@@ -730,6 +1208,42 @@ func (s *UploadService) ListTasks(ctx context.Context, userID int64, limit, offs
 				}
 				items[i].ReceivedBytes = received
 			}
+		}
+	}
+
+	// Batch fetch URL task fields (task_type, source_url, received_bytes)
+	if len(tasks) > 0 {
+		type urlFields struct {
+			taskType string
+			sourceURL string
+			received  int64
+		}
+		ids := make([]int64, len(tasks))
+		for i, t := range tasks {
+			ids[i] = t.ID
+		}
+		rows, err := s.pg.Query(ctx,
+			`SELECT id, task_type, source_url, received_bytes FROM upload_tasks WHERE id = ANY($1) AND task_type = 'url'`, ids,
+		)
+		if err == nil {
+			urlByID := make(map[int64]urlFields)
+			for rows.Next() {
+				var id int64
+				var f urlFields
+				if err := rows.Scan(&id, &f.taskType, &f.sourceURL, &f.received); err == nil {
+					urlByID[id] = f
+				}
+			}
+			rows.Close()
+			for i, t := range tasks {
+				if f, ok := urlByID[t.ID]; ok {
+					items[i].TaskType = f.taskType
+					items[i].SourceURL = f.sourceURL
+					items[i].ReceivedBytes = f.received
+				}
+			}
+		} else {
+			s.logger.Warn().Err(err).Msg("list-tasks: fetch URL task fields failed")
 		}
 	}
 

@@ -18,6 +18,7 @@
 		import FileListView from '$lib/components/files/FileListView.svelte';
 		import ShareDialog from '$lib/components/files/ShareDialog.svelte';
 		import FolderUploadDialog from '$lib/components/files/FolderUploadDialog.svelte';
+	import RemoteUploadDialog from '$lib/components/files/RemoteUploadDialog.svelte';
 	import ConflictDialog from '$lib/components/files/ConflictDialog.svelte';
 	import type { NameConflictInfo, NameConflictResult } from '$lib/upload-manager.svelte';
 	import PasteUploadProvider from '$lib/components/files/PasteUploadProvider.svelte';
@@ -66,6 +67,8 @@
 
 	// --- Upload manager (shared via context) ---
 	const upload = getContext<UploadManager>('upload');
+
+	let remoteUploadOpen = $state(false);
 
 	// --- Conflict resolution dialog ---
 	type ConflictRequest = {
@@ -479,6 +482,7 @@
 			onUploadFiles={() => fileInput?.click()}
 			onUploadFolder={() => folderInput?.click()}
 			onCreateDir={createDir}
+			onUploadFromURL={() => { remoteUploadOpen = true }}
 		/>
 		<input bind:this={fileInput} type="file" multiple class="hidden" onchange={upload.onPick} />
 		<input bind:this={folderInput} type="file" webkitdirectory class="hidden" onchange={upload.onPickFolder} />
@@ -550,6 +554,8 @@
 	onConfirm={upload.onFolderConfirm}
 	onCancel={() => { upload.folderDialogOpen = false; }}
 />
+
+<RemoteUploadDialog bind:open={remoteUploadOpen} parentSlug={currentSlug} />
 
 <ConflictDialog
 	bind:open={conflictDialogOpen}
