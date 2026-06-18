@@ -8,10 +8,13 @@ import { paraglideVitePlugin } from "@inlang/paraglide-js";
 function getGitVersion() {
   if (process.env.APP_VERSION) return process.env.APP_VERSION;
   try {
-    return execSync("git describe --tags --always 2>/dev/null || true").toString().trim();
-  } catch {
-    return "";
-  }
+    const tag = execSync("git describe --tags --abbrev=0 2>/dev/null || true").toString().trim();
+    const sha = execSync("git rev-parse --short HEAD 2>/dev/null || true").toString().trim();
+    if (tag && sha) return `${tag}-${sha}`;
+    if (tag) return tag;
+    if (sha) return sha;
+  } catch {}
+  return "";
 }
 
 const buildTime = new Date().toISOString();
