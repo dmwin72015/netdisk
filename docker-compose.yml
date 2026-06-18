@@ -2,6 +2,10 @@ services:
   frontend:
     build:
       context: ./frontend
+      cache_from:
+        - netdisk-frontend:local
+      tags:
+        - netdisk-frontend:local
     image: netdisk-frontend:local
     container_name: netdisk_frontend
     depends_on:
@@ -15,6 +19,10 @@ services:
   backend:
     build:
       context: ./backend
+      cache_from:
+        - netdisk-backend:local
+      tags:
+        - netdisk-backend:local
     image: netdisk-backend:local
     container_name: netdisk_backend
     depends_on:

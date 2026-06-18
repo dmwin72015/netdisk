@@ -1,0 +1,13 @@
+node_modules
+build
+.svelte-kit
+.vite
+.env
+.env.*
+*.log
+.git
+.DS_Store
+README.md
+.claude/
+.idea/
+.vscode/

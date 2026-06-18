@@ -1,14 +1,18 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.7
 
 FROM node:22-alpine AS builder
 
 WORKDIR /build
 
+RUN corepack enable && npm config set registry https://registry.npmmirror.com
+
 COPY .npmrc package.json pnpm-lock.yaml ./
-RUN npm config set registry https://registry.npmmirror.com && corepack enable && pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 COPY . .
-RUN corepack enable && pnpm build
+RUN --mount=type=cache,target=/build/node_modules/.vite \
+    pnpm build
 
 FROM node:22-alpine
 
@@ -16,8 +20,8 @@ RUN addgroup -S netdisk && adduser -S -G netdisk netdisk
 
 WORKDIR /app
 
-COPY --from=builder /build/build ./build
-COPY --from=builder /build/package.json ./
+COPY --from=builder --chown=netdisk:netdisk /build/build ./build
+COPY --from=builder --chown=netdisk:netdisk /build/package.json ./
 
 ENV HOST=0.0.0.0 PORT=8090
 

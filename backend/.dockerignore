@@ -8,3 +8,11 @@ server-start.log
 server.log
 config.yaml
 .claude/
+.git/
+.github/
+*.md
+docs/
+nohup.out
+testdata/
+.idea/
+.vscode/

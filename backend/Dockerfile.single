@@ -1,36 +1,47 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.7
 
 # ---- Frontend build ----
 FROM node:22-alpine AS frontend
 
 WORKDIR /frontend
 
+RUN corepack enable && npm config set registry https://registry.npmmirror.com
+
 COPY frontend/.npmrc frontend/package.json frontend/pnpm-lock.yaml ./
-RUN npm config set registry https://registry.npmmirror.com && corepack enable && pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 COPY frontend/ .
-RUN cp svelte.config.static.js svelte.config.js && corepack enable && pnpm build
+RUN --mount=type=cache,target=/frontend/node_modules/.vite \
+    cp svelte.config.static.js svelte.config.js && pnpm build
 
 # ---- Backend build ----
-FROM golang:1.25-alpine AS backend
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend
 
 WORKDIR /src
 RUN apk add --no-cache git
 
-ENV GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=https://goproxy.cn,direct \
+    GOMODCACHE=/go/pkg/mod \
+    GOCACHE=/root/.cache/go-build
+
 COPY backend/go.mod backend/go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY backend/ .
 COPY --from=frontend /frontend/build /src/internal/web/build
-RUN find /src/internal/web/build -name '_*' -depth -exec sh -c 'for f; do d=$(dirname "$f"); b=$(basename "$f"); mv "$f" "$d/${b#_}"; done' _ {} + \
- && find /src/internal/web/build -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' \) -exec sed -i 's|/_app/|/app/|g' {} +
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/netdisk-server ./cmd/server
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    find /src/internal/web/build -name '_*' -depth -exec sh -c 'for f; do d=$(dirname "$f"); b=$(basename "$f"); mv "$f" "$d/${b#_}"; done' _ {} + \
+ && find /src/internal/web/build -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' \) -exec sed -i 's|/_app/|/app/|g' {} + \
+ && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/netdisk-server ./cmd/server
 
 # ---- Runtime ----
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates ffmpeg tzdata \
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    apk add ca-certificates ffmpeg tzdata \
     && addgroup -S netdisk \
     && adduser -S -G netdisk netdisk
 
