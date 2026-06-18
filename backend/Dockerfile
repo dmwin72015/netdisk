@@ -4,7 +4,8 @@ FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 
 WORKDIR /src
 
-RUN apk add --no-cache git
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
+ && apk add --no-cache git
 
 ENV GOPROXY=https://goproxy.cn,direct \
     GOMODCACHE=/go/pkg/mod \
@@ -21,8 +22,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM alpine:3.22
 
-RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
-    apk add ca-certificates ffmpeg tzdata \
+RUN --mount=type=cache,target=/etc/apk/cache,sharing=locked \
+    sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
+ && apk add ca-certificates ffmpeg tzdata \
     && addgroup -S netdisk \
     && adduser -S -G netdisk netdisk
 
