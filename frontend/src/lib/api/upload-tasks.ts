@@ -13,6 +13,9 @@ export type UploadTaskItem = {
 	parentName?: string;
 	createdAt: string;
 	updatedAt: string;
+
+	taskType?: string;
+	sourceUrl?: string;
 };
 
 export type UploadTaskListResponse = {

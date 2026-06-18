@@ -72,7 +72,26 @@ export type StatusResponse = {
 	status: string;
 	physicalFileSlug?: string;
 	error?: string;
+
+	taskType?: string;
+	sourceUrl?: string;
+	fileName?: string;
+	fileSize?: number;
+	receivedBytes?: number;
 };
+
+export type FileDedupResponse = {
+	exists: boolean;
+	physicalFileSlug?: string;
+};
+
+export async function checkFileDedup(fileHash: string) {
+	return api<FileDedupResponse>('/api/v1/upload/dedup-by-hash', {
+		method: 'POST',
+		body: JSON.stringify({ fileHash }),
+		signal: AbortSignal.timeout(30_000),
+	});
+}
 
 export async function preCheck(preHash: string, fileSize: number) {
 	return uploadRequestPool.schedule(() => {

@@ -76,6 +76,11 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 		a.closePartial()
 		return nil, fmt.Errorf("migrate storage paths: %w", err)
 	}
+
+	if err := recoverStuckDownloadTasks(ctx, pg, logger); err != nil {
+		a.closePartial()
+		return nil, fmt.Errorf("recover stuck tasks: %w", err)
+	}
 	a.jwtMgr = jwtutil.NewManager(
 		cfg.JWT.Secret,
 		time.Duration(cfg.JWT.AccessTTLMin)*time.Minute,
@@ -334,4 +339,22 @@ func buildHandlers(
 		Config: handler.NewConfigHandler(cfg),
 		Admin:  handler.NewAdminHandler(adminSvc),
 	}
+}
+
+// recoverStuckDownloadTasks resets URL download tasks stuck in "downloading"
+// status to "failed" on server startup. These tasks get stuck when the server
+// restarts or crashes while a background download goroutine is running.
+func recoverStuckDownloadTasks(ctx context.Context, pg *pgxpool.Pool, logger zerolog.Logger) error {
+	tag, err := pg.Exec(ctx,
+		`UPDATE upload_tasks
+		 SET status = 'failed', error_msg = 'server restart: download interrupted'
+		 WHERE task_type = 'url' AND status = 'downloading'`,
+	)
+	if err != nil {
+		return fmt.Errorf("recover stuck download tasks: %w", err)
+	}
+	if n := tag.RowsAffected(); n > 0 {
+		logger.Warn().Int64("count", n).Msg("recovered stuck URL download tasks")
+	}
+	return nil
 }

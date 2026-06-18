@@ -11,7 +11,8 @@ export async function computeSHA256(file: File): Promise<string> {
 export async function computeSHA256Chunked(
 	file: File,
 	callbacks: { onPreHash?: (hash: string) => void; onProgress?: (percent: number) => void },
-	chunkSize?: number
+	chunkSize?: number,
+	opts?: { skipPreHash?: boolean }
 ): Promise<{ preHash: string; hash: string; totalChunks: number }> {
 	if (!file || file.size === undefined) {
 		throw new Error('invalid file');
@@ -52,6 +53,9 @@ export async function computeSHA256Chunked(
 
 		(async () => {
 			try {
+				if (opts?.skipPreHash) {
+					worker.postMessage({ type: 'init', skipPreHash: true });
+				}
 				const hashChunks = Math.ceil(file.size / HASH_CHUNK_SIZE);
 				console.debug(`[hash] sending ${hashChunks} hash chunks to worker`);
 				for (let i = 0; i < hashChunks; i++) {

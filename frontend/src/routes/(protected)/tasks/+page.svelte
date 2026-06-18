@@ -3,13 +3,15 @@
 	import { goto } from '$app/navigation';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listUploadTasks, retryUploadTask, deleteUploadTask, deleteUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
-	import { ListRestart, CircleCheck, CircleX, Clock, Upload, LoaderCircle, ArrowLeft, ArrowRight, Trash2, Check, ChevronDown } from '@lucide/svelte';
+	import { ListRestart, CircleCheck, CircleX, Clock, Upload, Download, LoaderCircle, ArrowLeft, ArrowRight, Trash2, Check, ChevronDown, Copy } from '@lucide/svelte';
 	import { confirmDelete } from '$lib/dialog';
 	import { DatePicker } from '$lib/ui/date-picker';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import { toast } from 'svelte-sonner';
+	import Popover from '$lib/ui/popover/Popover.svelte';
+	import Tooltip from '$lib/ui/tooltip/Tooltip.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { fmtSize, fmtTime } from '$lib/utils/format';
+	import { fmtSize, fmtTime, copyToClipboard } from '$lib/utils/format';
 
 	let tasks = $state<UploadTaskItem[]>([]);
 	let total = $state(0);
@@ -63,6 +65,7 @@
 			case 'failed': return CircleX;
 			case 'uploading':
 			case 'merging': return Upload;
+			case 'downloading': return Download;
 			default: return Clock;
 		}
 	}
@@ -72,7 +75,8 @@
 			case 'done': return 'text-green-600';
 			case 'failed': return 'text-red-600';
 			case 'uploading':
-			case 'merging': return 'text-blue-600';
+			case 'merging':
+			case 'downloading': return 'text-blue-600';
 			default: return 'text-gray-400';
 		}
 	}
@@ -84,6 +88,8 @@
 			case 'uploading': return m.uploading_status();
 			case 'merging': return m.converting_status();
 			case 'created': return m.waiting();
+			case 'queued': return m.queued_status();
+			case 'downloading': return m.downloading_status();
 			default: return status;
 		}
 	}
@@ -98,6 +104,8 @@
 			{ value: 'done', label: m.upload_done() },
 			{ value: 'failed', label: m.failed() },
 			{ value: 'uploading', label: m.uploading_status() },
+			{ value: 'downloading', label: m.downloading_status() },
+			{ value: 'queued', label: m.queued_status() },
 			{ value: 'created', label: m.waiting() },
 			{ value: 'merging', label: m.converting_status() },
 		];
@@ -261,6 +269,7 @@
 							<th class="px-4 py-2.5 font-medium">{m.col_filename()}</th>
 							<th class="w-[100px] px-4 py-2.5 text-right font-medium">{m.col_size()}</th>
 							<th class="w-[120px] px-4 py-2.5 font-medium">{m.status()}</th>
+							<th class="w-32 px-4 py-2.5 font-medium">{m.col_upload_type()}</th>
 							<th class="w-[160px] px-4 py-2.5 font-medium">{m.col_directory()}</th>
 							<th class="w-[140px] px-4 py-2.5 text-right font-medium">{m.col_upload_time()}</th>
 							<th class="w-[120px] px-4 py-2.5 text-right font-medium">{m.col_actions()}</th>
@@ -283,15 +292,54 @@
 								</td>
 								<td class="px-4 py-2.5 text-right tabular-nums text-gray-500">{fmtSize(task.fileSize)}</td>
 								<td class="px-4 py-2.5">
-									<span class="inline-flex items-center gap-1.5">
-										<StatusIcon size={14} class={statusClass(task.status)} />
-										<span class={statusClass(task.status)}>{statusLabel(task.status)}</span>
-										{#if progress > 0 && (task.status === 'uploading' || task.status === 'created')}
-											<span class="text-xs text-blue-500">{progress}%</span>
-										{/if}
-									</span>
 									{#if task.errorMsg}
-										<p class="mt-0.5 text-xs text-red-400">{task.errorMsg}</p>
+										<Tooltip content={task.errorMsg} side="bottom" sideOffset={2} delayDuration={0}>
+											{#snippet children()}
+												<span class="inline-flex items-center gap-1.5 cursor-help">
+													<StatusIcon size={14} class={statusClass(task.status)} />
+													<span class={statusClass(task.status)}>{statusLabel(task.status)}</span>
+													{#if task.status === 'downloading' || task.status === 'queued'}
+														<span class="text-xs text-blue-500">{fmtSize(task.receivedBytes)}</span>
+													{:else if progress > 0 && (task.status === 'uploading' || task.status === 'created')}
+														<span class="text-xs text-blue-500">{progress}%</span>
+													{/if}
+												</span>
+											{/snippet}
+										</Tooltip>
+									{:else}
+										<span class="inline-flex items-center gap-1.5">
+											<StatusIcon size={14} class={statusClass(task.status)} />
+											<span class={statusClass(task.status)}>{statusLabel(task.status)}</span>
+											{#if task.status === 'downloading' || task.status === 'queued'}
+												<span class="text-xs text-blue-500">{fmtSize(task.receivedBytes)}</span>
+											{:else if progress > 0 && (task.status === 'uploading' || task.status === 'created')}
+												<span class="text-xs text-blue-500">{progress}%</span>
+											{/if}
+										</span>
+									{/if}
+								</td>
+								<td class="w-32 px-4 py-2.5">
+									{#if task.taskType === 'url'}
+										<Tooltip content={task.sourceUrl ?? ''} side="bottom" sideOffset={2} delayDuration={0}>
+											{#snippet children()}
+												<span class="flex items-center gap-1.5 text-blue-600 cursor-help">
+													<Download class="size-3.5" />
+													{m.remote_upload()}
+													<button
+														class="text-gray-400 hover:text-gray-600"
+														onclick={async (e: MouseEvent) => {
+															e.stopPropagation();
+															const ok = await copyToClipboard(task.sourceUrl!);
+															if (ok) toast.success(m.copied()); else toast.error(m.copy_failed());
+														}}
+													>
+														<Copy class="size-3" />
+													</button>
+												</span>
+											{/snippet}
+										</Tooltip>
+									{:else}
+										<span class="text-gray-500"><Upload class="inline size-3.5 mr-1" />{m.normal_upload()}</span>
 									{/if}
 								</td>
 								<td class="px-4 py-2.5 tabular-nums text-gray-400">

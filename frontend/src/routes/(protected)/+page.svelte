@@ -4,7 +4,7 @@
 	import { listRecentFiles, type FileItem } from '$lib/api/files';
 	import { listUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
-	import { Folder, Film, Star, Trash2, LoaderCircle, File, CircleAlert, RefreshCw, Upload, CircleCheck } from '@lucide/svelte';
+	import { Folder, Film, Star, Trash2, LoaderCircle, File, CircleAlert, RefreshCw, Upload, Clock, CircleCheck } from '@lucide/svelte';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -12,7 +12,7 @@
 	let loading = $state(true);
 	let incompleteTasks = $state<UploadTaskItem[]>([]);
 
-	const activeStatus = new Set(['created', 'uploading', 'merging', 'failed']);
+	const activeStatus = new Set(['created', 'uploading', 'merging', 'failed', 'queued', 'downloading']);
 
 	onMount(() => {
 		loadRecentFiles();
@@ -41,10 +41,12 @@
 	}
 
 	const statusConfig: Record<string, { label: string; icon: any; class: string }> = {
-		created:   { label: 'Pending',     icon: Upload,      class: 'text-blue-600' },
-		uploading: { label: 'Uploading',   icon: Upload,      class: 'text-blue-600' },
-		merging:   { label: 'Merging',     icon: RefreshCw,   class: 'text-amber-600' },
-		failed:    { label: 'Failed',      icon: CircleAlert, class: 'text-red-600' },
+		created:    { label: 'Pending',     icon: Upload,      class: 'text-blue-600' },
+		uploading:  { label: 'Uploading',   icon: Upload,      class: 'text-blue-600' },
+		merging:    { label: 'Merging',     icon: RefreshCw,   class: 'text-amber-600' },
+		failed:     { label: 'Failed',      icon: CircleAlert, class: 'text-red-600' },
+		queued:     { label: 'Queued',      icon: Clock,       class: 'text-gray-400' },
+		downloading: { label: 'Downloading', icon: Upload,     class: 'text-blue-600' },
 	};
 
 	function taskProgress(task: UploadTaskItem): number {
@@ -109,7 +111,7 @@
 					{#each incompleteTasks as task (task.slug)}
 						{@const cfg = statusConfig[task.status] || statusConfig.failed}
 						{@const progress = taskProgress(task)}
-						{@const showProgress = (task.status === 'uploading' || task.status === 'created') && progress > 0}
+						{@const showProgress = (task.status === 'uploading' || task.status === 'created' || task.status === 'downloading') && progress > 0}
 						<div class="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm" style={showProgress ? `background:linear-gradient(to right, #dbeafe ${progress}%, white ${progress}%)` : ''}>
 							<div class="relative flex items-center gap-3 px-4 py-3">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80 {cfg.class}">
@@ -118,8 +120,10 @@
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm font-medium text-gray-900">{task.fileName || 'Unknown'}</p>
 									<p class="text-xs text-gray-500">
-										{fmtSize(task.fileSize)} &middot; {cfg.label}
-										{#if showProgress}
+										{task.status === 'downloading' || task.status === 'queued' ? fmtSize(task.receivedBytes) : fmtSize(task.fileSize)} &middot; {cfg.label}
+										{#if task.status === 'downloading' || task.status === 'queued'}
+											<span class="text-blue-500"> &middot; {fmtSize(task.receivedBytes)}</span>
+										{:else if showProgress}
 											<span class="text-blue-500"> &middot; {progress}%</span>
 										{/if}
 									</p>

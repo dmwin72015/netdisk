@@ -100,6 +100,15 @@ type CompleteResponse struct {
 	PhysicalFileSlug string `json:"physicalFileSlug,omitempty"`
 }
 
+type FileDedupRequest struct {
+	FileHash string `json:"fileHash"`
+}
+
+type FileDedupResponse struct {
+	Exists           bool   `json:"exists"`
+	PhysicalFileSlug string `json:"physicalFileSlug,omitempty"`
+}
+
 type StatusResponse struct {
 	Status           string  `json:"status"`
 	PhysicalFileSlug string  `json:"physicalFileSlug,omitempty"`
@@ -274,15 +283,8 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 		}
 	}()
 
-	// Mark as downloading
-	_, err := s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'downloading' WHERE id = $1 AND status = 'queued'`, taskID)
-	if err != nil {
-		s.logger.Error().Str("slug", taskSlug).Err(err).Msg("url-download: mark downloading failed")
-		return
-	}
-
-	// If the task was already deleted/cancelled, stop
-	tag, err := s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'downloading' WHERE id = $1 AND status = 'queued'`, taskID)
+	// Atomic status transition: only proceed if still queued
+	tag, err := s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'downloading', updated_at = NOW() WHERE id = $1 AND status = 'queued'`, taskID)
 	if err != nil || tag.RowsAffected() == 0 {
 		s.logger.Warn().Str("slug", taskSlug).Err(err).Int64("affected", tag.RowsAffected()).Msg("url-download: task no longer in queued state, aborting")
 		return
@@ -348,7 +350,7 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 	cancelProgress()
 
 	// Final progress update
-	s.pg.Exec(ctx, `UPDATE upload_tasks SET received_bytes = $1 WHERE id = $2`, fileSize, taskID)
+	s.pg.Exec(ctx, `UPDATE upload_tasks SET received_bytes = $1, updated_at = NOW() WHERE id = $2`, fileSize, taskID)
 
 	// Dedup
 	pf, err := s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
@@ -492,7 +494,7 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 	_ = s.cache.PreCache.Set(ctx, fileSize, preHash, pf.Slug)
 
 	_, err = s.pg.Exec(ctx,
-		`UPDATE upload_tasks SET status = 'done', file_hash = $1, pre_hash = $2, file_size = $3, mime_type = $4, physical_file_id = $5, file_hash = $1 WHERE id = $6`,
+		`UPDATE upload_tasks SET status = 'done', file_hash = $1, pre_hash = $2, file_size = $3, mime_type = $4, physical_file_id = $5, updated_at = NOW() WHERE id = $6`,
 		fileHash, preHash, fileSize, mimeType, pf.ID, taskID,
 	)
 	if err != nil {
@@ -505,7 +507,7 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 
 func (s *UploadService) markTaskFailed(ctx context.Context, taskID int64, msg string) {
 	s.logger.Warn().Int64("taskID", taskID).Str("msg", msg).Msg("url-download: task failed")
-	s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'failed', error_msg = $1 WHERE id = $2`, msg, taskID)
+	s.pg.Exec(ctx, `UPDATE upload_tasks SET status = 'failed', error_msg = $1, updated_at = NOW() WHERE id = $2`, msg, taskID)
 }
 
 type countingReader struct {
@@ -526,7 +528,7 @@ func (s *UploadService) updateProgress(ctx context.Context, taskID int64, cr *co
 		select {
 		case <-ticker.C:
 			n := cr.total
-			s.pg.Exec(ctx, `UPDATE upload_tasks SET received_bytes = $1 WHERE id = $2`, n, taskID)
+			s.pg.Exec(ctx, `UPDATE upload_tasks SET received_bytes = $1, updated_at = NOW() WHERE id = $2`, n, taskID)
 		case <-ctx.Done():
 			return
 		}
@@ -700,7 +702,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 }
 
 func (s *UploadService) Init(ctx context.Context, userID int64, sessionID string, req InitRequest) (*InitResponse, error) {
-	if req.PreHash == "" || req.FileSize <= 0 || req.MimeType == "" {
+	if req.FileSize <= 0 || req.MimeType == "" {
 		s.logger.Warn().Int64("userID", userID).Str("preHash", req.PreHash).Int64("fileSize", req.FileSize).Str("mimeType", req.MimeType).Str("fileName", req.FileName).Msg("init: invalid input - missing required fields")
 		return nil, model.ErrInvalidInput
 	}
@@ -759,12 +761,17 @@ func (s *UploadService) Init(ctx context.Context, userID int64, sessionID string
 		return nil, fmt.Errorf("generate slug: %w", err)
 	}
 
+	preHash := req.PreHash
+	if preHash == "" {
+		preHash = req.FileHash
+	}
+
 	_, err = s.queries.CreateUploadTask(ctx, sqlc.CreateUploadTaskParams{
 		Slug:         slug,
 		OwnerUserID:  userID,
 		HashAlgo:     "sha256",
 		FileHash:     req.FileHash,
-		PreHash:      req.PreHash,
+		PreHash:      preHash,
 		FileSize:     req.FileSize,
 		MimeType:     req.MimeType,
 		OriginalName: req.FileName,
@@ -1062,6 +1069,23 @@ func safeHashPrefix(hash string) string {
 		return hash
 	}
 	return "(empty)"
+}
+
+func (s *UploadService) CheckFileDedup(ctx context.Context, req FileDedupRequest) (*FileDedupResponse, error) {
+	pf, err := s.queries.GetPhysicalFileByHash(ctx, sqlc.GetPhysicalFileByHashParams{
+		HashAlgo: "sha256",
+		FileHash: req.FileHash,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &FileDedupResponse{Exists: false}, nil
+		}
+		return nil, fmt.Errorf("dedup check: %w", err)
+	}
+	return &FileDedupResponse{
+		Exists:           true,
+		PhysicalFileSlug: pf.Slug,
+	}, nil
 }
 
 func (s *UploadService) GetStatus(ctx context.Context, userID int64, uploadSlug string) (*StatusResponse, error) {

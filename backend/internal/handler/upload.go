@@ -116,6 +116,23 @@ func (h *UploadHandler) Verify(c echo.Context) error {
 	return OK(c, resp)
 }
 
+func (h *UploadHandler) CheckFileDedup(c echo.Context) error {
+	var input service.FileDedupRequest
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if input.FileHash == "" {
+		return model.ErrInvalidInput
+	}
+
+	resp, err := h.svc.CheckFileDedup(c.Request().Context(), input)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, resp)
+}
+
 func (h *UploadHandler) Init(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

@@ -141,6 +141,14 @@ let totalChunks = 0;
 let chunksReceived = 0;
 
 self.onmessage = (e: MessageEvent) => {
+	if (e.data.type === 'init') {
+		if (e.data.skipPreHash) {
+			preHashSent = true;
+			preHashTargetBytes = 0;
+		}
+		return;
+	}
+
 	if (e.data.type === 'chunk') {
 		const data = new Uint8Array(e.data.data);
 		chunksReceived++;
@@ -148,7 +156,7 @@ self.onmessage = (e: MessageEvent) => {
 		// Always feed full hash
 		updateHash(fullCtx, data);
 
-		// Feed pre hash until we have enough bytes
+		// Feed pre hash until we have enough bytes (skipped if preHash already sent)
 		if (!preHashSent) {
 			const remaining = preHashTargetBytes - preHashAccumBytes;
 			if (remaining > 0) {

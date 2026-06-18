@@ -1,6 +1,6 @@
 import type { UploadItem } from '$lib/types/upload';
 import {
-	preCheck, requestChallenge, verify as verifyUpload,
+	preCheck, requestChallenge, verify as verifyUpload, checkFileDedup,
 	initUpload, uploadChunk, completeUpload, getUploadStatus, updateHash
 } from '$lib/api/upload';
 import type { ExistingFileRef } from '$lib/api/upload';
@@ -575,21 +575,61 @@ export function createUploadManager(opts: {
 					onProgress: (percent) => {
 						item.hashProgress = percent;
 					}
-				}, chunkSize);
-
-				const preHashTimeout = 60_000;
-				await Promise.race([
-					preHashReady,
-					new Promise<never>((_, reject) =>
-						setTimeout(() => reject(new Error(`preHash timeout after ${preHashTimeout}ms`)), preHashTimeout)
-					),
-				]);
+				}, chunkSize, useFastPath ? { skipPreHash: true } : undefined);
 
 				if (useFastPath) {
 					const { hash } = await hashPromise!;
 					item.fileHash = hash;
-					log(item.uid, null, `small file fast path, skip preCheck/challenge (${Date.now() - t0}ms): ${hash}`);
+					log(item.uid, null, `small file hash done (${Date.now() - t0}ms): ${hash}`);
+
+					item.phase = 'verifying';
+					const dedup = await checkFileDedup(hash);
+					if (dedup.exists && dedup.physicalFileSlug) {
+						log(item.uid, null, `dedup HIT (by hash), importing from ${dedup.physicalFileSlug}`);
+
+						const strategy = getDuplicateStrategy();
+						let proceed = false;
+
+						if (strategy === 'skip') {
+							item.phase = 'failed';
+							item.errorMsg = m.upload_skipped_duplicate();
+							log(item.uid, null, 'skipped (duplicate strategy: skip)');
+							return;
+						} else if (strategy === 'overwrite' || strategy === 'keep_both') {
+							proceed = true;
+							if (strategy === 'overwrite') {
+								item.conflictStrategy = 'overwrite';
+							}
+						} else {
+							proceed = true;
+						}
+
+						if (!proceed) {
+							item.phase = 'failed';
+							item.errorMsg = m.upload_skipped_duplicate();
+							log(item.uid, null, 'skipped by user (duplicate)');
+							return;
+						}
+
+						item.phase = 'importing';
+						item.progress = 100;
+						await importPhysicalFile(item, dedup.physicalFileSlug, 'dedup');
+						item.phase = 'completed';
+						item.uploadedBytes = item.fileSize;
+						log(item.uid, null, 'completed (dedup by hash)');
+						try { await _onCompleted(); } catch (e) { warn(item.uid, null, 'onCompleted threw', e); }
+						return;
+					}
+					log(item.uid, null, 'dedup MISS (by hash), proceeding to upload');
 				} else {
+					const preHashTimeout = 60_000;
+					await Promise.race([
+						preHashReady,
+						new Promise<never>((_, reject) =>
+							setTimeout(() => reject(new Error(`preHash timeout after ${preHashTimeout}ms`)), preHashTimeout)
+						),
+					]);
+
 					const preResult = await preCheck(item.preHash, item.fileSize);
 					log(item.uid, null, `preCheck result: ${preResult.status}`);
 
