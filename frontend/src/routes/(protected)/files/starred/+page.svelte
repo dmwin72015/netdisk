@@ -5,7 +5,7 @@
 	import { Star, Download, Eye, LoaderCircle, FolderPlus } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
-	import { fmtSize, fmtTime } from '$lib/utils/format';
+	import { fmtSize, fmtTime, authedUrl } from '$lib/utils/format';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import DrivePreview from '$lib/components/DrivePreview.svelte';
 
@@ -95,9 +95,9 @@
 											<button type="button" onclick={() => (previewFile = { slug: f.slug, name: f.fileName, mimeType: f.mimeType || '', size: f.fileSize })} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
 												<Eye size={15} />
 											</button>
-											<a href={downloadUrl(f.slug)} download={f.fileName} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+											<button type="button" onclick={() => { const url = authedUrl(downloadUrl(f.slug)); const a = document.createElement('a'); a.href = url; a.download = f.fileName; a.click(); a.remove(); }} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
 												<Download size={15} />
-											</a>
+											</button>
 										{/if}
 									</div>
 								</td>

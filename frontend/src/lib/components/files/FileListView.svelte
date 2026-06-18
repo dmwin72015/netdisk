@@ -10,6 +10,7 @@
   import { getAccessToken } from "$lib/api/client";
   import { thumbnailUrl } from "$lib/api/photos";
   import { toast } from "svelte-sonner";
+  import { authedUrl } from "$lib/utils/format";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
   import LazyThumbnail from "./LazyThumbnail.svelte";
   import MoveDialog from "./MoveDialog.svelte";
@@ -115,6 +116,18 @@
         .finally(() => {
           if (detailFile?.id === fileId) detailSummaryLoading = false;
         });
+    }
+  }
+
+  function handleBatchDownload() {
+    const selectedFiles = files.filter(f => selected.has(f.id) && !f.isDir);
+    for (const f of selectedFiles) {
+      const url = authedUrl(downloadUrlFn(f.id));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = f.name;
+      a.click();
+      a.remove();
     }
   }
 
@@ -499,7 +512,7 @@
             <Tooltip
               content={m.download()}
               delayDuration={200}
-              triggerProps={{ 'aria-label': m.download() }}
+              triggerProps={{ 'aria-label': m.download(), onclick: handleBatchDownload }}
               triggerClass="h-8 w-8 rounded-full text-gray-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
             >
               <Download size={16} />

@@ -18,6 +18,7 @@
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
+  import { authedUrl } from "$lib/utils/format";
 
   let {
     file,
@@ -54,6 +55,15 @@
   } = $props();
 
   let isVideo = $derived(file.mimeType?.startsWith("video/") ?? false);
+
+  function downloadFile() {
+    const url = authedUrl(downloadUrlFn(file.id));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    a.remove();
+  }
 </script>
 
 <DropdownBase.Root>
@@ -74,13 +84,9 @@
         {#snippet icon()}<Eye size={14} class="text-gray-400" />{/snippet}
         {#snippet children()}{m.preview()}{/snippet}
       </DropdownBase.Item>
-      <DropdownBase.Item>
+      <DropdownBase.Item onSelect={downloadFile}>
         {#snippet icon()}<Download size={14} class="text-gray-400" />{/snippet}
-        {#snippet children()}
-          <a href={downloadUrlFn(file.id)} download={file.name} class="flex items-center gap-2.5">
-            {m.download()}
-          </a>
-        {/snippet}
+        {#snippet children()}{m.download()}{/snippet}
       </DropdownBase.Item>
       {#if onCopyLink}
         <DropdownBase.Item onSelect={() => onCopyLink(file)}>
