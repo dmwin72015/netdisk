@@ -40,10 +40,10 @@
 	let hasMore = $derived(photos.length < total);
 	let gridClass = $derived(
 		photoSize === 'large'
-			? 'grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+			? 'grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 min-[1920px]:grid-cols-8 min-[2560px]:grid-cols-10 min-[3840px]:grid-cols-14'
 			: photoSize === 'small'
-				? 'grid-cols-4 gap-1 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 min-[1920px]:grid-cols-10 min-[2560px]:grid-cols-13 min-[3840px]:grid-cols-19'
-				: 'grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
+				? 'grid-cols-4 gap-1 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-14 min-[1920px]:grid-cols-16 min-[2560px]:grid-cols-20 min-[3840px]:grid-cols-28'
+				: 'grid-cols-3 gap-1 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 min-[1920px]:grid-cols-13 min-[2560px]:grid-cols-16 min-[3840px]:grid-cols-22'
 	);
 
 	$effect(() => {
