@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
 ARG APP_VERSION
-ENV APP_VERSION=$APP_VERSION
 
 FROM node:22-alpine AS builder
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
 
 WORKDIR /build
 
