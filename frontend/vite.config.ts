@@ -5,12 +5,10 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 
-function getGitShortSha() {
-  // Prefer build-arg / env injection (works inside Docker where .git is absent).
-  const fromEnv = process.env.VITE_GIT_SHA?.trim();
-  if (fromEnv) return fromEnv;
+function getGitVersion() {
+  if (process.env.APP_VERSION) return process.env.APP_VERSION;
   try {
-    return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync("git describe --tags --always 2>/dev/null || true").toString().trim();
   } catch {
     return "";
   }
@@ -18,8 +16,8 @@ function getGitShortSha() {
 
 const buildTime = new Date().toISOString();
 const buildStamp = buildTime.replace(/[-:TZ.]/g, "").slice(0, 14);
-const gitShortSha = getGitShortSha();
-const appVersion = gitShortSha ? `${buildStamp}-${gitShortSha}` : buildStamp;
+const gitVersion = getGitVersion();
+const appVersion = gitVersion ? `${buildStamp}-${gitVersion}` : buildStamp;
 
 export default defineConfig(({ mode }) => {
   const isProduction = mode === "production";

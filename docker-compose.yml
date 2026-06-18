@@ -3,12 +3,11 @@ services:
     build:
       context: ./frontend
       args:
-        GIT_SHA: ${GIT_SHA:-}
+        APP_VERSION: ${APP_VERSION:-}
     image: netdisk-frontend:local
     container_name: netdisk_frontend
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     environment:
       - PORT=8090
       - HOST=0.0.0.0

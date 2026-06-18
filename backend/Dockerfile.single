@@ -12,8 +12,6 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
 COPY frontend/ .
-ARG GIT_SHA=""
-ENV VITE_GIT_SHA=${GIT_SHA}
 RUN --mount=type=cache,target=/frontend/node_modules/.vite \
     cp svelte.config.static.js svelte.config.js && pnpm build
 
@@ -21,8 +19,6 @@ RUN --mount=type=cache,target=/frontend/node_modules/.vite \
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS backend
 
 WORKDIR /src
-RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
- && apk add --no-cache git
 
 ENV GOPROXY=https://goproxy.cn,direct \
     GOMODCACHE=/go/pkg/mod \
@@ -32,7 +28,10 @@ COPY backend/go.mod backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-COPY backend/ .
+COPY backend/cmd/ ./cmd/
+COPY backend/internal/ ./internal/
+COPY backend/pkg/ ./pkg/
+COPY backend/config.docker.yaml ./
 COPY --from=frontend /frontend/build /src/internal/web/build
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \

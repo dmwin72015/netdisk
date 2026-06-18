@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
+
 FROM node:22-alpine AS builder
 
 WORKDIR /build
@@ -10,9 +13,11 @@ COPY .npmrc package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
-COPY . .
-ARG GIT_SHA=""
-ENV VITE_GIT_SHA=${GIT_SHA}
+COPY src/ ./src/
+COPY static/ ./static/
+COPY messages/ ./messages/
+COPY project.inlang/ ./project.inlang/
+COPY svelte.config.js tsconfig.json vite.config.ts ./
 RUN --mount=type=cache,target=/build/node_modules/.vite \
     pnpm build
 

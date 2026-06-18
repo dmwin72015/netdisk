@@ -3,6 +3,7 @@ bin/
 tmp/
 logs/
 *.log
+node_modules/
 server.pid
 server-start.log
 server.log
