@@ -2,6 +2,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        GIT_SHA: ${GIT_SHA:-}
     image: netdisk-frontend:local
     container_name: netdisk_frontend
     depends_on:

@@ -11,6 +11,8 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
 COPY . .
+ARG GIT_SHA=""
+ENV VITE_GIT_SHA=${GIT_SHA}
 RUN --mount=type=cache,target=/build/node_modules/.vite \
     pnpm build
 

@@ -6,6 +6,9 @@ import { defineConfig } from "vite";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 
 function getGitShortSha() {
+  // Prefer build-arg / env injection (works inside Docker where .git is absent).
+  const fromEnv = process.env.VITE_GIT_SHA?.trim();
+  if (fromEnv) return fromEnv;
   try {
     return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
   } catch {
