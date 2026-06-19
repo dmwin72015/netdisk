@@ -24,12 +24,16 @@ RUN --mount=type=cache,target=/build/node_modules/.vite \
 
 FROM node:22-alpine
 
+RUN corepack enable && npm config set registry https://registry.npmmirror.com
+
 RUN addgroup -S netdisk && adduser -S -G netdisk netdisk
 
 WORKDIR /app
 
 COPY --from=builder --chown=netdisk:netdisk /build/build ./build
-COPY --from=builder --chown=netdisk:netdisk /build/package.json ./
+COPY --from=builder --chown=netdisk:netdisk /build/package.json /build/pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --prod --frozen-lockfile
 
 ENV HOST=0.0.0.0 PORT=8090
 
