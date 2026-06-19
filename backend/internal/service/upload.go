@@ -315,23 +315,51 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 		return
 	}
 
-	// Determine MIME type from response
+	// Determine MIME type from response header (initial guess)
 	mimeType := resp.Header.Get("Content-Type")
-	if mimeType == "" || strings.HasPrefix(mimeType, "application/octet-stream") {
-		if ext := path.Ext(fileName); ext != "" {
-			if t := mime.TypeByExtension(ext); t != "" {
-				mimeType = t
-			}
-		}
-	}
 	if idx := strings.IndexByte(mimeType, ';'); idx >= 0 {
 		mimeType = strings.TrimSpace(mimeType[:idx])
 	}
 
+	// Peek first bytes for magic-byte detection (more reliable than Content-Type)
+	head := make([]byte, 512)
+	n, readErr := io.ReadFull(resp.Body, head)
+	if readErr != nil && readErr != io.ErrUnexpectedEOF && readErr != io.EOF {
+		s.markTaskFailed(ctx, taskID, "read response failed: "+readErr.Error())
+		return
+	}
+	head = head[:n]
+
+	if imgFmt := fileutil.DetectImage(head); imgFmt != "" {
+		switch imgFmt {
+		case fileutil.ImageJPEG:
+			mimeType = "image/jpeg"
+		case fileutil.ImagePNG:
+			mimeType = "image/png"
+		case fileutil.ImageWebP:
+			mimeType = "image/webp"
+		}
+	} else if mimeType == "" || strings.HasPrefix(mimeType, "application/octet-stream") {
+		if detected := http.DetectContentType(head); detected != "" {
+			if idx := strings.IndexByte(detected, ';'); idx >= 0 {
+				mimeType = strings.TrimSpace(detected[:idx])
+			} else {
+				mimeType = detected
+			}
+		}
+		if mimeType == "" || strings.HasPrefix(mimeType, "application/octet-stream") {
+			if ext := path.Ext(fileName); ext != "" {
+				if t := mime.TypeByExtension(ext); t != "" {
+					mimeType = t
+				}
+			}
+		}
+	}
+
 	// Stream download with progress tracking
-	var reader io.Reader = resp.Body
+	reader := io.MultiReader(bytes.NewReader(head), resp.Body)
 	if resp.ContentLength > 0 {
-		reader = io.LimitReader(resp.Body, s.cfg.Storage.MaxUploadSize)
+		reader = io.LimitReader(reader, s.cfg.Storage.MaxUploadSize)
 	}
 
 	cr := &countingReader{r: reader}
