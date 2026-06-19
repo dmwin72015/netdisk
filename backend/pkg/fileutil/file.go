@@ -207,15 +207,15 @@ func ContainerFromFilename(name string) Container {
 	return ""
 }
 
-// ImageFormat identifies a supported user-uploaded thumbnail format. We accept
-// JPEG, PNG, and WebP because every modern browser produces at least one of
-// them from <canvas> exports.
+// ImageFormat identifies a supported image format.
 type ImageFormat string
 
 const (
 	ImageJPEG ImageFormat = "jpeg"
 	ImagePNG  ImageFormat = "png"
 	ImageWebP ImageFormat = "webp"
+	ImageGIF  ImageFormat = "gif"
+	ImageBMP  ImageFormat = "bmp"
 )
 
 func (f ImageFormat) Ext() string {
@@ -226,6 +226,27 @@ func (f ImageFormat) Ext() string {
 		return ".png"
 	case ImageWebP:
 		return ".webp"
+	case ImageGIF:
+		return ".gif"
+	case ImageBMP:
+		return ".bmp"
+	default:
+		return ""
+	}
+}
+
+func (f ImageFormat) MIME() string {
+	switch f {
+	case ImageJPEG:
+		return "image/jpeg"
+	case ImagePNG:
+		return "image/png"
+	case ImageWebP:
+		return "image/webp"
+	case ImageGIF:
+		return "image/gif"
+	case ImageBMP:
+		return "image/bmp"
 	default:
 		return ""
 	}
@@ -242,6 +263,10 @@ func DetectImage(head []byte) ImageFormat {
 		return ImagePNG
 	case len(head) >= 12 && bytes.Equal(head[:4], []byte("RIFF")) && bytes.Equal(head[8:12], []byte("WEBP")):
 		return ImageWebP
+	case len(head) >= 6 && (bytes.Equal(head[:6], []byte("GIF87a")) || bytes.Equal(head[:6], []byte("GIF89a"))):
+		return ImageGIF
+	case len(head) >= 2 && bytes.Equal(head[:2], []byte("BM")):
+		return ImageBMP
 	}
 	return ""
 }

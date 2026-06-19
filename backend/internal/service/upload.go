@@ -331,14 +331,7 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 	head = head[:n]
 
 	if imgFmt := fileutil.DetectImage(head); imgFmt != "" {
-		switch imgFmt {
-		case fileutil.ImageJPEG:
-			mimeType = "image/jpeg"
-		case fileutil.ImagePNG:
-			mimeType = "image/png"
-		case fileutil.ImageWebP:
-			mimeType = "image/webp"
-		}
+		mimeType = imgFmt.MIME()
 	} else if mimeType == "" || strings.HasPrefix(mimeType, "application/octet-stream") {
 		if detected := http.DetectContentType(head); detected != "" {
 			if idx := strings.IndexByte(detected, ';'); idx >= 0 {
