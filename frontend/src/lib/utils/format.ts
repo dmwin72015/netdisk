@@ -77,10 +77,30 @@ export function authedUrl(url: string): string {
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
 	if (typeof window === 'undefined') return false;
-	if (!window.isSecureContext || !navigator.clipboard?.writeText) return false;
+
+	if (window.isSecureContext && navigator.clipboard?.writeText) {
+		try {
+			await navigator.clipboard.writeText(text);
+			return true;
+		} catch {
+			return fallbackCopy(text);
+		}
+	}
+
+	return fallbackCopy(text);
+}
+
+function fallbackCopy(text: string): boolean {
 	try {
-		await navigator.clipboard.writeText(text);
-		return true;
+		const ta = document.createElement('textarea');
+		ta.value = text;
+		ta.style.position = 'fixed';
+		ta.style.opacity = '0';
+		document.body.appendChild(ta);
+		ta.select();
+		const ok = document.execCommand('copy');
+		document.body.removeChild(ta);
+		return ok;
 	} catch {
 		return false;
 	}
@@ -89,7 +109,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 /** Friendly failure reason when copyToClipboard returns false. */
 export function clipboardUnavailableReason(): string {
 	if (typeof window === 'undefined') return '复制失败';
-	if (!window.isSecureContext) return '复制失败：当前页面非 HTTPS，浏览器禁止访问剪贴板';
-	if (!navigator.clipboard?.writeText) return '复制失败：浏览器不支持剪贴板写入';
+	if (!navigator.clipboard?.writeText && !document.execCommand) return '复制失败：浏览器不支持剪贴板';
 	return '复制失败';
 }
