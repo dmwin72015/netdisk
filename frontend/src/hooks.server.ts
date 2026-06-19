@@ -18,18 +18,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 	try {
 		return await paraglideHandle({ event, resolve });
 	} catch (e) {
-		console.error('[SSR Handle Fatal]', e);
+		process.stderr.write(`[SSR Handle Fatal] ${e}\n`);
 		if (e instanceof Error) {
-			console.error('[SSR Handle Fatal stack]', e.stack);
+			process.stderr.write(`[SSR Handle Fatal stack] ${e.stack}\n`);
 		}
 		throw e;
 	}
 };
 
 export const handleError: HandleServerError = ({ error, status, message }) => {
-	console.error(`[SSR Error] status=${status} message=${message}`);
+	process.stderr.write(`[SSR Error] status=${status} message=${message}\n`);
 	if (error instanceof Error) {
-		console.error('[SSR Error stack]', error.stack);
+		process.stderr.write(`[SSR Error stack] ${error.stack}\n`);
 	}
 	return { message: 'Internal Error' };
 };
