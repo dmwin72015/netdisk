@@ -391,9 +391,9 @@ func (s *UploadService) runDownload(taskID int64, taskSlug string, userID int64,
 	}
 
 	if err == nil {
-		if delErr := s.store.Delete(fileHash); delErr != nil {
-			s.logger.Warn().Str("fileHash", fileHash[:16]+"...").Err(delErr).Msg("url-download: cleanup duplicate file failed")
-		}
+		// Dedup hit: WriteFromReader already wrote the file to the correct path
+		// (same hash = same path). Do NOT call s.store.Delete() — that would
+		// destroy the file that the existing physical_file record points to.
 		s.logger.Info().Int64("userID", userID).Str("fileHash", fileHash[:16]+"...").Int64("existingPfID", pf.ID).Msg("url-download: dedup hit")
 	} else {
 		pfSlug, nerr := gonanoid.New(21)
