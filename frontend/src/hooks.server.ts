@@ -14,7 +14,17 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 		});
 	});
 
-export const handle: Handle = paraglideHandle;
+export const handle: Handle = async ({ event, resolve }) => {
+	try {
+		return await paraglideHandle({ event, resolve });
+	} catch (e) {
+		console.error('[SSR Handle Fatal]', e);
+		if (e instanceof Error) {
+			console.error('[SSR Handle Fatal stack]', e.stack);
+		}
+		throw e;
+	}
+};
 
 export const handleError: HandleServerError = ({ error, status, message }) => {
 	console.error(`[SSR Error] status=${status} message=${message}`);
