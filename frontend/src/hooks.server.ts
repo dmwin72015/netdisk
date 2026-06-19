@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getTextDirection } from '$lib/paraglide/runtime';
 
@@ -15,3 +15,11 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 	});
 
 export const handle: Handle = paraglideHandle;
+
+export const handleError: HandleServerError = ({ error, status, message }) => {
+	console.error(`[SSR Error] status=${status} message=${message}`);
+	if (error instanceof Error) {
+		console.error('[SSR Error stack]', error.stack);
+	}
+	return { message: 'Internal Error' };
+};
