@@ -198,6 +198,14 @@ docker compose -f docker-compose.single.yml up -d --build
 
 #### 1. 启动基础设施
 
+使用**仅基础设施配置**（推荐，更轻量）：
+
+```bash
+docker compose -f docker-compose.infrastructure.yml up -d
+```
+
+或者使用完整 `docker-compose.yml`（包含后端/前端/nginx 编排）：
+
 ```bash
 docker compose up -d postgres redis
 ```
