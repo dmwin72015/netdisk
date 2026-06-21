@@ -11,6 +11,7 @@
 		cancelText,
 		confirmText,
 		onOpenChange,
+		onOpenChangeComplete,
 		onOk,
 		onCancel,
 		onConfirm,
@@ -37,6 +38,7 @@
 		cancelText?: string;
 		confirmText?: string;
 		onOpenChange?: (open: boolean) => void;
+		onOpenChangeComplete?: (open: boolean) => void;
 		onOk?: () => void;
 		onCancel?: () => void;
 		onConfirm?: () => void;
@@ -75,7 +77,7 @@
 	}
 </script>
 
-<DialogBase.Root bind:open {onOpenChange}>
+<DialogBase.Root bind:open {onOpenChange} {onOpenChangeComplete}>
 	<DialogBase.Content class="max-h-[90vh] p-0! flex flex-col overflow-hidden {className}" style={contentStyle}>
 		<div class="flex {description ? 'items-start' : 'items-center'} gap-3 border-b border-gray-100 px-5 py-3 {headerClass}">
 			<DialogBase.Header class="min-w-0 flex-1 space-y-1">

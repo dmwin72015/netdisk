@@ -14,6 +14,10 @@
 	let loading = $state(true);
 	let previewFile = $state<{ slug: string; name: string; mimeType: string; size: number } | null>(null);
 
+	function onPreviewComplete(open: boolean) {
+		if (!open) previewFile = null;
+	}
+
 	async function refresh() {
 		if (!$user) return;
 		loading = true;
@@ -41,6 +45,9 @@
 	onMount(() => {
 		void refresh();
 	});
+
+	let dialogOpen = $derived(!!previewFile);
+
 </script>
 
 {#if $authReady && $user}
@@ -110,13 +117,11 @@
 	</div>
 {/if}
 
-{#if previewFile}
 	<DrivePreview
-		id={previewFile.slug}
-		name={previewFile.name}
-		mimeType={previewFile.mimeType}
-		size={previewFile.size}
-		open={true}
-		close={() => (previewFile = null)}
+		id={previewFile!.slug}
+		name={previewFile!.name}
+		mimeType={previewFile!.mimeType}
+		size={previewFile!.size}
+		bind:open={dialogOpen}
+		onOpenChangeComplete={onPreviewComplete}
 	/>
-{/if}

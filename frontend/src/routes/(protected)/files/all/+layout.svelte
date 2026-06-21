@@ -417,6 +417,10 @@
 			previewFile = { slug: file.id, name: file.name, mimeType: file.mimeType || '', size: file.size };
 		}
 
+		function onPreviewComplete(open: boolean) {
+			if (!open) previewFile = null;
+		}
+
 		function onShare(file: NormalizedFile) {
 			shareFiles = [file];
 			shareOpen = true;
@@ -440,6 +444,7 @@
 		}
 	}
 
+	let dialogOpen = $derived(!!previewFile);
 
 </script>
 
@@ -536,16 +541,14 @@
 
 <ShareDialog bind:open={shareOpen} files={shareFiles} />
 
-	{#if previewFile}
 	<DrivePreview
-		id={previewFile.slug}
-		name={previewFile.name}
-		mimeType={previewFile.mimeType}
-		size={previewFile.size}
-		open={true}
-		close={() => (previewFile = null)}
+		id={previewFile!.slug}
+		name={previewFile!.name}
+		mimeType={previewFile!.mimeType}
+		size={previewFile!.size}
+		bind:open={dialogOpen}
+		onOpenChangeComplete={onPreviewComplete}
 	/>
-{/if}
 
 <FolderUploadDialog
 	files={upload.folderDialogFiles}

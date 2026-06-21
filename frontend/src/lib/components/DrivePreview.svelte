@@ -25,14 +25,14 @@
 		mimeType,
 		size,
 		open = $bindable(false),
-		close
+		onOpenChangeComplete
 	}: {
 		id: string;
 		name: string;
 		mimeType: string;
 		size: number;
 		open?: boolean;
-		close: () => void;
+		onOpenChangeComplete?: (open: boolean) => void;
 	} = $props();
 
 	let textContent = $state<string | null>(null);
@@ -121,8 +121,11 @@
 	function handleOpenChange(v: boolean) {
 		if (!v) {
 			open = false;
-			close();
 		}
+	}
+
+	function handleClose() {
+		open = false;
 	}
 
 	async function copyLink() {
@@ -192,7 +195,7 @@
 <Dialog
 	bind:open
 	onOpenChange={handleOpenChange}
-	onCancel={close}
+	onOpenChangeComplete={onOpenChangeComplete}
 	title={name}
 	description={fmtSize(size)}
 	footer={false}
