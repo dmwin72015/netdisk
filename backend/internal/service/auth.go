@@ -109,10 +109,11 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 	qtx := s.queries.WithTx(tx)
 
 	user, err := qtx.CreateUser(ctx, sqlc.CreateUserParams{
-		Slug:         slug,
-		Username:     input.Username,
-		Email:        input.Email,
-		PasswordHash: string(hash),
+		Slug:           slug,
+		Username:       input.Username,
+		Email:          input.Email,
+		PasswordHash:   string(hash),
+		RegisterMethod: "email",
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
