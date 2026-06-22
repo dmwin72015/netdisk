@@ -11,6 +11,7 @@
 		children: Snippet;
 		class?: string;
 		disabled?: boolean;
+		[key: string]: unknown;
 	} = $props();
 </script>
 

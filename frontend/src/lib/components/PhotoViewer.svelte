@@ -362,7 +362,7 @@
 				onclick={closeViewer}
 				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
-				<X size={24} />
+				<X size={20} />
 			</button>
 		</div>
 
