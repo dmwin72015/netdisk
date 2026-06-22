@@ -13,6 +13,7 @@
 	let album = $state<AlbumDetail | null>(null);
 	let loading = $state(true);
 	let viewerSlug = $state<string | null>(null);
+	let viewerOpen = $state(false);
 	let viewerIndex = $state(0);
 
 	let allSlugs = $derived(album?.photos.map(p => p.slug) ?? []);
@@ -45,6 +46,7 @@
 	function openViewer(slug: string) {
 		viewerIndex = allSlugs.indexOf(slug);
 		viewerSlug = slug;
+		viewerOpen = true;
 	}
 
 	onMount(() => {
@@ -113,13 +115,12 @@
 		{/if}
 	</div>
 
-	{#if viewerSlug}
-		<PhotoViewer
-			slug={viewerSlug}
-			bind:fileSlugs={allSlugs}
-			index={viewerIndex}
-			close={() => (viewerSlug = null)}
-			photos={album?.photos ?? []}
-		/>
-	{/if}
+	<PhotoViewer
+		bind:open={viewerOpen}
+		slug={viewerSlug}
+		bind:fileSlugs={allSlugs}
+		index={viewerIndex}
+		onClose={() => (viewerSlug = null)}
+		photos={album?.photos ?? []}
+	/>
 {/if}

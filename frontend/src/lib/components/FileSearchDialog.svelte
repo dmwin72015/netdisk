@@ -1,10 +1,11 @@
 <script lang="ts">
- import { goto } from '$app/navigation';
- import { Search, X, LoaderCircle } from '@lucide/svelte';
- import { listFiles, type FileItem } from '$lib/api/files';
- import MimeIcon from '$lib/components/MimeIcon.svelte';
- import { fmtSize } from '$lib/utils/format';
- import * as m from '$lib/paraglide/messages';
+import { Dialog } from 'bits-ui';
+import { goto } from '$app/navigation';
+import { Search, X, LoaderCircle } from '@lucide/svelte';
+import { listFiles, type FileItem } from '$lib/api/files';
+import MimeIcon from '$lib/components/MimeIcon.svelte';
+import { fmtSize } from '$lib/utils/format';
+import * as m from '$lib/paraglide/messages';
 
  type CategoryDef = {
  key: string | null;
@@ -153,19 +154,26 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <svelte:window onkeydown={handleKeydown} />
 
-{#if open}
- <!-- svelte-ignore a11y_no_static_element_interactions -->
- <div
- class="fixed inset-0 z-50 flex items-start justify-center bg-overlay pt-[15vh] backdrop-blur-sm"
- onclick={closeDialog}
- onkeydown={(e) => { if (e.key === 'Escape') closeDialog(); }}
- >
- <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
- <div
- class="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-white shadow-dialog"
- onclick={(e) => e.stopPropagation()}
- onkeydown={() => {}}
- >
+<Dialog.Root bind:open onOpenChange={(v) => { if (!v) closeDialog(); }}>
+	<Dialog.Overlay
+		class="fixed inset-0 z-50 bg-overlay backdrop-blur-sm
+			data-[state=open]:animate-in data-[state=closed]:animate-out
+			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
+			duration-200"
+	/>
+	<Dialog.Content
+		class="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-white shadow-dialog fixed left-1/2 top-[15vh] z-50 -translate-x-1/2
+			data-[state=open]:animate-in data-[state=closed]:animate-out
+			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
+			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
+			duration-200"
+	>
+	 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	 <div
+	 class="w-full overflow-hidden rounded-xl border border-line bg-white shadow-dialog"
+	 onclick={(e) => e.stopPropagation()}
+	 onkeydown={() => {}}
+	 >
  <!-- Search input -->
  <div class="flex items-center gap-3 border-b border-line-soft px-4 py-3">
  <Search size={18} class="shrink-0 text-ink-4" />
@@ -247,6 +255,6 @@
  <span><kbd class="rounded border border-line px-1 py-0.5 text-[10px] text-ink-3">↵</kbd> {m.confirm()}</span>
  <span><kbd class="rounded border border-line px-1 py-0.5 text-[10px] text-ink-3">Esc</kbd> {m.close()}</span>
  </div>
- </div>
- </div>
-{/if}
+	</div>
+	</Dialog.Content>
+</Dialog.Root>
