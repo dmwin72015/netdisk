@@ -3,7 +3,9 @@
 	import { browser } from '$app/environment';
 	import { toast } from 'svelte-sonner';
 	import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from '$lib/paste-upload';
+	import { extractClipboardText, validateTextSize, getDefaultFileName, createTextFile } from '$lib/paste-text-upload';
 	import PasteUploadConfirmDialog from './PasteUploadConfirmDialog.svelte';
+	import PasteTextUploadConfirmDialog from './PasteTextUploadConfirmDialog.svelte';
 
 	let {
 		enabled = true,
@@ -20,6 +22,9 @@
 	let dialogOpen = $state(false);
 	let acceptedFiles = $state<File[]>([]);
 	let rejectedFiles = $state<File[]>([]);
+	let textDialogOpen = $state(false);
+	let clipboardText = $state<string | null>(null);
+	let textFileName = $state('');
 
 	function reset() {
 		dialogOpen = false;
@@ -27,24 +32,47 @@
 		rejectedFiles = [];
 	}
 
+	async function confirmTextUpload(file: File) {
+		textDialogOpen = false;
+		try {
+			await onUpload([file]);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '粘贴上传失败');
+		} finally {
+			clipboardText = null;
+			textFileName = '';
+		}
+	}
+
 	function handlePaste(event: ClipboardEvent) {
 		if (!enabled) return;
 
+		// 优先检测文件
 		const pastedFiles = extractClipboardFiles(event.clipboardData);
-		if (pastedFiles.length === 0) return;
-		if (isEditablePasteTarget(event.target)) return;
-
-		event.preventDefault();
-		const result = filterPasteFiles(pastedFiles, acceptFile);
-		acceptedFiles = result.accepted;
-		rejectedFiles = result.rejected;
-
-		if (acceptedFiles.length === 0) {
-			toast.error(result.rejected.length > 0 ? '粘贴的文件类型不支持上传' : '剪贴板中没有可上传的文件');
+		if (pastedFiles.length > 0) {
+			const result = filterPasteFiles(pastedFiles, acceptFile);
+			acceptedFiles = result.accepted;
+			rejectedFiles = result.rejected;
+			if (acceptedFiles.length > 0) dialogOpen = true;
 			return;
 		}
 
-		dialogOpen = true;
+		// 新增：检测文本
+		const text = extractClipboardText(event.clipboardData);
+		if (text && text.trim().length > 0) {
+			event.preventDefault();
+
+			// 检查文本大小
+			const sizeCheck = validateTextSize(text);
+			if (!sizeCheck.valid) {
+				toast.error(sizeCheck.error || '文本内容过大');
+				return;
+			}
+
+			clipboardText = text;
+			textFileName = getDefaultFileName(text);
+			textDialogOpen = true;
+		}
 	}
 
 	async function confirmUpload() {
@@ -75,4 +103,17 @@
 	{targetLabel}
 	onConfirm={confirmUpload}
 	onCancel={reset}
+/>
+
+<PasteTextUploadConfirmDialog
+	bind:open={textDialogOpen}
+	text={clipboardText || ''}
+	targetLabel={targetLabel}
+	defaultFileName={textFileName}
+	onConfirm={confirmTextUpload}
+	onCancel={() => {
+		textDialogOpen = false;
+		clipboardText = null;
+		textFileName = '';
+	}}
 />
