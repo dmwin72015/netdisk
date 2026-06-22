@@ -60,10 +60,10 @@
 >
 	{#if sizeError}
 		<!-- Error state -->
-		<div class="border-b border-error/30 bg-error-soft px-4 py-3">
+		<div class="border-b border-error/30 bg-error-soft px-5 py-4">
 			<div class="flex items-start gap-2.5">
-				<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error">
-					<AlertTriangle size={18} />
+				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error">
+					<AlertTriangle size={20} />
 				</div>
 				<div class="min-w-0">
 					<p class="text-sm text-ink">{sizeError}</p>
@@ -72,10 +72,10 @@
 		</div>
 	{:else}
 		<!-- Normal state header -->
-		<div class="border-b border-line-soft px-4 py-3">
+		<div class="border-b border-line-soft px-5 py-4">
 			<div class="flex items-start gap-2.5">
-				<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
-					<FileText size={18} />
+				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+					<FileText size={20} />
 				</div>
 				<div class="min-w-0">
 					<p class="text-sm text-ink-2">
@@ -89,7 +89,7 @@
 		</div>
 
 		<!-- Filename input -->
-		<div class="border-b border-line-soft px-4 py-2.5">
+		<div class="border-b border-line-soft px-2 py-2">
 			<label for="filename" class="text-xs font-medium text-ink-3">文件名</label>
 			<input
 				id="filename"
@@ -101,7 +101,7 @@
 		</div>
 
 		<!-- Preview -->
-		<div class="border-b border-line-soft px-4 py-2.5">
+		<div class="border-b border-line-soft px-2 py-2">
 			<button
 				type="button"
 				onclick={togglePreview}
@@ -132,7 +132,7 @@
 	{/if}
 
 	<!-- Footer -->
-	<div class="flex items-center justify-end gap-2 border-t border-line-soft px-4 py-2.5">
+	<div class="flex items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
 		<button
 			type="button"
 			onclick={onCancel}
