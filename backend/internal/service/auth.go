@@ -109,11 +109,10 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 	qtx := s.queries.WithTx(tx)
 
 	user, err := qtx.CreateUser(ctx, sqlc.CreateUserParams{
-		Slug:           slug,
-		Username:       input.Username,
-		Email:          input.Email,
-		PasswordHash:   string(hash),
-		RegisterMethod: "email",
+		Slug:         slug,
+		Username:     input.Username,
+		Email:        input.Email,
+		PasswordHash: string(hash),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -595,7 +594,7 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		}
 
 		// No match — auto-register a new local user.
-		newUser, err := s.createUserFromOAuth(ctx, provider, userInfo)
+		newUser, err := s.createUserFromOAuth(ctx, userInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -885,7 +884,7 @@ func (s *AuthService) resolveOAuthUser(ctx context.Context, provider string, use
 
 // createUserFromOAuth registers a brand-new local user derived from the
 // third-party profile, and persists the corresponding register_method.
-func (s *AuthService) createUserFromOAuth(ctx context.Context, provider string, userInfo *OAuthUserInfo) (*sqlc.User, error) {
+func (s *AuthService) createUserFromOAuth(ctx context.Context, userInfo *OAuthUserInfo) (*sqlc.User, error) {
 	slug, err := gonanoid.New(21)
 	if err != nil {
 		return nil, fmt.Errorf("generate slug: %w", err)
@@ -898,7 +897,12 @@ func (s *AuthService) createUserFromOAuth(ctx context.Context, provider string, 
 	}
 
 	var emailArg string
-	registerMethod := provider
+	registerMethod := "oauth"
+	if userInfo.Email == "" {
+		registerMethod = "oauth_noemail"
+	} else {
+		emailArg = userInfo.Email
+	}
 
 	tx, err := s.pg.Begin(ctx)
 	if err != nil {
