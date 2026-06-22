@@ -68,86 +68,86 @@
 
 <DropdownBase.Root>
   <DropdownBase.Trigger
-    class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 {triggerClass}"
+    class="rounded-md p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3 {triggerClass}"
   >
     <MoreHorizontal size={16} />
   </DropdownBase.Trigger>
   <DropdownBase.Content sideOffset={4} align="end">
     {#if onStar && !file.isSystem}
       <DropdownBase.Item onSelect={() => onStar(file.id, file.isStarred)}>
-        {#snippet icon()}<Star size={14} class={file.isStarred ? "text-amber-400" : "text-gray-400"} fill={file.isStarred ? "currentColor" : "none"} />{/snippet}
+        {#snippet icon()}<Star size={14} class={file.isStarred ? "text-warning" : "text-ink-4"} fill={file.isStarred ? "currentColor" : "none"} />{/snippet}
         {#snippet children()}{file.isStarred ? m.unstar_file() : m.star_file()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isDir}
       <DropdownBase.Item onSelect={() => onPreview(file)}>
-        {#snippet icon()}<Eye size={14} class="text-gray-400" />{/snippet}
+        {#snippet icon()}<Eye size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.preview()}{/snippet}
       </DropdownBase.Item>
       <DropdownBase.Item onSelect={downloadFile}>
-        {#snippet icon()}<Download size={14} class="text-gray-400" />{/snippet}
+        {#snippet icon()}<Download size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.download()}{/snippet}
       </DropdownBase.Item>
       {#if onCopyLink}
         <DropdownBase.Item onSelect={() => onCopyLink(file)}>
-          {#snippet icon()}<Link size={14} class="text-gray-400" />{/snippet}
+          {#snippet icon()}<Link size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}{m.copy_url()}{/snippet}
         </DropdownBase.Item>
       {/if}
       {#if onShare}
         <DropdownBase.Item onSelect={() => onShare(file)}>
-          {#snippet icon()}<Share2 size={14} class="text-gray-400" />{/snippet}
+          {#snippet icon()}<Share2 size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}分享{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}
     {#if onShowDetails}
       <DropdownBase.Item onSelect={() => onShowDetails(file)}>
-        {#snippet icon()}<Info size={14} class="text-gray-400" />{/snippet}
+        {#snippet icon()}<Info size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.view_details()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if isVideo && onAddToMedia}
       <DropdownBase.Item onSelect={() => onAddToMedia(file)}>
-        {#snippet icon()}<Film size={14} class="text-gray-400" />{/snippet}
+        {#snippet icon()}<Film size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.add_to_media_library()}{/snippet}
       </DropdownBase.Item>
     {/if}
     <DropdownBase.Separator />
     {#if !file.isSystem}
       <DropdownBase.Item onSelect={() => onRename(file.id, file.name)}>
-        {#snippet icon()}<Pencil size={14} class="text-gray-400" />{/snippet}
+        {#snippet icon()}<Pencil size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.rename()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if onMove && !file.isSystem}
       <DropdownBase.Item onSelect={() => onMove(file)}>
-        {#snippet icon()}<FolderInput size={14} class="text-gray-400" />{/snippet}
+        {#snippet icon()}<FolderInput size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.move_to()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if file.isDir && !file.isSystem}
       {#if file.isLocked && onClearDirectoryLock}
         <DropdownBase.Item onSelect={() => onClearDirectoryLock(file)}>
-          {#snippet icon()}<LockOpen size={14} class="text-gray-400" />{/snippet}
+          {#snippet icon()}<LockOpen size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}取消目录密码{/snippet}
         </DropdownBase.Item>
       {:else if onSetDirectoryLock}
         <DropdownBase.Item onSelect={() => onSetDirectoryLock(file)}>
-          {#snippet icon()}<Lock size={14} class="text-gray-400" />{/snippet}
+          {#snippet icon()}<Lock size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}设置目录密码{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}
     {#if file.isDir && !file.isSystem && onForceDeleteDir}
       <DropdownBase.Item variant="destructive" onSelect={() => onForceDeleteDir(file)}>
-        {#snippet icon()}<Trash size={14} />{/snippet}
+        {#snippet icon()}<Trash size={14} class="text-danger" />{/snippet}
         {#snippet children()}强制删除{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isSystem}
       <DropdownBase.Item variant="destructive" onSelect={() => onDelete(file.id, file.name)}>
-        {#snippet icon()}<Trash2 size={14} />{/snippet}
+        {#snippet icon()}<Trash2 size={14} class="text-danger" />{/snippet}
         {#snippet children()}{m.delete_label()}{/snippet}
       </DropdownBase.Item>
     {/if}

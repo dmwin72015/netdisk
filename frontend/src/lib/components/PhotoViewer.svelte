@@ -46,6 +46,7 @@
 	let visibleSlug = $state<string | null>(null);
 	let loading = $state(true);
 	let isSwitchingImage = $state(false);
+	let closing = $state(false);
 	let scale = $state(1);
 	let rotation = $state(0);
 	let offsetX = $state(0);
@@ -294,6 +295,17 @@
 		close();
 	}
 
+	function closeViewer() {
+		if (closing) return;
+		closing = true;
+	}
+
+	function onOverlayEnd() {
+		if (closing) {
+			close();
+		}
+	}
+
 	function stopPropagation(e: Event) {
 		e.stopPropagation();
 	}
@@ -308,45 +320,47 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-		onclick={close}
+		class="photo-viewer-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+		class:photo-viewer-overlay-closing={closing}
+		onclick={closeViewer}
+		onanimationend={onOverlayEnd}
 	>
 		<!-- Top-right actions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="absolute right-4 top-4 z-10 flex items-center gap-2" onclick={stopPropagation}>
+		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="photo-viewer-actions absolute right-4 top-4 z-10 flex items-center gap-2" onclick={stopPropagation}>
 			<button
 				type="button"
 				onclick={toggleStar}
-				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
-				<Star size={20} class={currentPhoto?.isStarred ? 'fill-amber-400 text-amber-400' : ''} />
+				<Star size={20} class={currentPhoto?.isStarred ? 'fill-star text-warning' : ''} />
 			</button>
 			<button
 				type="button"
 				onclick={handleOpenFolder}
 				title="打开所在目录"
-				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<FolderOpen size={20} />
 			</button>
 			<button
 				type="button"
 				onclick={handleDownload}
-				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<Download size={20} />
 			</button>
 			<button
 				type="button"
 				onclick={handleCopyLink}
-				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<Link size={20} />
 			</button>
 			<button
 				type="button"
-				onclick={close}
-				class="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				onclick={closeViewer}
+				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<X size={24} />
 			</button>
@@ -357,7 +371,7 @@
 			<button
 				type="button"
 				onclick={(e) => { e.stopPropagation(); prev(); }}
-				class="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				class="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<ChevronLeft size={28} />
 			</button>
@@ -368,7 +382,7 @@
 			<button
 				type="button"
 				onclick={(e) => { e.stopPropagation(); next(); }}
-				class="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+				class="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<ChevronRight size={28} />
 			</button>
@@ -386,7 +400,7 @@
 					<div
 						bind:this={imageFrame}
 						role="presentation"
-						class="inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
+						class="photo-viewer-image-wrap inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
 						style:transform={panTransform}
 						onclick={stopPropagation}
 						onpointerdown={startPan}
@@ -399,7 +413,7 @@
 								src={authedUrl(downloadUrl(visibleSlug))}
 								alt={visiblePhoto?.fileName ?? ''}
 								loading="eager"
-								class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
+								class="photo-viewer-image max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-dialog will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
 								style:transform={imageTransform}
 								draggable="false"
 							/>
@@ -410,7 +424,7 @@
 
 		<!-- Toolbar -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-sm text-white shadow-lg backdrop-blur" onclick={stopPropagation}>
+		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="photo-viewer-toolbar absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-sm text-white shadow-pop backdrop-blur" onclick={stopPropagation}>
 			<span class="min-w-14 px-2 text-center text-white/80">{currentIndex + 1} / {fileSlugs.length}</span>
 			<div class="h-5 w-px bg-white/20"></div>
 			<button type="button" onclick={zoomOut} class="rounded-full p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40" disabled={scale <= MIN_SCALE} title={m.zoom_out()} aria-label={m.zoom_out()}>

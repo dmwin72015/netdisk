@@ -85,13 +85,13 @@
 	}
 </script>
 
-<div class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+<div class="rounded-xl border border-line-soft bg-white p-6 ">
 	<div class="mb-4 flex items-center justify-between">
-		<h2 class="text-sm font-medium text-gray-500">{m.profile_info()}</h2>
+		<h2 class="text-sm font-medium text-ink-3">{m.profile_info()}</h2>
 		{#if !editing}
 			<button
 				onclick={startEdit}
-				class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+				class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-ink-3 transition-colors hover:bg-surface-muted hover:text-ink"
 			>
 				<Pencil size={14} />
 				{m.edit()}
@@ -108,44 +108,44 @@
 								src={avatarPreview || avatarUrl}
 								alt="avatar"
 								loading="lazy"
-								class="h-24 w-24 rounded-full object-cover ring-2 ring-gray-100"
+								class="h-24 w-24 rounded-full object-cover ring-2 ring-line-soft"
 							/>
 					{:else}
-						<div class="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 ring-2 ring-gray-100">
-							<User size={40} class="text-gray-400" />
+						<div class="flex h-24 w-24 items-center justify-center rounded-full bg-surface-sunken ring-2 ring-line-soft">
+							<User size={40} class="text-ink-4" />
 						</div>
 					{/if}
 					<label
-						class="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-gray-900 text-white shadow-sm hover:bg-gray-700 transition-colors"
+						class="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-ink text-white hover:bg-ink-2 transition-colors"
 					>
 						<Camera size={14} />
 						<input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange={onAvatarSelect} />
 					</label>
 				</div>
-				<p class="text-xs text-gray-400">{m.avatar_hint()}</p>
+				<p class="text-xs text-ink-4">{m.avatar_hint()}</p>
 			</div>
 
 			<div class="flex-1 space-y-4">
 				<div>
-					<label class="mb-1 block text-sm font-medium text-gray-700" for="nickname">{m.nickname_label()}</label>
+					<label class="mb-1 block text-sm font-medium text-ink-2" for="nickname">{m.nickname_label()}</label>
 					<input
 						id="nickname"
 						type="text"
 						bind:value={nickname}
 						placeholder={username}
 						maxlength={100}
-						class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary outline-none"
 					/>
 				</div>
 				<div>
-					<label class="mb-1 block text-sm font-medium text-gray-700" for="bio">{m.bio_label()}</label>
+					<label class="mb-1 block text-sm font-medium text-ink-2" for="bio">{m.bio_label()}</label>
 					<textarea
 						id="bio"
 						bind:value={editBio}
 						placeholder={m.bio_placeholder()}
 						rows={3}
 						maxlength={500}
-						class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary outline-none resize-none"
 					></textarea>
 				</div>
 
@@ -153,20 +153,20 @@
 					<button
 						onclick={handleSave}
 						disabled={saving}
-						class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+						class="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-ink-2 disabled:opacity-50 transition-colors"
 					>
 						<Save size={14} />
 						{saving ? m.saving() : m.save()}
 					</button>
 					<button
 						onclick={cancelEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-muted"
 					>
 						<X size={14} />
 						{m.cancel()}
 					</button>
 					{#if saveMsg}
-						<span class="text-sm {saveMsg === m.profile_saved() ? 'text-green-600' : 'text-red-600'}">{saveMsg}</span>
+						<span class="text-sm {saveMsg === m.profile_saved() ? 'text-success' : 'text-danger'}">{saveMsg}</span>
 					{/if}
 				</div>
 			</div>
@@ -179,23 +179,23 @@
 							src={avatarUrl}
 							alt="avatar"
 							loading="lazy"
-							class="h-24 w-24 rounded-full object-cover ring-2 ring-gray-100"
+							class="h-24 w-24 rounded-full object-cover ring-2 ring-line-soft"
 						/>
 				{:else}
-					<div class="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 ring-2 ring-gray-100">
-						<User size={40} class="text-gray-400" />
+					<div class="flex h-24 w-24 items-center justify-center rounded-full bg-surface-sunken ring-2 ring-line-soft">
+						<User size={40} class="text-ink-4" />
 					</div>
 				{/if}
 			</div>
 
 			<div class="flex-1 space-y-3">
 				<div>
-					<p class="text-xs font-medium text-gray-400 mb-1">{m.nickname_label()}</p>
-					<p class="text-sm text-gray-800">{displayName || username}</p>
+					<p class="text-xs font-medium text-ink-4 mb-1">{m.nickname_label()}</p>
+					<p class="text-sm text-ink-2">{displayName || username}</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium text-gray-400 mb-1">{m.bio_label()}</p>
-					<p class="text-sm text-gray-800 whitespace-pre-wrap">{bio || m.no_bio()}</p>
+					<p class="text-xs font-medium text-ink-4 mb-1">{m.bio_label()}</p>
+					<p class="text-sm text-ink-2 whitespace-pre-wrap">{bio || m.no_bio()}</p>
 				</div>
 			</div>
 		</div>

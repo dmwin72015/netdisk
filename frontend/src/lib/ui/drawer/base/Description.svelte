@@ -11,6 +11,6 @@
 	} = $props();
 </script>
 
-<Dialog.Description class="text-sm text-gray-500 {className}">
+<Dialog.Description class="text-sm text-ink-3 {className}">
 	{@render children()}
 </Dialog.Description>

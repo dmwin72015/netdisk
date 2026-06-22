@@ -108,7 +108,7 @@
 >
   {#if current}
     <div class="space-y-4">
-      <p class="text-sm text-gray-600">
+      <p class="text-sm text-ink-3">
         {m.upload_conflict_message({ name: current.fileName })}
       </p>
 
@@ -117,31 +117,31 @@
         <button
           type="button"
           onclick={() => handleStrategy('overwrite')}
-          class="flex w-full items-center gap-3 rounded-lg border border-gray-200 px-4 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+          class="flex w-full items-center gap-3 rounded-lg border border-line px-4 py-2.5 text-left transition-colors hover:border-primary hover:bg-primary-soft"
         >
           <div>
-            <div class="text-sm font-medium text-gray-800">{m.upload_conflict_overwrite()}</div>
-            <div class="text-xs text-gray-500">{current.fileName}</div>
+            <div class="text-sm font-medium text-ink-2">{m.upload_conflict_overwrite()}</div>
+            <div class="text-xs text-ink-3">{current.fileName}</div>
           </div>
         </button>
         <button
           type="button"
           onclick={() => handleStrategy('keep_both')}
-          class="flex w-full items-center gap-3 rounded-lg border border-gray-200 px-4 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+          class="flex w-full items-center gap-3 rounded-lg border border-line px-4 py-2.5 text-left transition-colors hover:border-primary hover:bg-primary-soft"
         >
           <div>
-            <div class="text-sm font-medium text-gray-800">{m.upload_conflict_keep_both()}</div>
-            <div class="text-xs text-gray-500">{windowsKeepBothName(current.fileName)}</div>
+            <div class="text-sm font-medium text-ink-2">{m.upload_conflict_keep_both()}</div>
+            <div class="text-xs text-ink-3">{windowsKeepBothName(current.fileName)}</div>
           </div>
         </button>
         <button
           type="button"
           onclick={() => handleStrategy('skip')}
-          class="flex w-full items-center gap-3 rounded-lg border border-gray-200 px-4 py-2.5 text-left transition-colors hover:border-red-300 hover:bg-red-50"
+          class="flex w-full items-center gap-3 rounded-lg border border-line px-4 py-2.5 text-left transition-colors hover:border-danger hover:bg-danger-soft"
         >
           <div>
-            <div class="text-sm font-medium text-gray-800">{m.upload_conflict_skip()}</div>
-            <div class="text-xs text-gray-500">{current.fileName}</div>
+            <div class="text-sm font-medium text-ink-2">{m.upload_conflict_skip()}</div>
+            <div class="text-xs text-ink-3">{current.fileName}</div>
           </div>
         </button>
       </div>
@@ -153,15 +153,15 @@
             type="checkbox"
             checked={applyToAll}
             onchange={(e) => handleApplyAllChange(e.currentTarget.checked)}
-            class="h-4 w-4 rounded border-gray-300 text-blue-600"
+            class="h-4 w-4 rounded border-line text-primary"
           />
-          <span class="text-xs text-gray-500">{m.upload_conflict_apply_all()}</span>
+          <span class="text-xs text-ink-3">{m.upload_conflict_apply_all()}</span>
         </label>
       {/if}
 
       <!-- Progress indicator -->
       {#if conflicts.length > 1 && !applyToAll}
-        <div class="text-xs text-gray-400">
+        <div class="text-xs text-ink-4">
           {currentIndex + 1} / {conflicts.length}
         </div>
       {/if}

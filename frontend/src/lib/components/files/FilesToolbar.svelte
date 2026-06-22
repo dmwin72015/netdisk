@@ -67,48 +67,50 @@
 </script>
 
 <div
-  class="flex flex-col gap-3 rounded-2xl lg:flex-row lg:items-center lg:justify-end"
+  class="flex flex-col gap-3 rounded-xl lg:flex-row lg:items-center lg:justify-end"
 >
   <div class="flex items-center gap-2">
     <Dropdown
-      triggerClass="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
-      contentClass="min-w-[144px]"
+      triggerClass="flex h-8 min-w-[120px] items-center justify-between gap-1.5 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-3 transition-colors hover:border-line hover:bg-surface-muted"
+      contentClass="min-w-40"
     >
       {#snippet trigger()}
-        <ArrowUpDown size={14} />
-        <span class="hidden sm:inline"
-          >{sortOptions.find((o) => o.field === sortBy)?.label()}</span
-        >
+        <span class="flex items-center gap-1.5">
+          <ArrowUpDown size={14} />
+          <span class="hidden sm:inline"
+            >{sortOptions.find((o) => o.field === sortBy)?.label()}</span
+          >
+        </span>
         {#if sortDir === "ASC"}
-          <ArrowUp size={14} class="text-blue-500" />
+          <ArrowUp size={14} class="text-primary" />
         {:else}
-          <ArrowDown size={14} class="text-blue-500" />
+          <ArrowDown size={14} class="text-primary" />
         {/if}
       {/snippet}
 
       {#each sortOptions as opt (opt.field)}
         <DropdownBase.Item onSelect={() => onSort(opt.field)}>
-          <span class={sortBy === opt.field ? "font-medium text-gray-900" : ""}
+          <span class={sortBy === opt.field ? "font-medium text-ink" : ""}
             >{opt.label()}</span
           >
           {#if sortBy === opt.field}
             {#if sortDir === "ASC"}
-              <ArrowUp size={14} class="ml-auto text-blue-500" />
+              <ArrowUp size={14} class="ml-auto text-primary" />
             {:else}
-              <ArrowDown size={14} class="ml-auto text-blue-500" />
+              <ArrowDown size={14} class="ml-auto text-primary" />
             {/if}
           {/if}
         </DropdownBase.Item>
       {/each}
     </Dropdown>
 
-    <div class="flex overflow-hidden rounded-lg border border-gray-200">
+    <div class="flex overflow-hidden rounded-lg border border-line">
       <button
         type="button"
         onclick={() => onViewModeChange("list")}
         class="p-1.5 transition-colors {viewMode === 'list'
-          ? 'bg-blue-50 text-blue-600'
-          : 'bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-600'}"
+          ? 'bg-primary-soft text-primary'
+          : 'bg-white text-ink-4 hover:bg-surface-muted hover:text-ink-3'}"
       >
         <LayoutList size={15} />
       </button>
@@ -116,8 +118,8 @@
         type="button"
         onclick={() => onViewModeChange("grid")}
         class="p-1.5 transition-colors {viewMode === 'grid'
-          ? 'bg-blue-50 text-blue-600'
-          : 'bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-600'}"
+          ? 'bg-primary-soft text-primary'
+          : 'bg-white text-ink-4 hover:bg-surface-muted hover:text-ink-3'}"
       >
         <LayoutGrid size={15} />
       </button>
@@ -131,20 +133,20 @@
       onmouseleave={onMenuLeave}
     >
       <div
-        class="flex h-8 items-center overflow-hidden rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition-colors"
+        class="flex h-8 items-center overflow-hidden rounded-lg bg-primary text-sm font-medium text-white transition-colors"
       >
         <button
           type="button"
           onclick={onUploadFiles}
-          class="flex h-full items-center gap-1.5 bg-blue-600 px-3.5 hover:bg-blue-700 active:bg-blue-800"
+          class="flex h-full items-center gap-1.5 bg-primary px-3.5 hover:bg-primary-hover active:bg-primary-active"
         >
           <Upload size={15} />
           {m.upload_files()}
         </button>
         <Popover
           bind:open={showUploadMenu}
-          triggerClass="flex h-full items-center px-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
-          contentClass="w-auto min-w-40 p-1.5"
+          triggerClass="flex h-full items-center px-1.5 bg-primary hover:bg-primary-hover active:bg-primary-active"
+          contentClass="min-w-40 p-1.5"
           sideOffset={4}
           align="end"
         >
@@ -159,49 +161,49 @@
           >
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
               onclick={() => {
                 showUploadMenu = false;
                 onUploadFiles();
               }}
             >
-              <Upload size={15} class="text-gray-500" />
+              <Upload size={15} class="text-ink-4" />
               {m.upload_files()}
             </button>
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
               onclick={() => {
                 showUploadMenu = false;
                 onUploadFolder();
               }}
             >
-              <FolderOpen size={15} class="text-gray-500" />
+              <FolderOpen size={15} class="text-ink-4" />
               {m.upload_folder()}
             </button>
             {#if onUploadFromURL}
               <button
                 type="button"
-                class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
                 onclick={() => {
                   showUploadMenu = false;
                   onUploadFromURL();
                 }}
               >
-                <Globe size={15} class="text-gray-500" />
+                <Globe size={15} class="text-ink-4" />
                 {m.remote_upload()}
               </button>
             {/if}
-            <div class="my-1 border-t border-gray-100"></div>
+            <div class="bg-line-soft mx-1 my-1 h-px"></div>
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
               onclick={() => {
                 showUploadMenu = false;
                 onCreateDir();
               }}
             >
-              <FolderPlus size={15} class="text-gray-500" />
+              <FolderPlus size={15} class="text-ink-4" />
               {m.new_folder()}
             </button>
           </div>

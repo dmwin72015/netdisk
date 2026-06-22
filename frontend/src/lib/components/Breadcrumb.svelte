@@ -41,7 +41,7 @@
 		<button
 			type="button"
 			onclick={() => { expanded = false; onHome?.(); }}
-			class="shrink-0 rounded p-1 text-gray-500 transition-colors hover:text-gray-900"
+			class="shrink-0 rounded p-1 text-ink-3 transition-colors hover:text-ink"
 			title={m.all_files()}
 		>
 			<House size={16} />
@@ -51,25 +51,25 @@
 	{#each items as crumb, i}
 		{#if !expanded && needsCollapse && i > 0 && i < items.length - 1}
 			{#if i === 1}
-				<ChevronRight size={14} class="shrink-0 text-gray-300" />
+				<ChevronRight size={14} class="shrink-0 text-ink-4" />
 				<button
 					type="button"
 					onclick={() => (expanded = true)}
-					class="shrink-0 rounded px-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+					class="shrink-0 rounded px-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3"
 					title={m.show_full_path()}
 				>...</button>
 			{/if}
 		{:else}
 			{#if i > 0 || showHome}
-				<ChevronRight size={14} class="shrink-0 text-gray-300" />
+				<ChevronRight size={14} class="shrink-0 text-ink-4" />
 			{/if}
 			{#if i === items.length - 1}
-				<span class="max-w-48 truncate font-medium text-gray-900 sm:max-w-64 md:max-w-80" title={crumb.name}>{crumb.name}</span>
+				<span class="max-w-48 truncate font-medium text-ink sm:max-w-64 md:max-w-80" title={crumb.name}>{crumb.name}</span>
 			{:else}
 				<button
 					type="button"
 					onclick={() => handleClick(crumb.id)}
-					class="max-w-32 shrink truncate rounded px-1 text-gray-500 transition-colors hover:text-gray-900 sm:max-w-40"
+					class="max-w-32 shrink truncate rounded px-1 text-ink-3 transition-colors hover:text-ink sm:max-w-40"
 					title={crumb.name}
 				>{crumb.name}</button>
 			{/if}

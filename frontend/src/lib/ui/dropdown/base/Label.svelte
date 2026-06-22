@@ -11,6 +11,6 @@
 	} = $props();
 </script>
 
-<DropdownMenu.GroupHeading class="px-3 py-1.5 text-xs font-medium text-gray-500 {className}">
+<DropdownMenu.GroupHeading class="px-3 py-1.5 text-xs font-medium text-ink-3 {className}">
 	{@render children()}
 </DropdownMenu.GroupHeading>

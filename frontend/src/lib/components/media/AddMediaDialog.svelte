@@ -113,14 +113,14 @@
 	bodyClass="!p-0 flex flex-col min-h-0 !overflow-hidden"
 >
 		<!-- Search -->
-		<div class="border-b border-gray-100 px-5 py-2.5">
+		<div class="border-b border-line-soft px-5 py-2.5">
 			<div class="relative">
-				<Search size={14} class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+				<Search size={14} class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4" />
 				<input
 					type="text"
 					bind:value={searchQuery}
 					placeholder={m.search_files()}
-					class="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:bg-white"
+					class="w-full rounded-lg border border-line bg-surface-muted py-2 pl-9 pr-3 text-sm text-ink-2 outline-none transition-colors placeholder:text-ink-4 focus:border-primary focus:bg-white"
 				/>
 			</div>
 		</div>
@@ -128,41 +128,41 @@
 		<!-- Content -->
 		<div class="flex-1 overflow-y-auto p-4">
 			{#if error}
-				<div class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+				<div class="mb-3 rounded-lg border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>
 			{/if}
 
 			{#if loading}
 				<div class="flex items-center justify-center py-16">
-					<LoaderCircle size={24} class="animate-spin text-gray-300" />
+					<LoaderCircle size={24} class="animate-spin text-ink-4" />
 				</div>
 			{:else if filteredVideos.length === 0}
 				<div class="flex flex-col items-center justify-center py-16 text-center">
-					<Film size={40} class="mb-3 text-gray-300" />
-					<p class="text-sm text-gray-400">{searchQuery.trim() ? m.no_videos_found() : m.no_videos_found()}</p>
+					<Film size={40} class="mb-3 text-ink-4" />
+					<p class="text-sm text-ink-4">{searchQuery.trim() ? m.no_videos_found() : m.no_videos_found()}</p>
 				</div>
 			{:else}
 				<!-- Select all -->
-				<button type="button" onclick={toggleAll} class="mb-2 text-xs text-blue-600 transition-colors hover:text-blue-700">
+				<button type="button" onclick={toggleAll} class="mb-2 text-xs text-primary transition-colors hover:text-primary">
 					{filteredVideos.every(v => selected[v.slug]) ? m.cancel() : m.add_selected({ count: filteredVideos.length })}
 				</button>
 
 				<div class="space-y-1">
 					{#each filteredVideos as v (v.slug)}
 						{@const isSelected = !!selected[v.slug]}
-						<button type="button" onclick={() => toggle(v.slug)} class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-gray-50 {isSelected ? 'bg-blue-50' : ''}">
-							<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
+						<button type="button" onclick={() => toggle(v.slug)} class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-muted {isSelected ? 'bg-primary-soft' : ''}">
+							<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {isSelected ? 'border-primary bg-primary text-white' : 'border-line'}">
 								{#if isSelected}
 									<Check size={12} />
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm text-gray-700">{v.fileName}</p>
-								<div class="flex items-center gap-2 text-xs text-gray-400">
+								<p class="truncate text-sm text-ink-2">{v.fileName}</p>
+								<div class="flex items-center gap-2 text-xs text-ink-4">
 									{#if v.parentName && v.parentSlug && onNavigateDir}
 										<span
 											role="button"
 											tabindex="0"
-											class="flex cursor-pointer items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline"
+											class="flex cursor-pointer items-center gap-1 text-primary hover:text-primary hover:underline"
 											onclick={(e) => { e.stopPropagation(); onNavigateDir(v.parentSlug!); }}
 											onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onNavigateDir(v.parentSlug!); } }}
 										>
@@ -185,17 +185,17 @@
 		</div>
 
 		<!-- Footer -->
-		<div class="flex items-center justify-between border-t border-gray-100 px-5 py-3">
-			<span class="text-xs text-gray-400">
+		<div class="flex items-center justify-between border-t border-line-soft px-5 py-3">
+			<span class="text-xs text-ink-4">
 				{#if selectedCount() > 0}
 					{m.add_selected({ count: selectedCount() })}
 				{/if}
 			</span>
 			<div class="flex gap-2">
-				<button type="button" onclick={() => { open = false; onClose(); }} class="rounded-lg px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100">
+				<button type="button" onclick={() => { open = false; onClose(); }} class="rounded-lg px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken">
 					{m.cancel()}
 				</button>
-				<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50">
+				<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50">
 					{#if submitting}
 						<LoaderCircle size={14} class="animate-spin" />
 					{/if}

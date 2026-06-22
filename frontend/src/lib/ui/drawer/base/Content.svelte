@@ -35,7 +35,7 @@
 
 <Dialog.Portal>
 	<Dialog.Content
-		class="fixed z-50 bg-white shadow-lg outline-none
+		class="fixed z-50 bg-surface border-line shadow-pop outline-none rounded-lg
 			data-[state=open]:animate-in data-[state=open]:duration-300
 			data-[state=closed]:animate-out data-[state=closed]:duration-200
 			{panelClass} {className}"

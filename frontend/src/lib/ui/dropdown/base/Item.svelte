@@ -22,23 +22,23 @@
 
 	const variantClasses = $derived(
 		variant === 'destructive'
-			? 'text-red-600 hover:bg-red-50 focus:bg-red-50'
-			: 'text-gray-700 hover:bg-gray-50 focus:bg-gray-50'
+			? 'text-danger hover:bg-danger-soft focus:bg-danger-soft'
+			: 'text-ink-2 hover:bg-surface-sunken focus:bg-surface-sunken hover:text-ink focus:text-ink'
 	);
 </script>
 
 <DropdownMenu.Item
-	class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm outline-none transition-colors select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 {variantClasses} {className}"
+	class="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors duration-150 select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 {variantClasses} {className}"
 	{disabled}
 	{onSelect}
 >
 	{#if icon}
-		<span class="shrink-0 text-gray-400">
+		<span class="shrink-0 text-ink-4">
 			{@render icon()}
 		</span>
 	{/if}
 	{@render children()}
 	{#if shortcut}
-		<span class="ml-auto text-xs tracking-widest text-gray-400">{shortcut}</span>
+		<span class="ml-auto text-xs tracking-widest text-ink-4">{shortcut}</span>
 	{/if}
 </DropdownMenu.Item>

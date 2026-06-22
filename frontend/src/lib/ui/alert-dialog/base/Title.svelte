@@ -13,7 +13,7 @@
 </script>
 
 <AlertDialog.Title
-	class="text-sm font-medium leading-5 text-gray-800 {className}"
+	class="text-sm font-medium leading-5 text-ink-2 {className}"
 	{...restProps}
 >
 	{@render children()}

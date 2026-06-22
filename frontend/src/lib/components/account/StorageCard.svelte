@@ -21,23 +21,23 @@
 	let categoryBaseBytes = $derived(Math.max(usedBytes, 0));
 
 	const categoryColors: Record<string, string> = {
-		video:    '#8b5cf6',
-		audio:    '#3b82f6',
-		image:    '#ec4899',
+		video: '#8b5cf6',
+		audio: '#3b82f6',
+		image: '#ec4899',
 		document: '#f59e0b',
-		archive:  '#6b7280',
-		other:    '#9ca3af',
-		trash:    '#dc2626',
+		archive: '#6b7280',
+		other: '#9ca3af',
+		trash: '#dc2626',
 	};
 
 	const categoryLabels: Record<string, string> = {
-		video:    m.category_video(),
-		audio:    m.category_audio(),
-		image:    m.category_image(),
+		video: m.category_video(),
+		audio: m.category_audio(),
+		image: m.category_image(),
 		document: m.category_document(),
-		archive:  m.category_archive(),
-		other:    m.category_other(),
-		trash:    m.category_trash(),
+		archive: m.category_archive(),
+		other: m.category_other(),
+		trash: m.category_trash(),
 	};
 
 	function getColor(cat: string) {
@@ -71,26 +71,26 @@
 	});
 </script>
 
-<div class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-	<h2 class="mb-5 flex items-center gap-2 text-sm font-medium text-gray-500">
+<div class="rounded-xl border border-line-soft bg-white p-6 ">
+	<h2 class="mb-5 flex items-center gap-2 text-sm font-medium text-ink-3">
 		<HardDrive size={16} /> {m.drive_storage()}
 	</h2>
 
 	{#if loading}
-		<p class="text-sm text-gray-400">{m.loading()}</p>
+		<p class="text-sm text-ink-4">{m.loading()}</p>
 	{:else}
 		<!-- Block 1: Overall usage (used of total) -->
-		<div class="mb-3 text-sm text-gray-600">
-			<span class="font-semibold text-gray-900">{fmtSize(usedBytes)}</span>
-			<span class="text-gray-400">{m.used()}</span>
-			<span class="mx-1 text-gray-300">/</span>
-			<span class="font-semibold text-gray-900">{fmtSize(quotaBytes)}</span>
+		<div class="mb-3 text-sm text-ink-3">
+			<span class="font-semibold text-ink">{fmtSize(usedBytes)}</span>
+			<span class="text-ink-4">{m.used()}</span>
+			<span class="mx-1 text-ink-4">/</span>
+			<span class="font-semibold text-ink">{fmtSize(quotaBytes)}</span>
 		</div>
 
 		<!-- Overall usage bar -->
-		<div class="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+		<div class="h-2 w-full overflow-hidden rounded-full bg-surface-sunken">
 			<div
-				class="h-full rounded-full transition-all {percent > 90 ? 'bg-red-500' : percent > 70 ? 'bg-amber-500' : 'bg-blue-600'}"
+				class="h-full rounded-full transition-all {percent > 90 ? 'bg-danger' : percent > 70 ? 'bg-warning' : 'bg-primary'}"
 				style="width:{percent}%"
 			></div>
 		</div>
@@ -99,7 +99,7 @@
 		{#if categories.length > 0 && !loadingBreakdown}
 			<div class="mt-6">
 				<!-- GitHub-style thin segmented bar -->
-				<div class="mb-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+				<div class="mb-3 h-2 w-full overflow-hidden rounded-full bg-surface-sunken">
 					{#if barSegments.length > 0}
 						<div class="flex h-full">
 							{#each barSegments as seg (seg.cat.category)}
@@ -121,10 +121,10 @@
 								class="inline-block h-2.5 w-2.5 rounded-full shrink-0"
 								style="background-color:{getColor(cat.category)}"
 							></span>
-							<span class="cursor-default text-gray-900 underline decoration-dotted decoration-gray-300 underline-offset-2">{getLabel(cat.category)}</span>
-							<span class="text-gray-500">{pct}%</span>
+							<span class="cursor-default text-ink underline decoration-dotted decoration-line underline-offset-2">{getLabel(cat.category)}</span>
+							<span class="text-ink-3">{pct}%</span>
 							<!-- Tooltip -->
-							<div class="pointer-events-none absolute -top-1 left-0 z-10 -translate-y-full whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+							<div class="pointer-events-none absolute -top-1 left-0 z-10 -translate-y-full whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs text-white opacity-0 shadow-pop transition-opacity group-hover:opacity-100">
 								{m.total_items({ total: cat.count })}
 								<div class="absolute left-3 top-full h-0 w-0 border-4 border-transparent border-t-gray-900"></div>
 							</div>

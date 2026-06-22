@@ -65,24 +65,24 @@
 >
 	<div class="relative">
 		<DatePicker.Input
-			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-sm text-gray-700 outline-none transition-colors hover:border-gray-300 focus-within:border-blue-400 focus-within:bg-white"
+			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-muted px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary focus-within:bg-white"
 			onclick={openCalendar}
 		>
 			{#snippet children({ segments })}
 				{#each segments as { part, value }}
 					{#if part === 'literal'}
-						<span class="text-gray-400">{value}</span>
+						<span class="text-ink-4">{value}</span>
 					{:else}
 						<DatePicker.Segment
 							{part}
-							class="rounded px-0.5 tabular-nums outline-none focus:bg-blue-100 focus:text-blue-700"
+							class="rounded px-0.5 tabular-nums outline-none focus:bg-primary-softer focus:text-primary"
 						>
 							{value}
 						</DatePicker.Segment>
 					{/if}
 				{/each}
 				<DatePicker.Trigger
-					class="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+					class="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 					aria-label={placeholderText}
 				>
 					<CalendarDays size={14} />
@@ -92,7 +92,7 @@
 
 		<DatePicker.Portal>
 			<DatePicker.Content
-				class="z-50 rounded-xl border border-gray-100 bg-white p-3 shadow-lg
+				class="z-50 rounded-xl border border-line-soft bg-white p-3 shadow-pop
 					data-[state=open]:animate-in data-[state=closed]:animate-out
 					data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 					data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
@@ -103,13 +103,13 @@
 					{#snippet children({ months, weekdays })}
 						<DatePicker.Header class="flex items-center justify-between pb-2">
 							<DatePicker.PrevButton
-								class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+								class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken"
 							>
 								<ChevronLeft size={14} />
 							</DatePicker.PrevButton>
-							<DatePicker.Heading class="text-sm font-medium text-gray-900" />
+							<DatePicker.Heading class="text-sm font-medium text-ink" />
 							<DatePicker.NextButton
-								class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+								class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken"
 							>
 								<ChevronRight size={14} />
 							</DatePicker.NextButton>
@@ -120,7 +120,7 @@
 									<DatePicker.GridRow class="flex">
 										{#each weekdays as day}
 											<DatePicker.HeadCell
-												class="w-8 pb-1 text-center text-xs font-medium text-gray-400"
+												class="w-8 pb-1 text-center text-xs font-medium text-ink-4"
 											>
 												{day}
 											</DatePicker.HeadCell>
@@ -134,9 +134,9 @@
 														<DatePicker.Cell {date} month={month.value} class="p-0.5">
 													<DatePicker.Day
 														class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
-															hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-															data-[selected]:bg-blue-600 data-[selected]:text-white data-[selected]:hover:bg-blue-700
-															data-[outside-month]:text-gray-300 data-[today]:font-medium data-[today]:text-blue-600
+															hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
+															data-[selected]:bg-primary data-[selected]:text-white data-[selected]:hover:bg-primary-hover
+															data-[outside-month]:text-ink-4 data-[today]:font-medium data-[today]:text-primary
 															data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
 													>
 														{date.day}

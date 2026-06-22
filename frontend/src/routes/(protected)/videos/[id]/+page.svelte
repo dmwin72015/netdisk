@@ -133,9 +133,9 @@
 </script>
 
 {#if error}
-	<p class="text-sm text-red-600">{error}</p>
+	<p class="text-sm text-danger">{error}</p>
 {:else if !task}
-	<p class="text-sm text-slate-500">{m.loading()}</p>
+	<p class="text-sm text-ink-3">{m.loading()}</p>
 {:else}
 	<h1 class="text-xl font-semibold">{task.originalName}</h1>
 	<div class="mt-4 overflow-hidden rounded-lg bg-black">
@@ -143,26 +143,26 @@
 	</div>
 
 	<dl class="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-		<div><dt class="text-slate-500">{m.detail_size()}</dt><dd>{(task.fileSize / 1024 / 1024).toFixed(1)} MB</dd></div>
+		<div><dt class="text-ink-3">{m.detail_size()}</dt><dd>{(task.fileSize / 1024 / 1024).toFixed(1)} MB</dd></div>
 		{#if task.durationSec}
-			<div><dt class="text-slate-500">{m.duration()}</dt><dd>{fmtDurationText(task.durationSec)}</dd></div>
+			<div><dt class="text-ink-3">{m.duration()}</dt><dd>{fmtDurationText(task.durationSec)}</dd></div>
 		{/if}
-		<div><dt class="text-slate-500">{m.status()}</dt><dd>{task.status}</dd></div>
-		<div><dt class="text-slate-500">{m.created()}</dt><dd>{new Date(task.createdAt * 1000).toLocaleString()}</dd></div>
+		<div><dt class="text-ink-3">{m.status()}</dt><dd>{task.status}</dd></div>
+		<div><dt class="text-ink-3">{m.created()}</dt><dd>{new Date(task.createdAt * 1000).toLocaleString()}</dd></div>
 	</dl>
 
 	{#if task.m3u8Url}
 		<div class="mt-4 flex items-center gap-2">
-			<code class="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs">{task.m3u8Url}</code>
+			<code class="flex-1 truncate rounded bg-surface-sunken px-2 py-1 text-xs">{task.m3u8Url}</code>
 			<button
 				type="button"
 				onclick={copyUrl}
-				class="flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-slate-50"
+				class="flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-surface-muted"
 			>
 				<Copy size={12} /> {copied ? m.copied() : m.copy_m3u8()}
 			</button>
 			{#if copyError}
-				<span class="text-xs text-red-500">{copyError}</span>
+				<span class="text-xs text-danger">{copyError}</span>
 			{/if}
 		</div>
 	{/if}
@@ -170,11 +170,11 @@
 	<!-- Cover editor -->
 	<section class="mt-6 rounded-lg border bg-white p-4">
 		<header class="flex items-center gap-2">
-			<ImageIcon size={16} class="text-slate-500" />
+			<ImageIcon size={16} class="text-ink-3" />
 			<h2 class="text-sm font-medium">{m.cover_image()}</h2>
 		</header>
 		<div class="mt-3 flex flex-col gap-4 sm:flex-row">
-			<div class="aspect-video w-full max-w-xs overflow-hidden rounded bg-slate-200 sm:w-64">
+			<div class="aspect-video w-full max-w-xs overflow-hidden rounded bg-line sm:w-64">
 				{#if task.thumbnailUrl}
 						<img
 							src={authedUrl(task.thumbnailUrl)}
@@ -183,7 +183,7 @@
 							class="h-full w-full object-cover"
 					/>
 				{:else}
-					<div class="flex h-full w-full items-center justify-center text-slate-400">
+					<div class="flex h-full w-full items-center justify-center text-ink-4">
 						<ImageIcon size={28} />
 					</div>
 				{/if}
@@ -193,7 +193,7 @@
 					type="button"
 					onclick={pickThumbnailFile}
 					disabled={thumbBusy !== null}
-					class="inline-flex items-center justify-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50 disabled:opacity-60"
+					class="inline-flex items-center justify-center gap-2 rounded border border-line bg-white px-3 py-2 hover:bg-surface-muted disabled:opacity-60"
 				>
 					<Upload size={14} />
 					{thumbBusy === 'upload' ? m.uploading() : m.upload_image()}
@@ -202,16 +202,16 @@
 					type="button"
 					onclick={captureCurrentFrame}
 					disabled={thumbBusy !== null}
-					class="inline-flex items-center justify-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50 disabled:opacity-60"
+					class="inline-flex items-center justify-center gap-2 rounded border border-line bg-white px-3 py-2 hover:bg-surface-muted disabled:opacity-60"
 				>
 					<Crosshair size={14} />
 					{thumbBusy === 'frame' ? m.capturing() : m.use_current_frame()}
 				</button>
-				<p class="text-xs text-slate-500">{m.cover_hint()}</p>
+				<p class="text-xs text-ink-3">{m.cover_hint()}</p>
 				{#if thumbMsg}
-					<p class="flex items-center gap-1 text-xs {thumbIsError ? 'text-red-600' : 'text-emerald-700'}">
+					<p class="flex items-center gap-1 text-xs {thumbIsError ? 'text-danger' : 'text-success'}">
 						{thumbMsg}
-						<button type="button" onclick={() => (thumbMsg = null)} aria-label={m.close()} class="text-slate-400 hover:text-slate-700">
+						<button type="button" onclick={() => (thumbMsg = null)} aria-label={m.close()} class="text-ink-4 hover:text-ink-2">
 							<X size={12} />
 						</button>
 					</p>

@@ -12,9 +12,9 @@
 </script>
 
 <Dialog.Close
-	class="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500
-		hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none
-		focus-visible:ring-2 focus-visible:ring-blue-500 {className}"
+	class="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3
+		hover:bg-surface-sunken hover:text-ink
+		{className}"
 >
 	{#if children}
 		{@render children()}

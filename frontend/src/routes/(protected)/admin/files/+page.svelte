@@ -60,14 +60,14 @@
 
 <div class="space-y-4">
 	<div class="flex items-center gap-2">
-		<FileText size={20} class="text-slate-600" />
+		<FileText size={20} class="text-ink-3" />
 		<h1 class="text-xl font-semibold">All Files</h1>
-		<span class="ml-auto text-sm text-slate-400">{m.total_items({ total: String(total) })}</span>
+		<span class="ml-auto text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
 	</div>
 
 	<div class="overflow-hidden rounded-lg border bg-white">
 		<table class="w-full text-left text-sm">
-			<thead class="border-b bg-slate-50 text-xs text-slate-500">
+			<thead class="border-b bg-surface-muted text-xs text-ink-3">
 				<tr>
 					<th class="px-4 py-3 font-medium">{m.col_filename()}</th>
 					<th class="px-4 py-3 font-medium">{m.username()}</th>
@@ -80,45 +80,45 @@
 			<tbody class="divide-y">
 				{#if loading}
 					<tr>
-						<td colspan="6" class="px-4 py-10 text-center text-slate-400">
+						<td colspan="6" class="px-4 py-10 text-center text-ink-4">
 							<LoaderCircle size={20} class="mx-auto animate-spin" />
 						</td>
 					</tr>
 				{:else if files.length === 0}
 					<tr>
-						<td colspan="6" class="px-4 py-10 text-center text-slate-400">{m.no_files()}</td>
+						<td colspan="6" class="px-4 py-10 text-center text-ink-4">{m.no_files()}</td>
 					</tr>
 				{:else}
 					{#each files as f (f.id)}
-						<tr class="hover:bg-slate-50 transition-colors">
+						<tr class="hover:bg-surface-muted transition-colors">
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-2">
 									<span class="text-base">{dirIcon(f)}</span>
-									<span class="font-medium text-slate-900">{f.fileName}</span>
+									<span class="font-medium text-ink">{f.fileName}</span>
 								</div>
 							</td>
 							<td class="px-4 py-3">
 								<button
-									class="text-blue-600 hover:underline"
+									class="text-primary hover:underline"
 									onclick={() => goto(`/admin/users/${f.userId}`)}
 								>
 									{f.username}
 								</button>
 							</td>
-							<td class="px-4 py-3 text-slate-500">
+							<td class="px-4 py-3 text-ink-3">
 								{f.isDir ? m.directory() : (f.mimeType || f.fileCategory || '-')}
 							</td>
-							<td class="px-4 py-3 font-mono text-xs text-slate-600">
+							<td class="px-4 py-3 font-mono text-xs text-ink-3">
 								{f.isDir ? '-' : fmtSize(f.fileSize)}
 							</td>
-							<td class="px-4 py-3 text-slate-500 text-xs">{fmtDate(f.createdAt)}</td>
+							<td class="px-4 py-3 text-ink-3 text-xs">{fmtDate(f.createdAt)}</td>
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-2">
 									{#if f.isTrashed}
-										<span class="rounded bg-red-50 px-2 py-0.5 text-xs text-red-600">Trashed</span>
+										<span class="rounded bg-danger-soft px-2 py-0.5 text-xs text-danger">Trashed</span>
 									{/if}
 									{#if f.isStarred}
-										<Star size={13} class="text-amber-400" />
+										<Star size={13} class="text-warning" />
 									{/if}
 								</div>
 							</td>
@@ -132,15 +132,15 @@
 	{#if totalPages > 1}
 		<div class="flex items-center justify-center gap-2">
 			<button
-				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-slate-50 disabled:opacity-40"
+				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-surface-muted disabled:opacity-40"
 				disabled={currentPage <= 1}
 				onclick={() => goPage(currentPage - 1)}
 			>
 				<ChevronLeft size={14} />
 			</button>
-			<span class="text-sm text-slate-500">{currentPage} / {totalPages}</span>
+			<span class="text-sm text-ink-3">{currentPage} / {totalPages}</span>
 			<button
-				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-slate-50 disabled:opacity-40"
+				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-surface-muted disabled:opacity-40"
 				disabled={currentPage >= totalPages}
 				onclick={() => goPage(currentPage + 1)}
 			>

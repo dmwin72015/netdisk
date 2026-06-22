@@ -15,8 +15,8 @@
 </script>
 
 <AlertDialog.Cancel
-	class="inline-flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700
-		hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+	class="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-2
+		hover:bg-surface-muted active:bg-surface-sunken
 		disabled:pointer-events-none disabled:opacity-50
 		{className}"
 	{disabled}

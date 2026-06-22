@@ -43,7 +43,7 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
 		<button
 			type="button"
-			class="absolute inset-0 bg-black/50"
+			class="absolute inset-0 bg-overlay"
 			aria-label={m.close()}
 			disabled={submitting}
 			onclick={() => { if (!submitting) show = false; }}
@@ -52,33 +52,33 @@
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="album-create-title"
-			class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+			class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-dialog"
 		>
 			<div class="mb-4 flex items-center justify-between">
-				<h2 id="album-create-title" class="text-lg font-semibold text-gray-900">{m.albums_create()}</h2>
-				<button type="button" onclick={() => (show = false)} class="rounded-md p-1 text-gray-400 hover:text-gray-600" aria-label={m.close()}>
+				<h2 id="album-create-title" class="text-lg font-semibold text-ink">{m.albums_create()}</h2>
+				<button type="button" onclick={() => (show = false)} class="rounded-md p-1 text-ink-4 hover:text-ink-3" aria-label={m.close()}>
 					<X size={20} />
 				</button>
 			</div>
 
 			<div class="space-y-4">
 				<div>
-					<label for="album-title" class="mb-1 block text-sm font-medium text-gray-700">{m.albums_title()}</label>
+					<label for="album-title" class="mb-1 block text-sm font-medium text-ink-2">{m.albums_title()}</label>
 					<input
 						id="album-title"
 						type="text"
 						bind:value={title}
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
 						placeholder={m.albums_title_placeholder()}
 					/>
 				</div>
 				<div>
-					<label for="album-desc" class="mb-1 block text-sm font-medium text-gray-700">{m.albums_description()}</label>
+					<label for="album-desc" class="mb-1 block text-sm font-medium text-ink-2">{m.albums_description()}</label>
 					<textarea
 						id="album-desc"
 						bind:value={description}
 						rows={3}
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
 						placeholder={m.albums_desc_placeholder()}
 					></textarea>
 				</div>
@@ -88,7 +88,7 @@
 				<button
 					type="button"
 					onclick={() => (show = false)}
-					class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+					class="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-muted"
 				>
 					{m.cancel()}
 				</button>
@@ -96,7 +96,7 @@
 					type="button"
 					onclick={submit}
 					disabled={!title.trim() || submitting}
-					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{#if submitting}
 						<LoaderCircle size={15} class="animate-spin" />

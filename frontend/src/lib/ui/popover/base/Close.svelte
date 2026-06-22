@@ -13,7 +13,7 @@
 </script>
 
 <Popover.Close
-	class="inline-flex items-center justify-center rounded-md p-1 text-gray-400 outline-none transition-colors hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-blue-500 {className}"
+	class="inline-flex items-center justify-center rounded-md p-1 text-ink-4 outline-none transition-colors hover:text-ink-3 {className}"
 	{...restProps}
 >
 	{#if children}

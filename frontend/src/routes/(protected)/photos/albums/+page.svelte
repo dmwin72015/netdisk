@@ -47,13 +47,13 @@
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
-				<AlbumIcon size={20} class="text-gray-500" />
-				<h1 class="text-lg font-semibold text-gray-900">{m.albums_title()}</h1>
+				<AlbumIcon size={20} class="text-ink-3" />
+				<h1 class="text-lg font-semibold text-ink">{m.albums_title()}</h1>
 			</div>
 			<button
 				type="button"
 				onclick={() => (showCreate = true)}
-				class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+				class="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
 			>
 				<Plus size={15} />
 				{m.albums_create()}
@@ -62,33 +62,33 @@
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-ink-4" />
 			</div>
 		{:else if albums.length === 0}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-				<ImageIcon size={40} class="mb-3 text-gray-300" />
-				<p class="text-sm text-gray-400">{m.albums_empty()}</p>
+			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
+				<ImageIcon size={40} class="mb-3 text-ink-4" />
+				<p class="text-sm text-ink-4">{m.albums_empty()}</p>
 			</div>
 		{:else}
 			<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
 				{#each albums as album (album.slug)}
 					<a
 						href="/photos/albums/{album.slug}"
-						class="group relative block overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md"
+						class="group border-line bg-surface relative block overflow-hidden rounded-lg border transition-colors duration-150 hover:bg-surface-muted"
 					>
-						<div class="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200">
+						<div class="aspect-[4/3] bg-surface-sunken">
 							{#if album.coverUrl}
 									<img src={album.coverUrl} alt={album.title} loading="lazy" class="h-full w-full object-cover" />
 							{/if}
 						</div>
 						<div class="p-3">
-							<h3 class="truncate text-sm font-medium text-gray-900">{album.title}</h3>
-							<p class="text-xs text-gray-400">{m.albums_photos_count({ count: album.itemCount })}</p>
+							<h3 class="truncate text-sm font-medium text-ink">{album.title}</h3>
+							<p class="text-xs text-ink-4">{m.albums_photos_count({ count: album.itemCount })}</p>
 						</div>
 						<button
 							type="button"
 							onclick={(e) => { e.preventDefault(); handleDelete(album.slug); }}
-							class="absolute right-2 top-2 rounded-full bg-white/80 p-1.5 text-gray-400 opacity-0 shadow transition-opacity hover:text-red-500 group-hover:opacity-100"
+							class="bg-surface/85 text-ink-4 hover:text-danger absolute right-2 top-2 rounded-md p-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
 						>
 							<Trash2 size={14} />
 						</button>

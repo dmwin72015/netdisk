@@ -72,12 +72,12 @@
 
 	function statusClass(status: string) {
 		switch (status) {
-			case 'done': return 'text-green-600';
-			case 'failed': return 'text-red-600';
+			case 'done': return 'text-success';
+			case 'failed': return 'text-danger';
 			case 'uploading':
 			case 'merging':
-			case 'downloading': return 'text-blue-600';
-			default: return 'text-gray-400';
+			case 'downloading': return 'text-primary';
+			default: return 'text-ink-4';
 		}
 	}
 
@@ -189,26 +189,26 @@
 	<div class="space-y-4">
 		<!-- Header -->
 		<div class="flex items-center gap-2">
-			<ListRestart size={20} class="text-gray-500" />
-			<h1 class="text-lg font-semibold text-gray-900">{m.upload_title()}</h1>
-			<span class="text-sm text-gray-400">{m.total_items({ total: String(total) })}</span>
+			<ListRestart size={20} class="text-ink-3" />
+			<h1 class="text-lg font-semibold text-ink">{m.upload_title()}</h1>
+			<span class="text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
 		</div>
 
 		<!-- Filters -->
 		<div class="flex items-center gap-2">
 			<DatePicker bind:value={startDate} placeholderText={m.start_date()} />
-			<span class="text-xs text-gray-300">—</span>
+			<span class="text-xs text-ink-4">—</span>
 			<DatePicker bind:value={endDate} placeholderText={m.end_date()} />
 			<Dropdown
 				bind:open={statusFilterOpen}
-				triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 data-[state=open]:border-blue-400 data-[state=open]:bg-white"
+				triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-muted data-[state=open]:border-primary data-[state=open]:bg-white"
 				contentClass="min-w-36"
 				sideOffset={6}
 				align="end"
 			>
 				{#snippet trigger()}
 					<span class="truncate">{statusFilterLabel(statusFilter)}</span>
-					<ChevronDown size={14} class="shrink-0 text-gray-400" />
+					<ChevronDown size={14} class="shrink-0 text-ink-4" />
 				{/snippet}
 				{#each statusFilterOptions() as option (option.value)}
 					<DropdownBase.Item onSelect={() => selectStatusFilter(option.value)}>
@@ -216,7 +216,7 @@
 							<span class="flex flex-1 items-center justify-between gap-3">
 								<span>{option.label}</span>
 								{#if statusFilter === option.value}
-									<Check size={14} class="text-blue-500" />
+									<Check size={14} class="text-primary" />
 								{/if}
 							</span>
 						{/snippet}
@@ -224,12 +224,12 @@
 				{/each}
 			</Dropdown>
 			<button type="button" onclick={applyDateFilter}
-				class="flex h-8 items-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+				class="flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover">
 				{m.filter()}
 			</button>
 			{#if startDate || endDate || statusFilter}
 				<button type="button" onclick={clearDateFilter}
-					class="flex h-8 items-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 transition-colors hover:bg-gray-50">
+					class="flex h-8 items-center rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-muted">
 					{m.reset()}
 				</button>
 			{/if}
@@ -237,30 +237,30 @@
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-ink-4" />
 			</div>
 		{:else if tasks.length === 0}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-				<ListRestart size={40} class="mb-3 text-gray-300" />
-				<p class="text-sm text-gray-400">{m.no_tasks()}</p>
+			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
+				<ListRestart size={40} class="mb-3 text-ink-4" />
+				<p class="text-sm text-ink-4">{m.no_tasks()}</p>
 			</div>
 		{:else}
 			{#if selected.size > 0}
-				<div class="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-2">
-					<span class="text-sm text-gray-600">{m.selected_count({ count: String(selected.size) })}</span>
-					<button type="button" onclick={handleDeleteSelected} class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700">
+				<div class="flex items-center gap-3 rounded-lg border border-line-soft bg-surface-muted px-4 py-2">
+					<span class="text-sm text-ink-3">{m.selected_count({ count: String(selected.size) })}</span>
+					<button type="button" onclick={handleDeleteSelected} class="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-danger-hover">
 						<Trash2 size={12} />
 						{m.delete_btn()}
 					</button>
 				</div>
 			{/if}
 
-			<div class="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+			<div class="overflow-hidden rounded-xl border border-line-soft bg-white ">
 				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-gray-100 text-left text-xs font-medium text-gray-400">
+						<tr class="border-b border-line-soft text-left text-xs font-medium text-ink-4">
 							<th class="w-10 px-4 py-2.5">
-								<button type="button" onclick={toggleSelectAll} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {allSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
+								<button type="button" onclick={toggleSelectAll} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {allSelected ? 'border-primary bg-primary text-white' : 'border-line'}">
 									{#if allSelected}
 										<Check size={12} />
 									{/if}
@@ -279,18 +279,18 @@
 						{#each tasks as task (task.slug)}
 							{@const StatusIcon = statusIcon(task.status)}
 							{@const progress = taskProgress(task)}
-							<tr class="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80">
+							<tr class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-muted/80">
 								<td class="px-4 py-2.5">
-									<button type="button" onclick={() => toggleSelect(task.slug)} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {selected.has(task.slug) ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}">
+									<button type="button" onclick={() => toggleSelect(task.slug)} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {selected.has(task.slug) ? 'border-primary bg-primary text-white' : 'border-line'}">
 										{#if selected.has(task.slug)}
 											<Check size={12} />
 										{/if}
 									</button>
 								</td>
-								<td class="max-w-[200px] truncate px-4 py-2.5 text-gray-900" title={task.fileName || task.slug}>
+								<td class="max-w-[200px] truncate px-4 py-2.5 text-ink" title={task.fileName || task.slug}>
 									{task.fileName || task.slug}
 								</td>
-								<td class="px-4 py-2.5 text-right tabular-nums text-gray-500">{fmtSize(task.fileSize)}</td>
+								<td class="px-4 py-2.5 text-right tabular-nums text-ink-3">{fmtSize(task.fileSize)}</td>
 								<td class="px-4 py-2.5">
 									{#if task.errorMsg}
 										<Tooltip content={task.errorMsg} side="bottom" sideOffset={2} delayDuration={0}>
@@ -299,9 +299,9 @@
 													<StatusIcon size={14} class={statusClass(task.status)} />
 													<span class={statusClass(task.status)}>{statusLabel(task.status)}</span>
 													{#if task.status === 'downloading' || task.status === 'queued'}
-														<span class="text-xs text-blue-500">{fmtSize(task.receivedBytes)}</span>
+														<span class="text-xs text-primary">{fmtSize(task.receivedBytes)}</span>
 													{:else if progress > 0 && (task.status === 'uploading' || task.status === 'created')}
-														<span class="text-xs text-blue-500">{progress}%</span>
+														<span class="text-xs text-primary">{progress}%</span>
 													{/if}
 												</span>
 											{/snippet}
@@ -311,9 +311,9 @@
 											<StatusIcon size={14} class={statusClass(task.status)} />
 											<span class={statusClass(task.status)}>{statusLabel(task.status)}</span>
 											{#if task.status === 'downloading' || task.status === 'queued'}
-												<span class="text-xs text-blue-500">{fmtSize(task.receivedBytes)}</span>
+												<span class="text-xs text-primary">{fmtSize(task.receivedBytes)}</span>
 											{:else if progress > 0 && (task.status === 'uploading' || task.status === 'created')}
-												<span class="text-xs text-blue-500">{progress}%</span>
+												<span class="text-xs text-primary">{progress}%</span>
 											{/if}
 										</span>
 									{/if}
@@ -322,11 +322,11 @@
 									{#if task.taskType === 'url'}
 										<Tooltip content={task.sourceUrl ?? ''} side="bottom" sideOffset={2} delayDuration={0}>
 											{#snippet children()}
-												<span class="flex items-center gap-1.5 text-blue-600 cursor-help">
+												<span class="flex items-center gap-1.5 text-primary cursor-help">
 													<Download class="size-3.5" />
 													{m.remote_upload()}
 													<button
-														class="text-gray-400 hover:text-gray-600"
+														class="text-ink-4 hover:text-ink-3"
 														onclick={async (e: MouseEvent) => {
 															e.stopPropagation();
 															const ok = await copyToClipboard(task.sourceUrl!);
@@ -339,17 +339,17 @@
 											{/snippet}
 										</Tooltip>
 									{:else}
-										<span class="text-gray-500"><Upload class="inline size-3.5 mr-1" />{m.normal_upload()}</span>
+										<span class="text-ink-3"><Upload class="inline size-3.5 mr-1" />{m.normal_upload()}</span>
 									{/if}
 								</td>
-								<td class="px-4 py-2.5 tabular-nums text-gray-400">
+								<td class="px-4 py-2.5 tabular-nums text-ink-4">
 									{#if task.parentSlug}
-										<a href="/files/all/{task.parentSlug}" class="text-blue-600 hover:underline" title={task.parentName ? `${task.parentName} (${task.parentSlug})` : task.parentSlug}>{task.parentName || task.parentSlug}</a>
+										<a href="/files/all/{task.parentSlug}" class="text-primary hover:underline" title={task.parentName ? `${task.parentName} (${task.parentSlug})` : task.parentSlug}>{task.parentName || task.parentSlug}</a>
 									{:else}
-										<span class="text-gray-300">/</span>
+										<span class="text-ink-4">/</span>
 									{/if}
 								</td>
-								<td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-gray-400">{fmtTime(task.createdAt)}</td>
+								<td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-ink-4">{fmtTime(task.createdAt)}</td>
 								<td class="px-4 py-2.5 text-right">
 									<div class="flex items-center justify-end gap-1">
 										{#if task.status === 'failed'}
@@ -357,7 +357,7 @@
 												type="button"
 												onclick={() => handleRetry(task)}
 												disabled={retrying[task.slug]}
-												class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+												class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
 											>
 												{#if retrying[task.slug]}
 													<LoaderCircle size={12} class="animate-spin" />
@@ -365,7 +365,7 @@
 												{m.upload_retry()}
 											</button>
 										{/if}
-										<button type="button" onclick={() => handleDeleteSingle(task.slug)} class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500" title={m.delete_btn()}>
+										<button type="button" onclick={() => handleDeleteSingle(task.slug)} class="rounded-md p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-danger" title={m.delete_btn()}>
 											<Trash2 size={14} />
 										</button>
 									</div>
@@ -383,7 +383,7 @@
 						type="button"
 						onclick={() => goToPage(currentPage - 1)}
 						disabled={currentPage <= 1}
-						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-30"
+						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-30"
 					>
 						<ArrowLeft size={14} />
 					</button>
@@ -391,7 +391,7 @@
 						<button
 							type="button"
 							onclick={() => goToPage(i + 1)}
-							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors {i + 1 === currentPage ? 'bg-blue-600 font-medium text-white' : 'text-gray-600 hover:bg-gray-100'}"
+							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors {i + 1 === currentPage ? 'bg-primary font-medium text-white' : 'text-ink-3 hover:bg-surface-sunken'}"
 						>
 							{i + 1}
 						</button>
@@ -400,7 +400,7 @@
 						type="button"
 						onclick={() => goToPage(currentPage + 1)}
 						disabled={currentPage >= totalPages}
-						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-30"
+						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-30"
 					>
 						<ArrowRight size={14} />
 					</button>

@@ -26,11 +26,11 @@
 
 <h1 class="text-xl font-semibold">{m.video_library()}</h1>
 {#if loading}
-	<p class="mt-3 text-sm text-slate-500">{m.loading()}</p>
+	<p class="mt-3 text-sm text-ink-3">{m.loading()}</p>
 {:else if error}
-	<p class="mt-3 text-sm text-red-600">{error}</p>
+	<p class="mt-3 text-sm text-danger">{error}</p>
 {:else if items.length === 0}
-	<p class="mt-3 text-sm text-slate-500">{m.no_videos()}</p>
+	<p class="mt-3 text-sm text-ink-3">{m.no_videos()}</p>
 {:else}
 	<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 		{#each items as video (video.id)}

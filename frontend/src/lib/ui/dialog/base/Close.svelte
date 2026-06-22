@@ -15,7 +15,7 @@
 </script>
 
 <Dialog.Close
-	class="inline-flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 {className}"
+	class="inline-flex items-center justify-center rounded-md p-1 text-ink-3 outline-none transition-colors hover:bg-surface-sunken hover:text-ink {className}"
 	{disabled}
 	{...restProps}
 >

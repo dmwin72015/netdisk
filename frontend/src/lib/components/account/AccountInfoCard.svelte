@@ -143,7 +143,7 @@
 		// the popup so the user is not stuck looking at the OAuth provider page.
 		closeBindPopup();
 
-		const providerName = knownProviders[provider]?.name ?? provider ?? '';
+		const providerName = knownProviders[provider ?? '']?.name ?? provider ?? '';
 
 		if (error) {
 			bindError = error;
@@ -198,52 +198,52 @@
 	});
 </script>
 
-<div class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-	<h2 class="mb-4 text-sm font-medium text-gray-500">{m.account_info()}</h2>
+<div class="rounded-xl border border-line-soft bg-white p-6 ">
+	<h2 class="mb-4 text-sm font-medium text-ink-3">{m.account_info()}</h2>
 	<div class="grid gap-4 sm:grid-cols-2">
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50">
-				<User size={16} class="text-gray-400" />
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+				<User size={16} class="text-ink-4" />
 			</div>
 			<div>
-				<p class="text-xs text-gray-400">{m.username_label()}</p>
-				<p class="text-sm font-medium text-gray-800">{username}</p>
+				<p class="text-xs text-ink-4">{m.username_label()}</p>
+				<p class="text-sm font-medium text-ink-2">{username}</p>
 			</div>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50">
-				<Shield size={16} class="text-gray-400" />
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+				<Shield size={16} class="text-ink-4" />
 			</div>
 			<div>
-				<p class="text-xs text-gray-400">{m.email_label()}</p>
-				<p class="text-sm font-medium text-gray-800">{email || '-'}</p>
+				<p class="text-xs text-ink-4">{m.email_label()}</p>
+				<p class="text-sm font-medium text-ink-2">{email || '-'}</p>
 			</div>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50">
-				<Crown size={16} class="text-gray-400" />
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+				<Crown size={16} class="text-ink-4" />
 			</div>
 			<div>
-				<p class="text-xs text-gray-400">{m.level()}</p>
-				<p class="text-sm font-medium text-gray-800">{levelName || '-'}</p>
+				<p class="text-xs text-ink-4">{m.level()}</p>
+				<p class="text-sm font-medium text-ink-2">{levelName || '-'}</p>
 				{#if levelExpiresAt}
-					<p class="text-xs text-gray-400">{m.level_expires({ date: fmtDate(levelExpiresAt) })}</p>
+					<p class="text-xs text-ink-4">{m.level_expires({ date: fmtDate(levelExpiresAt) })}</p>
 				{/if}
 			</div>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50">
-				<Calendar size={16} class="text-gray-400" />
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+				<Calendar size={16} class="text-ink-4" />
 			</div>
 			<div>
-				<p class="text-xs text-gray-400">{m.joined()}</p>
-				<p class="text-sm font-medium text-gray-800">{fmtDate(createdAt)}</p>
+				<p class="text-xs text-ink-4">{m.joined()}</p>
+				<p class="text-sm font-medium text-ink-2">{fmtDate(createdAt)}</p>
 			</div>
 		</div>
 	</div>
 
-	<hr class="my-4 border-gray-100" />
-	<h3 class="mb-3 text-sm font-medium text-gray-500">{m.linked_accounts()}</h3>
+	<hr class="my-4 border-line-soft" />
+	<h3 class="mb-3 text-sm font-medium text-ink-3">{m.linked_accounts()}</h3>
 	<div class="flex flex-wrap items-center gap-2">
 		{#if oauthAccounts.length > 0}
 			<TooltipBase.Provider>
@@ -266,11 +266,11 @@
 						</TooltipBase.Trigger>
 						<TooltipBase.Content class="w-56 px-3 py-2 text-left">
 							<p class="font-medium text-white">{p.name}</p>
-							<p class="mt-1 break-all text-gray-300">ID: {acc.providerAccountId}</p>
+							<p class="mt-1 break-all text-ink-4">ID: {acc.providerAccountId}</p>
 							{#if acc.oauthEmail}
-								<p class="break-all text-gray-300">{acc.oauthEmail}</p>
+								<p class="break-all text-ink-4">{acc.oauthEmail}</p>
 							{/if}
-							<p class="mt-1 text-gray-400">{m.joined()}: {fmtDate(acc.createdAt)}</p>
+							<p class="mt-1 text-ink-4">{m.joined()}: {fmtDate(acc.createdAt)}</p>
 						</TooltipBase.Content>
 					</TooltipBase.Root>
 				{/each}
@@ -281,7 +281,7 @@
 			{@const p = knownProviders[provider]}
 			<button
 				onclick={() => oauthBind(provider)}
-				class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-500 transition hover:border-gray-400 hover:text-gray-700"
+				class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-line px-3 py-1 text-xs font-medium text-ink-3 transition hover:border-ink-4 hover:text-ink-2"
 			>
 				<Plus size={12} />
 				{p.name}
@@ -290,7 +290,7 @@
 	</div>
 
 	{#if unlinkError}
-		<p class="mt-2 text-xs text-red-500">{unlinkError}</p>
+		<p class="mt-2 text-xs text-danger">{unlinkError}</p>
 	{/if}
 </div>
 

@@ -56,13 +56,13 @@
 	<div class="space-y-4">
 		<!-- Header -->
 		<div class="flex items-center gap-3">
-			<a href="/photos/albums" class="rounded-md p-1 text-gray-400 hover:text-gray-600">
+			<a href="/photos/albums" class="rounded-md p-1 text-ink-4 hover:text-ink-3">
 				<ArrowLeft size={20} />
 			</a>
 			{#if album}
 				<div>
-					<h1 class="text-lg font-semibold text-gray-900">{album.title}</h1>
-					<p class="text-xs text-gray-400">
+					<h1 class="text-lg font-semibold text-ink">{album.title}</h1>
+					<p class="text-xs text-ink-4">
 						{m.albums_photos_count({ count: album.itemCount })}
 						{#if album.description}
 							&middot; {album.description}
@@ -70,18 +70,18 @@
 					</p>
 				</div>
 			{:else if !loading}
-				<h1 class="text-lg font-semibold text-gray-900">Not Found</h1>
+				<h1 class="text-lg font-semibold text-ink">Not Found</h1>
 			{/if}
 		</div>
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-ink-4" />
 			</div>
 		{:else if album && album.photos.length === 0}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-				<ImageIcon size={40} class="mb-3 text-gray-300" />
-				<p class="text-sm text-gray-400">{m.photos_empty()}</p>
+			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
+				<ImageIcon size={40} class="mb-3 text-ink-4" />
+				<p class="text-sm text-ink-4">{m.photos_empty()}</p>
 			</div>
 		{:else if album}
 			<div class="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -90,7 +90,7 @@
 						<button
 							type="button"
 							onclick={() => openViewer(photo.slug)}
-							class="aspect-square w-full overflow-hidden rounded-md bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+							class="aspect-square w-full overflow-hidden rounded-md bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 						>
 							<img
 								src={authedUrl(thumbnailUrl(photo.slug))}
@@ -102,7 +102,7 @@
 						<button
 							type="button"
 							onclick={() => handleRemove(photo.slug)}
-							class="absolute right-1.5 top-1.5 rounded-full bg-white/80 p-1.5 text-gray-400 opacity-0 shadow transition-opacity hover:text-red-500 group-hover:opacity-100"
+							class="absolute right-1.5 top-1.5 rounded-full bg-white/80 p-1.5 text-ink-4 opacity-0 shadow transition-opacity hover:text-danger group-hover:opacity-100"
 							title={m.albums_remove_photo()}
 						>
 							<Trash2 size={12} />

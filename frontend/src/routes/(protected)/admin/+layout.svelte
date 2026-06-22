@@ -36,20 +36,20 @@
 		<div class="mb-6 flex items-center gap-3">
 			<button
 				onclick={() => goto('/')}
-				class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+				class="rounded-lg p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3"
 			>
 				<ChevronLeft size={20} />
 			</button>
-			<h1 class="text-2xl font-bold text-slate-800">Admin</h1>
+			<h1 class="text-2xl font-bold text-ink-2">Admin</h1>
 		</div>
 
-		<div class="mb-6 flex gap-1 rounded-lg bg-slate-100 p-1">
+		<div class="mb-6 flex gap-1 rounded-lg bg-surface-sunken p-1">
 			{#each tabs as tab}
 				<button
 					onclick={() => goto(tab.path)}
 					class="flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors"
 					class:bg-white={currentPath === tab.path || (tab.path === '/admin' && !['/admin/files'].includes(currentPath))}
-					class:shadow-sm={currentPath === tab.path || (tab.path === '/admin' && !['/admin/files'].includes(currentPath))}
+					class:text-ink={currentPath === tab.path || (tab.path === '/admin' && !['/admin/files'].includes(currentPath))}
 				>
 					<tab.icon size={16} />
 					{tab.label}
@@ -61,6 +61,6 @@
 	</div>
 {:else if $authReady && $user && $user.role !== 'admin'}
 	<div class="flex flex-col items-center justify-center py-20 text-center">
-		<p class="text-lg text-slate-500">{m.admin_only()}</p>
+		<p class="text-lg text-ink-3">{m.admin_only()}</p>
 	</div>
 {/if}

@@ -79,7 +79,7 @@
 			{loading}
 		/>
 
-		<p class="pb-2 pt-4 text-center text-xs text-gray-400" title={appBuildTime}>
+		<p class="pb-2 pt-4 text-center text-xs text-ink-4" title={appBuildTime}>
 			{m.app_version({ version: appVersion })}
 		</p>
 	</div>

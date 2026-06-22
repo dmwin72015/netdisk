@@ -139,23 +139,23 @@
 <div class="px-4">
 	<!-- Back button -->
 	<button type="button" onclick={() => goto('/media')}
-		class="mb-4 flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700">
+		class="mb-4 flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink-2">
 		<ArrowLeft size={16} /> {m.back_to_media()}
 	</button>
 
 	{#if error}
-		<div class="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+		<div class="flex items-start gap-2.5 rounded-lg border border-danger bg-danger-soft px-3.5 py-2.5 text-sm text-danger">
 			<CircleAlert size={16} class="mt-0.5 shrink-0" />
 			<span>{error}</span>
 		</div>
 	{:else if !item}
 		<div class="flex items-center justify-center py-32">
-			<LoaderCircle size={28} class="animate-spin text-gray-300" />
+			<LoaderCircle size={28} class="animate-spin text-ink-4" />
 		</div>
 	{:else}
 		<!-- Video player -->
 		{#if item.status === 'done'}
-			<div class="group relative overflow-hidden rounded-2xl bg-black">
+			<div class="group relative overflow-hidden rounded-xl bg-black">
 				<video bind:this={video} controls class="w-full aspect-video"></video>
 				<VideoStats {hls} {video} bind:visible={showStats} />
 				<button type="button" onclick={() => showStats = !showStats}
@@ -165,26 +165,26 @@
 				</button>
 			</div>
 		{:else if item.status === 'processing'}
-			<div class="flex flex-col items-center justify-center rounded-2xl bg-gray-900 py-24">
-				<LoaderCircle size={36} class="animate-spin text-gray-400" />
-				<p class="mt-4 text-sm font-medium text-gray-300">{m.converting()} {item.progress}%</p>
-				<div class="mt-3 h-1.5 w-64 overflow-hidden rounded-full bg-gray-700">
-					<div class="h-full rounded-full bg-blue-500 transition-all" style="width:{item.progress}%"></div>
+			<div class="flex flex-col items-center justify-center rounded-xl bg-ink py-24">
+				<LoaderCircle size={36} class="animate-spin text-ink-4" />
+				<p class="mt-4 text-sm font-medium text-ink-4">{m.converting()} {item.progress}%</p>
+				<div class="mt-3 h-1.5 w-64 overflow-hidden rounded-full bg-ink-2">
+					<div class="h-full rounded-full bg-primary transition-all" style="width:{item.progress}%"></div>
 				</div>
 			</div>
 		{:else if item.status === 'pending'}
-			<div class="flex flex-col items-center justify-center rounded-2xl bg-gray-900 py-24">
-				<Clock size={36} class="text-gray-500" />
-				<p class="mt-4 text-sm text-gray-400">{m.in_queue()}</p>
+			<div class="flex flex-col items-center justify-center rounded-xl bg-ink py-24">
+				<Clock size={36} class="text-ink-3" />
+				<p class="mt-4 text-sm text-ink-4">{m.in_queue()}</p>
 			</div>
 		{:else if item.status === 'failed'}
-			<div class="flex flex-col items-center justify-center rounded-2xl bg-red-950 py-24">
-				<CircleAlert size={36} class="text-red-400" />
-				<p class="mt-4 text-sm text-red-300">{item.errorMsg || m.conversion_failed()}</p>
+			<div class="flex flex-col items-center justify-center rounded-lg bg-ink py-24">
+				<CircleAlert size={36} class="text-danger" />
+				<p class="mt-4 text-sm text-danger">{item.errorMsg || m.conversion_failed()}</p>
 			</div>
 		{/if}
 
 		<!-- Video title -->
-		<h1 class="mt-4 text-lg font-semibold text-gray-900">{item.fileName}</h1>
+		<h1 class="mt-4 text-lg font-semibold text-ink">{item.fileName}</h1>
 	{/if}
 </div>

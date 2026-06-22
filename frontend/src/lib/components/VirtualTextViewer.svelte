@@ -91,10 +91,10 @@
 </script>
 
 {#if wrap}
-	<div role="region" aria-label={ariaLabel} class="bg-white font-mono text-sm text-gray-700">
+	<div role="region" aria-label={ariaLabel} class="bg-white font-mono text-sm text-ink-2">
 		{#each rows as row (row.key)}
 			<div class="flex items-start" style={`min-height: ${ROW_HEIGHT}px; line-height: ${ROW_HEIGHT}px;`}>
-				<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-gray-100 bg-gray-50 px-3 text-right text-xs text-gray-400">
+				<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-line-soft bg-surface-muted px-3 text-right text-xs text-ink-4">
 					{row.continuation ? '·' : row.lineNumber}
 				</span>
 				<code class="block flex-1 whitespace-pre-wrap break-words px-4">{row.text || EMPTY_LINE}</code>
@@ -107,13 +107,13 @@
 		role="region"
 		aria-label={ariaLabel}
 		onscroll={handleScroll}
-		class="max-h-[80vh] overflow-auto bg-white font-mono text-sm text-gray-700"
+		class="max-h-[80vh] overflow-auto bg-white font-mono text-sm text-ink-2"
 	>
 		<div class="relative min-w-full" style={`height: ${totalHeight}px;`}>
 			<div class="absolute left-0 top-0 min-w-full" style={`transform: translateY(${offsetY}px);`}>
 				{#each visibleRows as row (row.key)}
 					<div class="flex min-w-max" style={`height: ${ROW_HEIGHT}px; line-height: ${ROW_HEIGHT}px;`}>
-						<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-gray-100 bg-gray-50 px-3 text-right text-xs text-gray-400">
+						<span class="sticky left-0 z-10 w-16 shrink-0 select-none border-r border-line-soft bg-surface-muted px-3 text-right text-xs text-ink-4">
 							{row.continuation ? '·' : row.lineNumber}
 						</span>
 						<code class="block whitespace-pre px-4">{row.text || EMPTY_LINE}</code>

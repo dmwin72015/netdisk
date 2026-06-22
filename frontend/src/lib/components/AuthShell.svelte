@@ -97,19 +97,17 @@
 </svelte:head>
 
 <div class="auth-shell">
-	<div class="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(20,184,166,0.12),transparent_26%),linear-gradient(135deg,#f8fafc_0%,#eef4ff_46%,#f6fbf9_100%)]"></div>
-	<div class="absolute left-0 top-0 h-full w-full opacity-[0.07] [background-image:linear-gradient(#0f172a_1px,transparent_1px),linear-gradient(90deg,#0f172a_1px,transparent_1px)] [background-size:42px_42px]"></div>
-
+	<div class="bg-surface-muted"></div>
 	<div class="auth-shell__inner">
 		<div class="auth-shell__bar">
-			<a href="/" class="flex items-center gap-2 text-sm font-semibold text-slate-900">
-				<span class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-white shadow-lg shadow-slate-300/70">
+			<a href="/" class="flex items-center gap-2 text-sm font-semibold text-ink">
+				<span class="flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-white">
 					<HardDrive size={18} />
 				</span>
 				<span>Netdisk</span>
 			</a>
 			<LanguageDropdown
-				triggerClass="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm shadow-slate-200/70 backdrop-blur transition-colors hover:bg-white hover:text-slate-950 data-[state=open]:bg-white data-[state=open]:text-slate-950"
+				triggerClass="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-2 text-xs font-medium text-ink-3 shadow-pop backdrop-blur transition-colors hover:bg-white hover:text-ink data-[state=open]:bg-white data-[state=open]:text-ink"
 				contentClass="min-w-[124px]"
 			/>
 		</div>

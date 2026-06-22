@@ -48,7 +48,7 @@
 </script>
 
 <article
-	class="group overflow-hidden rounded-xl bg-white transition hover:shadow-lg {task.status ===
+	class="group overflow-hidden rounded-xl bg-white transition {task.status ===
 		'completed'
 		? 'cursor-pointer'
 		: ''}"
@@ -58,7 +58,7 @@
 		tabindex="0"
 		onclick={open}
 		onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && open()}
-		class="relative aspect-video w-full overflow-hidden bg-slate-900"
+		class="relative aspect-video w-full overflow-hidden bg-ink"
 	>
 		{#if task.status === 'completed' && thumbnailSrc && !thumbFailed}
 			<img
@@ -79,17 +79,17 @@
 				</span>
 			{/if}
 		{:else if task.status === 'failed'}
-			<div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-red-50 text-red-700">
+			<div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-danger-soft text-danger">
 				<CircleX size={32} />
 				<span class="text-xs">{m.conversion_failed()}</span>
 			</div>
 		{:else if task.status === 'processing' || task.status === 'pending'}
-			<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-100 text-slate-600">
+			<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-sunken text-ink-3">
 				<LoaderCircle size={32} class="animate-spin" />
 				<span class="text-xs">{task.status === 'pending' ? m.queued() : m.converting_progress({ progress: task.progress })}</span>
 			</div>
 		{:else}
-			<div class="flex h-full w-full items-center justify-center bg-slate-200 text-slate-400">
+			<div class="flex h-full w-full items-center justify-center bg-line text-ink-4">
 				<FileVideo size={36} />
 			</div>
 		{/if}
@@ -97,14 +97,14 @@
 
 	<div class="p-3">
 		<header class="flex items-start gap-2">
-			<h3 class="min-w-0 flex-1 truncate text-sm font-medium text-slate-900" title={task.originalName}>
+			<h3 class="min-w-0 flex-1 truncate text-sm font-medium text-ink" title={task.originalName}>
 				{task.originalName}
 			</h3>
 			<button
 				type="button"
 				onclick={remove}
 				disabled={removing}
-				class="shrink-0 text-slate-400 transition hover:text-red-600"
+				class="shrink-0 text-ink-4 transition hover:text-danger"
 				aria-label={m.delete_label()}
 				title={m.delete_label()}
 			>
@@ -112,20 +112,20 @@
 			</button>
 		</header>
 
-		<div class="mt-1 flex items-center justify-between gap-2 text-xs text-slate-500">
+		<div class="mt-1 flex items-center justify-between gap-2 text-xs text-ink-3">
 			<span>{fmtSize(task.fileSize)}</span>
 			<span>{timeAgo(task.createdAt)}</span>
 		</div>
 
 		{#if task.status === 'processing' || task.status === 'pending'}
-			<div class="mt-2 h-1 w-full overflow-hidden rounded bg-slate-200">
-				<div class="h-full bg-slate-900 transition-all" style="width:{task.progress}%"></div>
+			<div class="mt-2 h-1 w-full overflow-hidden rounded bg-line">
+				<div class="h-full bg-ink transition-all" style="width:{task.progress}%"></div>
 			</div>
 		{:else if task.status === 'failed' && task.errorMessage}
-			<p class="mt-2 break-all text-xs text-red-600">{task.errorMessage}</p>
+			<p class="mt-2 break-all text-xs text-danger">{task.errorMessage}</p>
 		{:else if task.status === 'completed' && task.m3u8Url}
 			<div class="mt-2 flex items-center gap-3 text-xs">
-				<a href="/videos/{task.id}" class="flex items-center gap-1 text-slate-700 hover:text-slate-900">
+				<a href="/videos/{task.id}" class="flex items-center gap-1 text-ink-2 hover:text-ink">
 					<CircleCheck size={12} /> {m.play_label()}
 				</a>
 				<button
@@ -134,7 +134,7 @@
 						e.stopPropagation();
 						copyUrl(task.m3u8Url!);
 					}}
-					class="flex items-center gap-1 text-slate-500 hover:text-slate-900"
+					class="flex items-center gap-1 text-ink-3 hover:text-ink"
 				>
 					<Copy size={12} /> {copied ? m.copied() : m.copy_url()}
 				</button>

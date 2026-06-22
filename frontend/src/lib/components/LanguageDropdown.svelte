@@ -4,7 +4,7 @@
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime';
 
 	let {
-		triggerClass = 'flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-700',
+		triggerClass = 'flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-ink-3 transition-colors hover:bg-surface-sunken hover:text-ink-2 data-[state=open]:bg-surface-sunken data-[state=open]:text-ink-2',
 		contentClass = 'min-w-[120px]',
 		sideOffset = 8,
 		align = 'end',
@@ -23,12 +23,12 @@
 	{#snippet trigger()}
 		<Globe size={14} />
 		<span>{localeLabels[getLocale()] ?? getLocale()}</span>
-		<ChevronDown size={10} class="text-gray-400" />
+		<ChevronDown size={10} class="text-ink-4" />
 	{/snippet}
 
 	{#each locales as locale}
 		<DropdownBase.Item
-			class={locale === getLocale() ? 'bg-blue-50 text-blue-600 font-medium' : ''}
+			class={locale === getLocale() ? 'bg-primary-soft text-primary font-medium' : ''}
 			onSelect={() => setLocale(locale)}
 		>
 			{localeLabels[locale] ?? locale}

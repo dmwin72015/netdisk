@@ -13,7 +13,7 @@
 </script>
 
 <AlertDialog.Description
-	class="mt-1 text-xs text-gray-500 {className}"
+	class="mt-1 text-xs text-ink-3 {className}"
 	{...restProps}
 >
 	{@render children()}

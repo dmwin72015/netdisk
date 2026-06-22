@@ -15,8 +15,8 @@
 </script>
 
 <AlertDialog.Action
-	class="inline-flex h-9 items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white
-		hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2
+	class="inline-flex h-9 items-center justify-center rounded-lg bg-danger px-4 text-sm font-medium text-white
+		hover:bg-danger-hover active:bg-danger-active
 		disabled:pointer-events-none disabled:opacity-50
 		{className}"
 	{disabled}

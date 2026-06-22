@@ -92,7 +92,7 @@
 
 <div class="flex min-h-screen items-center justify-center">
 	<div class="text-center">
-		<LoaderCircle size={32} class="mx-auto mb-4 animate-spin text-blue-600" />
-		<p class="text-sm text-gray-500">{status}</p>
+		<LoaderCircle size={32} class="mx-auto mb-4 animate-spin text-primary" />
+		<p class="text-sm text-ink-3">{status}</p>
 	</div>
 </div>

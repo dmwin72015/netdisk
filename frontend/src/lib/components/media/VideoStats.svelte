@@ -97,18 +97,18 @@
 </script>
 
 {#if visible}
-	<div class="absolute right-3 top-3 z-10 max-h-[80%] overflow-y-auto rounded-lg bg-black/85 p-3 text-xs text-white shadow-2xl backdrop-blur-sm">
+	<div class="absolute right-3 top-3 z-10 max-h-[80%] overflow-y-auto rounded-lg bg-black/85 p-3 text-xs text-white shadow-dialog backdrop-blur-sm">
 		<div class="mb-2 flex items-center justify-between">
-			<span class="font-medium text-gray-300">Stats for nerds</span>
+			<span class="font-medium text-ink-4">Stats for nerds</span>
 			<button type="button" onclick={() => visible = false}
-				class="text-gray-400 hover:text-white">
+				class="text-ink-4 hover:text-white">
 				✕
 			</button>
 		</div>
 		<div class="space-y-1.5">
 			{#each rows as row}
 				<div>
-					<div class="text-gray-400">{row.label}</div>
+					<div class="text-ink-4">{row.label}</div>
 					<span class="font-mono text-white">{row.value}</span>
 				</div>
 			{/each}

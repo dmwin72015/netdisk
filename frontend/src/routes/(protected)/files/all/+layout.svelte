@@ -449,22 +449,22 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-4 rounded-3xl border border-gray-100 bg-white/70 p-4 shadow-sm shadow-gray-100/80">
+	<div class="space-y-4 rounded-xl border border-line bg-white p-4">
 		{#if notFound}
 			<div class="flex flex-col items-center justify-center py-24 text-center">
-				<FileQuestionMark size={48} class="mb-4 text-gray-300" />
-				<p class="mb-4 text-lg text-gray-500">{m.file_not_found()}</p>
+				<FileQuestionMark size={48} class="mb-4 text-ink-4" />
+				<p class="mb-4 text-lg text-ink-3">{m.file_not_found()}</p>
 				<button
 					type="button"
 					onclick={() => { notFound = false; void goto('/files/all', { keepFocus: true }); }}
-					class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+					class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
 				>
 					{m.back_to_root()}
 				</button>
 			</div>
 		{:else if loading && files.length === 0}
 			<div class="flex items-center justify-center py-24">
-				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-ink-4" />
 			</div>
 		{:else}
 			<!-- Breadcrumb -->
@@ -496,7 +496,7 @@
 		<div class="relative">
 			{#if deleting}
 				<div class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/60 backdrop-blur-[1px]">
-					<LoaderCircle size={24} class="animate-spin text-gray-400" />
+					<LoaderCircle size={24} class="animate-spin text-ink-4" />
 				</div>
 			{/if}
 			<FileListView
@@ -526,10 +526,10 @@
 		</div>
 
 		{#if files.length > 0}
-			<div class="flex items-center justify-between text-xs text-gray-400">
+			<div class="flex items-center justify-between text-xs text-ink-4">
 				<span>{m.total_files({ total })}</span>
 				{#if files.length < total}
-					<button type="button" onclick={loadMore} disabled={loadingMore} class="text-gray-500 transition-colors hover:text-gray-700 disabled:opacity-50">
+					<button type="button" onclick={loadMore} disabled={loadingMore} class="text-ink-3 transition-colors hover:text-ink-2 disabled:opacity-50">
 						{loadingMore ? m.loading() : m.load_more()}
 					</button>
 				{/if}

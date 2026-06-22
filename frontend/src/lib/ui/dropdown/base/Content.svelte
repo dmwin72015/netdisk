@@ -23,10 +23,11 @@
 		{sideOffset}
 		{align}
 		{preventScroll}
-		class="z-50 min-w-40 rounded-xl border border-gray-100 bg-white p-1.5 shadow-lg
+		class="bg-surface text-ink border-line shadow-pop z-50 min-w-40 rounded-lg border p-1.5
 			data-[state=open]:animate-in data-[state=closed]:animate-out
 			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
+			duration-150
 			[&[data-side=bottom]]:origin-top [&[data-side=top]]:origin-bottom
 			[&[data-side=left]]:origin-right [&[data-side=right]]:origin-left
 			{className}"

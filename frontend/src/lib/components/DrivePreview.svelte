@@ -206,7 +206,7 @@
 		<button
 			type="button"
 			onclick={copyLink}
-			class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+			class="rounded-lg p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3"
 			title={m.copy_url()}
 			aria-label={m.copy_url()}
 		>
@@ -215,7 +215,7 @@
 		<a
 			href={authedDlUrl}
 			download={name}
-			class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+			class="rounded-lg p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3"
 			title={m.download()}
 			aria-label={m.download()}
 		>
@@ -224,12 +224,12 @@
 	{/snippet}
 
 	{#if !canPreview}
-		<div class="flex flex-col items-center gap-3 py-20 text-sm text-gray-400">
+		<div class="flex flex-col items-center gap-3 py-20 text-sm text-ink-4">
 			<p>{m.unsupported_preview()}</p>
 			<a
 				href={authedDlUrl}
 				download={name}
-				class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+				class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
 			>
 				{m.download_file()}
 			</a>
@@ -237,11 +237,11 @@
 	{:else if isImage}
 		{#if loadingBlob}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-gray-400">{m.loading()}</p>
+				<p class="text-sm text-ink-4">{m.loading()}</p>
 			</div>
 		{:else if blobError}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-red-500">{blobError}</p>
+				<p class="text-sm text-danger">{blobError}</p>
 			</div>
 		{:else if blobUrl}
 			<div class="flex items-center justify-center p-4">
@@ -251,11 +251,11 @@
 	{:else if isVideo}
 		{#if loadingBlob}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-gray-400">{m.loading()}</p>
+				<p class="text-sm text-ink-4">{m.loading()}</p>
 			</div>
 		{:else if blobError}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-red-500">{blobError}</p>
+				<p class="text-sm text-danger">{blobError}</p>
 			</div>
 		{:else if blobUrl}
 			<div class="flex items-center justify-center bg-black">
@@ -267,11 +267,11 @@
 	{:else if isAudio}
 		{#if loadingBlob}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-gray-400">{m.loading()}</p>
+				<p class="text-sm text-ink-4">{m.loading()}</p>
 			</div>
 		{:else if blobError}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-red-500">{blobError}</p>
+				<p class="text-sm text-danger">{blobError}</p>
 			</div>
 		{:else if blobUrl}
 			<div class="flex items-center justify-center py-16">
@@ -281,11 +281,11 @@
 	{:else if isPdf}
 		{#if loadingBlob}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-gray-400">{m.loading()}</p>
+				<p class="text-sm text-ink-4">{m.loading()}</p>
 			</div>
 		{:else if blobError}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-red-500">{blobError}</p>
+				<p class="text-sm text-danger">{blobError}</p>
 			</div>
 		{:else if blobUrl}
 			<iframe src={blobUrl} class="h-[80vh] w-full" title={name}></iframe>
@@ -293,18 +293,18 @@
 	{:else if isText}
 		{#if loadingText}
 			<div class="flex items-center justify-center py-16">
-				<div class="text-sm text-gray-400">{m.loading()}</div>
+				<div class="text-sm text-ink-4">{m.loading()}</div>
 			</div>
 		{:else if textError}
 			<div class="flex items-center justify-center py-16">
-				<p class="text-sm text-red-500">{textError}</p>
+				<p class="text-sm text-danger">{textError}</p>
 			</div>
 		{:else if formattedTextContent !== null}
-			<div class="flex items-center justify-end gap-2 border-b border-gray-100 bg-gray-50/60 px-4 py-2">
+			<div class="flex items-center justify-end gap-2 border-b border-line-soft bg-surface-muted/60 px-4 py-2">
 				<button
 					type="button"
 					onclick={() => (textWrap = !textWrap)}
-					class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors {textWrap ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}"
+					class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors {textWrap ? 'bg-primary-soft text-primary' : 'text-ink-3 hover:bg-surface-sunken hover:text-ink-2'}"
 					title={textWrap ? m.text_preview_no_wrap() : m.text_preview_wrap()}
 				>
 					<WrapText size={14} />
@@ -312,7 +312,7 @@
 				</button>
 			</div>
 			{#if textTruncated}
-				<div class="border-b border-amber-100 bg-amber-50 px-5 py-2 text-xs text-amber-700">
+				<div class="border-b border-warning bg-warning-soft px-5 py-2 text-xs text-warning">
 					{m.text_preview_truncated({ lines: String(LARGE_TEXT_PREVIEW_LINES) })}
 				</div>
 			{/if}

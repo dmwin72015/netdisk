@@ -91,14 +91,14 @@
 
 <div class="space-y-4">
 	<div class="flex items-center gap-2">
-		<Users size={20} class="text-slate-600" />
+		<Users size={20} class="text-ink-3" />
 		<h1 class="text-xl font-semibold">{m.user_management()}</h1>
-		<span class="ml-auto text-sm text-slate-400">{m.total_items({ total: String(total) })}</span>
+		<span class="ml-auto text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
 	</div>
 
 	<div class="overflow-hidden rounded-lg border bg-white">
 		<table class="w-full text-left text-sm">
-			<thead class="border-b bg-slate-50 text-xs text-slate-500">
+			<thead class="border-b bg-surface-muted text-xs text-ink-3">
 				<tr>
 					<th class="px-4 py-3 font-medium">{m.username()}</th>
 					<th class="px-4 py-3 font-medium">{m.email()}</th>
@@ -111,22 +111,22 @@
 			<tbody class="divide-y">
 				{#if loading}
 					<tr>
-						<td colspan="6" class="px-4 py-10 text-center text-slate-400">
+						<td colspan="6" class="px-4 py-10 text-center text-ink-4">
 							<LoaderCircle size={20} class="mx-auto animate-spin" />
 						</td>
 					</tr>
 				{:else if users.length === 0}
 					<tr>
-						<td colspan="6" class="px-4 py-10 text-center text-slate-400">{m.no_users()}</td>
+						<td colspan="6" class="px-4 py-10 text-center text-ink-4">{m.no_users()}</td>
 					</tr>
 				{:else}
 					{#each users as u (u.id)}
-						<tr class="hover:bg-slate-50 transition-colors">
-							<td class="px-4 py-3 font-medium text-slate-900">{u.username}</td>
-							<td class="px-4 py-3 text-slate-600">{u.email}</td>
+						<tr class="hover:bg-surface-muted transition-colors">
+							<td class="px-4 py-3 font-medium text-ink">{u.username}</td>
+							<td class="px-4 py-3 text-ink-3">{u.email}</td>
 							<td class="px-4 py-3">
 								<select
-									class="rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-blue-400 focus:outline-none"
+									class="rounded border border-line bg-white px-2 py-1 text-xs focus:border-primary focus:outline-none"
 									value={u.role}
 									onchange={(e) => handleRoleChange(u, (e.target as HTMLSelectElement).value)}
 								>
@@ -136,26 +136,26 @@
 							</td>
 							<td class="px-4 py-3">
 								<button
-									class="text-left underline decoration-dashed underline-offset-2 hover:text-blue-600 transition-colors"
+									class="text-left underline decoration-dashed underline-offset-2 hover:text-primary transition-colors"
 									onclick={() => handleSetBaseStorage(u)}
 									title={m.set_base_storage()}
 								>
-									<div class="text-xs text-slate-500">{fmtSize(u.usedBytes)} / {fmtSize(u.totalBytes)}</div>
-									<div class="text-xs text-slate-400">{m.storage_base()}: {fmtSize(u.baseBytes)}</div>
+									<div class="text-xs text-ink-3">{fmtSize(u.usedBytes)} / {fmtSize(u.totalBytes)}</div>
+									<div class="text-xs text-ink-4">{m.storage_base()}: {fmtSize(u.baseBytes)}</div>
 								</button>
 							</td>
-							<td class="px-4 py-3 text-slate-500">{fmtDate(u.createdAt)}</td>
+							<td class="px-4 py-3 text-ink-3">{fmtDate(u.createdAt)}</td>
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-1">
 									<button
-										class="rounded p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+										class="rounded p-1.5 text-ink-4 transition-colors hover:bg-primary-soft hover:text-primary"
 										onclick={() => goto(`/admin/users/${u.id}`)}
 										title="View Details"
 									>
 										<Eye size={15} />
 									</button>
 									<button
-										class="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+										class="rounded p-1.5 text-ink-4 transition-colors hover:bg-danger-soft hover:text-danger"
 										onclick={() => handleDelete(u)}
 										title={m.delete_btn()}
 									>
@@ -173,15 +173,15 @@
 	{#if totalPages > 1}
 		<div class="flex items-center justify-center gap-2">
 			<button
-				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-slate-50 disabled:opacity-40"
+				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-surface-muted disabled:opacity-40"
 				disabled={currentPage <= 1}
 				onclick={() => goPage(currentPage - 1)}
 			>
 				<ChevronLeft size={14} />
 			</button>
-			<span class="text-sm text-slate-500">{currentPage} / {totalPages}</span>
+			<span class="text-sm text-ink-3">{currentPage} / {totalPages}</span>
 			<button
-				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-slate-50 disabled:opacity-40"
+				class="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-surface-muted disabled:opacity-40"
 				disabled={currentPage >= totalPages}
 				onclick={() => goPage(currentPage + 1)}
 			>

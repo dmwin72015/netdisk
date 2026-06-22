@@ -262,14 +262,14 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-4 rounded-3xl border border-gray-100 bg-white/70 p-4 shadow-sm shadow-gray-100/80">
+	<div class="space-y-4 rounded-xl border border-line bg-white p-4">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-2">
-				<span class="text-sm text-gray-400">{m.total_items({ total })}</span>
+				<span class="text-sm text-ink-4">{m.total_items({ total })}</span>
 			</div>
 				<div class="flex items-center gap-2">
 					{#if items.length > 0}
-						<button type="button" onclick={toggleSelectAll} class="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900">
+						<button type="button" onclick={toggleSelectAll} class="flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-muted hover:text-ink">
 							<Check size={15} /> {allSelected ? m.clear_selection() : m.select_all()}
 						</button>
 					{/if}
@@ -277,15 +277,15 @@
 						onmouseenter={() => { clearTimeout(menuTimer); showMenu = true; }}
 						onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
 					>
-						<div class="flex h-8 items-center overflow-hidden rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition-colors" bind:clientWidth={groupWidth}>
+						<div class="flex h-8 items-center overflow-hidden rounded-lg bg-primary text-sm font-medium text-white transition-colors" bind:clientWidth={groupWidth}>
 							<button type="button" onclick={() => videoInput?.click()}
-								class="flex h-full items-center gap-1.5 bg-blue-600 px-3.5 hover:bg-blue-700 active:bg-blue-800"
+								class="flex h-full items-center gap-1.5 bg-primary px-3.5 hover:bg-primary-hover active:bg-primary-active"
 							>
 								<Upload size={15} /> {m.upload_video()}
 							</button>
 							<Popover
 								bind:open={showMenu}
-								triggerClass="flex h-full items-center px-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+								triggerClass="flex h-full items-center px-1.5 bg-primary hover:bg-primary-hover active:bg-primary-active"
 								contentClass="w-auto max-w-44 p-1.5"
 								contentStyle="min-width: {groupWidth}px"
 								sideOffset={4}
@@ -299,10 +299,10 @@
 									onmouseenter={() => clearTimeout(menuTimer)}
 									onmouseleave={() => { menuTimer = setTimeout(() => { showMenu = false; }, 200); }}
 								>
-									<button type="button" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-gray-700 outline-none hover:bg-gray-50 focus-visible:outline-none"
+									<button type="button" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-ink-2 outline-none hover:bg-surface-muted focus-visible:outline-none"
 										onclick={() => { showMenu = false; showAddDialog = true; }}
 									>
-										<Plus size={15} class="shrink-0 text-gray-500" /> <span class="truncate">{m.add_to_media_library()}</span>
+										<Plus size={15} class="shrink-0 text-ink-3" /> <span class="truncate">{m.add_to_media_library()}</span>
 									</button>
 								</div>
 							</Popover>
@@ -327,29 +327,29 @@
 
 		{#if loading}
 			<div class="flex items-center justify-center py-16">
-				<LoaderCircle size={24} class="animate-spin text-gray-300" />
+				<LoaderCircle size={24} class="animate-spin text-ink-4" />
 			</div>
 		{:else if items.length === 0}
-			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-				<Film size={40} class="mb-3 text-gray-300" />
-				<p class="text-sm text-gray-400">{m.media_empty()}</p>
-				<p class="mt-1 text-xs text-gray-300">{m.media_help()}</p>
+			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
+				<Film size={40} class="mb-3 text-ink-4" />
+				<p class="text-sm text-ink-4">{m.media_empty()}</p>
+				<p class="mt-1 text-xs text-ink-4">{m.media_help()}</p>
 			</div>
 			{:else}
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{#each items as item (item.mediaSlug)}
 						{@const isSelected = selected.has(item.mediaSlug)}
-						<div class="group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-all hover:border-gray-200 hover:shadow-md {isSelected ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-100'} {item.status === 'done' ? '' : 'cursor-default'}">
+						<div class="group relative overflow-hidden rounded-xl border bg-white transition-all hover:border-line hover:{isSelected ? 'border-primary ring-2 ring-primary-soft' : 'border-line-soft'} {item.status === 'done' ? '' : 'cursor-default'}">
 							<button
 								type="button"
 								aria-pressed={isSelected}
 								onclick={(e) => { e.stopPropagation(); toggleSelect(item.mediaSlug); }}
-								class="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm transition-all {isSelected ? 'border-blue-500 bg-blue-500 opacity-100' : 'border-white/80 bg-black/30 opacity-0 hover:bg-black/45 group-hover:opacity-100'}"
+								class="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border text-white transition-all {isSelected ? 'border-primary bg-primary opacity-100' : 'border-white/80 bg-black/30 opacity-0 hover:bg-black/45 group-hover:opacity-100'}"
 							>
 								{#if isSelected}<Check size={14} strokeWidth={3} />{/if}
 							</button>
 							<!-- Thumbnail / status area -->
-							<div class="relative aspect-video bg-gray-100">
+							<div class="relative aspect-video bg-surface-sunken">
 							{#if item.status === 'done'}
 								<a href="/media/{item.mediaSlug}" class="block h-full">
 									{#if item.posterUrl}
@@ -368,14 +368,14 @@
 							{:else}
 								<div class="flex h-full flex-col items-center justify-center gap-2">
 									{#if item.status === 'processing'}
-										<LoaderCircle size={24} class="animate-spin text-blue-400" />
-										<span class="text-xs text-blue-500">{item.progress}%</span>
+										<LoaderCircle size={24} class="animate-spin text-primary" />
+										<span class="text-xs text-primary">{item.progress}%</span>
 									{:else if item.status === 'pending'}
-										<Clock size={24} class="text-gray-300" />
-										<span class="text-xs text-gray-400">{m.queued()}</span>
+										<Clock size={24} class="text-ink-4" />
+										<span class="text-xs text-ink-4">{m.queued()}</span>
 									{:else if item.status === 'failed'}
-										<CircleAlert size={24} class="text-red-300" />
-										<span class="text-xs text-red-400">{m.failed()}</span>
+										<CircleAlert size={24} class="text-danger" />
+										<span class="text-xs text-danger">{m.failed()}</span>
 									{/if}
 								</div>
 							{/if}
@@ -392,22 +392,22 @@
 						<div class="px-3 py-2.5">
 							<div class="flex items-start justify-between gap-2">
 								<div class="min-w-0 flex-1">
-									<p class="truncate text-sm font-medium text-gray-700" title={item.fileName}>{item.fileName}</p>
-									<p class="mt-0.5 text-xs text-gray-400">
+									<p class="truncate text-sm font-medium text-ink-2" title={item.fileName}>{item.fileName}</p>
+									<p class="mt-0.5 text-xs text-ink-4">
 										{new Date(item.createdAt).toLocaleDateString()}
 									</p>
 								</div>
 									<div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 {isSelected ? 'opacity-100' : ''}">
-										<button type="button" onclick={() => rename(item.mediaSlug, item.fileName)} class="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-blue-500" title={m.rename()}>
+										<button type="button" onclick={() => rename(item.mediaSlug, item.fileName)} class="rounded-md p-1 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-primary" title={m.rename()}>
 											<Pencil size={14} />
 										</button>
-										<button type="button" onclick={() => remove(item.mediaSlug, item.fileName)} class="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500" title={m.remove()}>
+										<button type="button" onclick={() => remove(item.mediaSlug, item.fileName)} class="rounded-md p-1 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-danger" title={m.remove()}>
 											<Trash2 size={14} />
 										</button>
 									</div>
 								</div>
 							{#if item.status === 'failed' && item.errorMsg}
-								<p class="mt-1 truncate text-xs text-red-500" title={item.errorMsg}>{item.errorMsg}</p>
+								<p class="mt-1 truncate text-xs text-danger" title={item.errorMsg}>{item.errorMsg}</p>
 							{/if}
 						</div>
 					</div>
@@ -418,16 +418,16 @@
 			{#if hasSelection}
 				<div class="fixed bottom-6 left-1/2 z-50 max-w-[calc(100vw-1rem)] -translate-x-1/2">
 					<div
-						class="flex items-center gap-2 overflow-x-auto rounded-full border border-gray-100 bg-white/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
+						class="flex items-center gap-2 overflow-x-auto rounded-full border border-line-soft bg-white/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
 						transition:fly={{ y: 16, duration: 180, opacity: 0 }}
 					>
-						<span class="shrink-0 px-3 text-sm font-medium text-gray-700">{m.selected_count({ count: String(selected.size) })}</span>
-						<div class="h-7 w-px shrink-0 bg-gray-100"></div>
-						<button type="button" onclick={batchRemove} class="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-red-50 hover:text-red-500" title={m.delete_label()}>
+						<span class="shrink-0 px-3 text-sm font-medium text-ink-2">{m.selected_count({ count: String(selected.size) })}</span>
+						<div class="h-7 w-px shrink-0 bg-surface-sunken"></div>
+						<button type="button" onclick={batchRemove} class="flex h-8 w-8 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-danger-soft hover:text-danger" title={m.delete_label()}>
 							<Trash2 size={16} />
 						</button>
-						<div class="mx-1 h-7 w-px bg-gray-100"></div>
-						<button type="button" onclick={clearSelection} class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" title={m.close()}>
+						<div class="mx-1 h-7 w-px bg-surface-sunken"></div>
+						<button type="button" onclick={clearSelection} class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2" title={m.close()}>
 							<X size={16} />
 						</button>
 					</div>

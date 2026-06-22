@@ -8,4 +8,4 @@
 	} = $props();
 </script>
 
-<DropdownMenu.Separator class="mx-2 my-1 h-px bg-gray-100 {className}" />
+<DropdownMenu.Separator class="bg-line-soft mx-1 my-1 h-px {className}" />

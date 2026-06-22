@@ -40,14 +40,18 @@
 		other: File
 	};
 
+	// File-type tints. These are SIGNAL colors (let users scan a list by type),
+	// not decoration. Hues are spaced across the wheel and toned to coexist
+	// with the cool-gray neutrals; chroma is intentionally one notch below
+	// Tailwind defaults so they don't punch through the page.
 	const categoryColorMap: Record<string, string> = {
-		folder: 'text-blue-500',
-		video: 'text-purple-500',
-		audio: 'text-pink-500',
-		image: 'text-emerald-500',
-		document: 'text-orange-500',
-		archive: 'text-yellow-600',
-		other: 'text-gray-400'
+		folder: 'text-primary',
+		video: 'text-[oklch(60%_0.12_300)]',   // muted plum
+		audio: 'text-[oklch(64%_0.14_350)]',   // muted rose
+		image: 'text-[oklch(62%_0.13_165)]',   // muted teal-green
+		document: 'text-[oklch(64%_0.14_55)]', // muted amber
+		archive: 'text-[oklch(65%_0.12_85)]',  // muted ochre
+		other: 'text-ink-4'
 	};
 
 	let Icon = $derived.by(() => {
@@ -68,18 +72,18 @@
 
 	let color = $derived.by(() => {
 		if (category) {
-			if (isDir) return 'text-blue-500';
-			if (isCode) return 'text-sky-600';
-			return categoryColorMap[category] ?? 'text-gray-400';
+			if (isDir) return 'text-primary';
+			if (isCode) return 'text-[oklch(58%_0.13_220)]';
+			return categoryColorMap[category] ?? 'text-ink-4';
 		}
-		if (isDir) return 'text-blue-500';
-		if (mt.startsWith('video/')) return 'text-purple-500';
-		if (mt.startsWith('audio/')) return 'text-pink-500';
-		if (mt.startsWith('image/')) return 'text-emerald-500';
-		if (isCode) return 'text-sky-600';
-		if (mt.startsWith('text/') || mt.includes('pdf')) return 'text-orange-500';
-		if (mt.includes('zip') || mt.includes('rar') || mt.includes('tar') || mt.includes('gzip') || mt.includes('7z')) return 'text-yellow-600';
-		return 'text-gray-400';
+		if (isDir) return 'text-primary';
+		if (mt.startsWith('video/')) return categoryColorMap.video;
+		if (mt.startsWith('audio/')) return categoryColorMap.audio;
+		if (mt.startsWith('image/')) return categoryColorMap.image;
+		if (isCode) return 'text-[oklch(58%_0.13_220)]';
+		if (mt.startsWith('text/') || mt.includes('pdf')) return categoryColorMap.document;
+		if (mt.includes('zip') || mt.includes('rar') || mt.includes('tar') || mt.includes('gzip') || mt.includes('7z')) return categoryColorMap.archive;
+		return 'text-ink-4';
 	});
 </script>
 

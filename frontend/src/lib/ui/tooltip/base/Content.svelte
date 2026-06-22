@@ -20,8 +20,7 @@
 	<Tooltip.Content
 		{side}
 		{sideOffset}
-		class="z-50 rounded-md bg-gray-900 px-3 py-1.5 text-sm text-white shadow-md
-			data-[state=open]:animate-in data-[state=closed]:animate-out
+		class="z-50 rounded-md bg-ink px-3 py-1.5 text-sm text-white 			data-[state=open]:animate-in data-[state=closed]:animate-out
 			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 			data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2
 			data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2
@@ -29,6 +28,6 @@
 		{...restProps}
 	>
 		{@render children()}
-		<Tooltip.Arrow class="text-gray-900" />
+		<Tooltip.Arrow class="text-ink" />
 	</Tooltip.Content>
 </Tooltip.Portal>

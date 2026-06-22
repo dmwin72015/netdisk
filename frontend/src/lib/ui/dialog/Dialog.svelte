@@ -78,14 +78,14 @@
 </script>
 
 <DialogBase.Root bind:open {onOpenChange} {onOpenChangeComplete}>
-	<DialogBase.Content class="max-h-[90vh] p-0! flex flex-col overflow-hidden {className}" style={contentStyle}>
-		<div class="flex {description ? 'items-start' : 'items-center'} gap-3 border-b border-gray-100 px-5 py-3 {headerClass}">
+	<DialogBase.Content class="max-h-[90vh] flex flex-col overflow-hidden {className}" style={contentStyle}>
+		<div class="border-line-soft flex {description ? 'items-start' : 'items-center'} gap-3 border-b px-5 py-3 {headerClass}">
 			<DialogBase.Header class="min-w-0 flex-1 space-y-1">
 				{#if title}
-					<DialogBase.Title class="truncate text-sm font-medium leading-5 text-gray-800 {titleClass}">{title}</DialogBase.Title>
+					<DialogBase.Title class="text-ink truncate text-[15px] font-semibold leading-5 tracking-tight {titleClass}">{title}</DialogBase.Title>
 				{/if}
 				{#if description}
-					<DialogBase.Description class="text-xs text-gray-400 {descriptionClass}">{description}</DialogBase.Description>
+					<DialogBase.Description class="text-ink-3 text-xs {descriptionClass}">{description}</DialogBase.Description>
 				{/if}
 			</DialogBase.Header>
 			{#if headerExtra}
@@ -98,10 +98,10 @@
 					<button
 						type="button"
 						onclick={handleCancel}
-						class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 {closeButtonClass}"
+						class="text-ink-4 hover:bg-surface-sunken hover:text-ink-2 rounded-md p-1.5 transition-colors duration-150 {closeButtonClass}"
 						aria-label="Close"
 					>
-						<X size={closeIconSize} />
+						<X size={closeIconSize} strokeWidth={1.75} />
 					</button>
 				</DialogBase.Close>
 			{/if}
@@ -114,12 +114,12 @@
 		</div>
 
 		{#if shouldShowFooter && (shouldShowCancel || shouldShowOk)}
-			<DialogBase.Footer class="border-t border-gray-100 px-5 py-3">
+			<DialogBase.Footer class="border-line-soft border-t px-5 py-3">
 				{#if shouldShowCancel}
 					<DialogBase.Close>
 						<button
 							type="button"
-							class="inline-flex h-8 items-center justify-center rounded-lg px-3.5 text-sm text-gray-600 transition-colors hover:bg-gray-100"
+							class="text-ink-2 hover:bg-surface-sunken hover:text-ink inline-flex h-8 items-center justify-center rounded-md px-3 text-sm transition-colors duration-150"
 							onclick={handleCancel}
 						>
 							{resolvedCancelText}
@@ -129,7 +129,7 @@
 				{#if shouldShowOk}
 					<button
 						type="button"
-						class="inline-flex h-8 items-center justify-center rounded-lg bg-blue-600 px-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+						class="bg-primary hover:bg-primary-hover active:bg-primary-active text-primary-on inline-flex h-8 items-center justify-center rounded-md px-3.5 text-sm font-medium transition-colors duration-150"
 						onclick={handleConfirm}
 					>
 						{resolvedOkText}
