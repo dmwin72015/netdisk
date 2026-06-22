@@ -4,7 +4,8 @@
 
 增强现有的粘贴上传功能，使其能够：
 - 检测剪贴板中的**文本内容**
-- 自动将文本转换为 `.txt` 文件
+- **检查文本大小**，超过 2MB 则拒绝并提示用户
+- 自动将文本转换为 `.txt` 文件（最大 2MB）
 - 弹出对话框让用户**输入文件名**（可编辑，有默认值）
 - 用户**确认后才上传**，给予充分的控制权
 
@@ -20,15 +21,24 @@
 │  (现有逻辑)  │  (新增逻辑)  │
 └─────────────┴─────────────┘
               ↓
-       弹出对话框
-       - 显示文件名输入框（默认：剪贴板内容.txt 或 时间戳.txt）
-       - 显示文本内容预览（可折叠）
-       - 用户可编辑文件名
+       检查文本大小
               ↓
-       用户点击"确认上传"或"取消"
-              ↓
-       确认 → 创建 Blob → 转为 File → 走现有上传流程
-       取消 → 关闭对话框
+        ┌────────────┐
+        │ ≤ 2MB？    │
+        └────┬────┬───┘
+             │否  │是
+        ┌────┘    └──────────┐
+        ↓                    ↓
+   显示错误提示          弹出对话框
+   "文本内容不能          - 显示文件名输入框
+   超过 2MB"            （默认：剪贴板内容.txt）
+   返回                  - 显示文本内容预览
+                         - 用户可编辑文件名
+                               ↓
+                        用户点击"确认上传"或"取消"
+                               ↓
+                        确认 → 创建 Blob → 转为 File → 走现有上传流程
+                        取消 → 关闭对话框
 ```
 
 ## 技术方案
@@ -37,9 +47,18 @@
 
 **位置：** `frontend/src/lib/paste-text-upload.ts`
 
+**常量：**
+```typescript
+/** 文本粘贴最大允许大小：2MB */
+export const MAX_PASTE_TEXT_SIZE = 2 * 1024 * 1024;
+```
+
 **功能：**
 - `extractClipboardText(clipboardData): string | null`
   从剪贴板提取纯文本内容，优先使用 `clipboardData.getData('text/plain')`
+
+- `validateTextSize(text: string): { valid: boolean; size: number; error?: string }`
+  检查文本大小，超过 2MB 返回错误信息
 
 - `createTextFile(text: string, fileName: string): File`
   将文本内容转换为 `File` 对象，默认 MIME 类型为 `text/plain;charset=utf-8`
@@ -63,6 +82,7 @@
   text: string;              // 剪贴板文本内容
   targetLabel: string;       // 目标位置（如"当前目录"）
   defaultFileName?: string;  // 默认文件名
+  sizeError?: string;        // 大小错误信息（如果有）
   onConfirm: (file: File) => void | Promise<void>;
   onCancel: () => void;
 }
@@ -95,6 +115,20 @@
 - 内容预览：默认折叠，可展开查看完整内容（最多显示 500 字符，超过显示省略）
 - 如果文本内容过长（> 500 字符），预览区域显示字符计数
 - 键盘支持：Enter 确认，Escape 取消
+- **超过 2MB 时显示错误状态，禁用确认按钮并提示用户**
+
+**错误状态 UI：**
+```
+┌─────────────────────────────────────────┐
+│  确认上传文本内容？          [X]         │
+├─────────────────────────────────────────┤
+│  ⚠️  文本内容过大                        │
+│  文本大小不能超过 2MB，                   │
+│  当前文本大小为 2.5MB                    │
+│                                         │
+│           [取消]                        │
+└─────────────────────────────────────────┘
+```
 
 ### 3. 修改现有组件：`PasteUploadProvider.svelte`
 
@@ -132,6 +166,14 @@ function handlePaste(event: ClipboardEvent) {
   // 新增：检测文本
   const text = extractClipboardText(event.clipboardData);
   if (text && text.trim().length > 0) {
+    // 检查文本大小
+    const sizeCheck = validateTextSize(text);
+    if (!sizeCheck.valid) {
+      event.preventDefault();
+      toast.error(sizeCheck.error || '文本内容过大');
+      return;
+    }
+
     event.preventDefault();
     clipboardText = text;
     textFileName = getDefaultFileName(text);
@@ -203,6 +245,7 @@ function getDefaultFileName(text: string): string {
 | 场景 | 处理方式 |
 |------|---------|
 | 剪贴板为空文本 | 忽略，不弹窗 |
+| **文本超过 2MB** | **弹出错误提示，告知用户"文本内容不能超过 2MB"** |
 | 文件名输入为空 | 自动回退到默认文件名 |
 | 文件名包含非法字符 | 自动替换为下划线 |
 | 文件名过长 | 截断到 100 字符 |
@@ -215,6 +258,8 @@ function getDefaultFileName(text: string): string {
 2. **纯富文本格式：** 使用 `text/plain` 提取纯文本，忽略格式
 3. **剪贴板图片：** 走现有文件处理逻辑
 4. **在可编辑元素中粘贴：** `isEditablePasteTarget` 已处理，不拦截
+5. **文本超过 2MB：** 显示错误 toast 提示"文本内容不能超过 2MB"，不弹窗
+6. **文本正好 2MB：** 正常弹窗，允许上传（≤ 2MB）
 
 ## UI 设计规范
 
