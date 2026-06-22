@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 
 # Paraglide (generated)
 src/lib/paraglide/
+
+# Coverage reports
+coverage/

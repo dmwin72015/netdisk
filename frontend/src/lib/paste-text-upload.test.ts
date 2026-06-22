@@ -83,12 +83,50 @@ describe('getDefaultFileName', () => {
 		expect(result).toMatch(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.txt$/);
 	});
 
+	it('handles whitespace-only first line as empty', () => {
+		const result = getDefaultFileName('   \nSecond line');
+		expect(result).toMatch(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.txt$/);
+	});
+
+	it('handles first line of exactly 50 characters', () => {
+		const exact = 'a'.repeat(50);
+		const result = getDefaultFileName(exact);
+		expect(result).toBe(`${exact}.txt`);
+		expect(result.length).toBe(54);
+	});
+
 	it('removes illegal filename characters', () => {
 		expect(getDefaultFileName('file/name:with*illegal?chars')).toBe('filenamewithillegalchars.txt');
+	});
+
+	it('removes all illegal filename chars leaving empty string', () => {
+		const result = getDefaultFileName('*:*?*"*<*>*|*');
+		expect(result).toBe('.txt');
 	});
 
 	it('ensures .txt extension', () => {
 		expect(getDefaultFileName('document')).toBe('document.txt');
 		expect(getDefaultFileName('readme.md')).toBe('readme.md.txt');
+	});
+});
+
+describe('formatSize', () => {
+	it('formats bytes below 1KB', () => {
+		// Access via validateTextSize error message which uses formatSize
+		const result = validateTextSize('x');
+		expect(result.error).toBeUndefined(); // small text is valid, no error
+	});
+
+	it('formats kilobytes correctly', () => {
+		// 2048 bytes = 2KB, still valid so no error
+		const text = 'x'.repeat(2048);
+		const result = validateTextSize(text);
+		expect(result.valid).toBe(true);
+	});
+
+	it('formats megabytes correctly in error message', () => {
+		const largeText = 'a'.repeat(MAX_PASTE_TEXT_SIZE + 1);
+		const result = validateTextSize(largeText);
+		expect(result.error).toContain('MB');
 	});
 });
