@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-22T00:00:00Z",
+  "title": "Design System: NetDisk",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Workshop Blue",
+        "canonical": "oklch(57% 0.18 252)",
+        "tonalRamp": [
+          "oklch(22% 0.06 252)",
+          "oklch(30% 0.10 252)",
+          "oklch(38% 0.14 252)",
+          "oklch(46% 0.17 252)",
+          "oklch(57% 0.18 252)",
+          "oklch(68% 0.14 252)",
+          "oklch(82% 0.08 252)",
+          "oklch(96% 0.02 252)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Cool Ink",
+        "canonical": "oklch(20% 0.02 252)",
+        "tonalRamp": [
+          "oklch(20% 0.02 252)",
+          "oklch(28% 0.02 252)",
+          "oklch(38% 0.02 252)",
+          "oklch(52% 0.02 252)",
+          "oklch(67% 0.02 252)",
+          "oklch(82% 0.02 252)",
+          "oklch(89% 0.01 252)",
+          "oklch(96% 0.005 252)"
+        ]
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "oklch(98% 0.005 252)",
+        "tonalRamp": [
+          "oklch(98% 0.005 252)",
+          "oklch(95% 0.005 252)",
+          "oklch(91% 0.005 252)",
+          "oklch(86% 0.008 252)",
+          "oklch(78% 0.012 252)",
+          "oklch(66% 0.015 252)",
+          "oklch(50% 0.02 252)",
+          "oklch(30% 0.02 252)"
+        ]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Success Green",
+        "canonical": "oklch(58% 0.17 145)",
+        "tonalRamp": [
+          "oklch(20% 0.06 145)",
+          "oklch(30% 0.10 145)",
+          "oklch(40% 0.14 145)",
+          "oklch(50% 0.16 145)",
+          "oklch(58% 0.17 145)",
+          "oklch(70% 0.15 145)",
+          "oklch(85% 0.08 145)",
+          "oklch(96% 0.03 145)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Warning Amber",
+        "canonical": "oklch(63% 0.16 65)",
+        "tonalRamp": [
+          "oklch(22% 0.06 65)",
+          "oklch(33% 0.10 65)",
+          "oklch(45% 0.14 65)",
+          "oklch(55% 0.16 65)",
+          "oklch(63% 0.16 65)",
+          "oklch(75% 0.13 65)",
+          "oklch(88% 0.07 65)",
+          "oklch(97% 0.02 65)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "oklch(57% 0.22 27)",
+        "tonalRamp": [
+          "oklch(22% 0.08 27)",
+          "oklch(32% 0.13 27)",
+          "oklch(42% 0.18 27)",
+          "oklch(50% 0.21 27)",
+          "oklch(57% 0.22 27)",
+          "oklch(70% 0.18 27)",
+          "oklch(86% 0.09 27)",
+          "oklch(97% 0.025 27)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display 24",
+        "purpose": "Page H1: \"文件\" \"媒体库\" \"账户中心\" 等页头。"
+      },
+      "headline": {
+        "displayName": "Headline 18",
+        "purpose": "Dialog 标题、设置区块大标题。"
+      },
+      "title": {
+        "displayName": "Title 15",
+        "purpose": "卡片标题、Toolbar 主文字、Empty State 主文。"
+      },
+      "body": {
+        "displayName": "Body 14",
+        "purpose": "项目主流字号。列表行、表格正文、按钮、表单标签、菜单项。"
+      },
+      "body-strong": {
+        "displayName": "Body 14 Strong",
+        "purpose": "当前选中的导航项、强调的内联文本。"
+      },
+      "caption": {
+        "displayName": "Caption 12",
+        "purpose": "文件大小、时间戳、辅助提示。"
+      },
+      "mono": {
+        "displayName": "Mono 13",
+        "purpose": "SHA、路径、URL、调试值。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-pop",
+        "value": "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.08)",
+        "purpose": "Dropdown / Popover / Context Menu。轻盈、贴近触发点。"
+      },
+      {
+        "name": "shadow-dialog",
+        "value": "0 10px 38px rgba(15, 23, 42, 0.18), 0 10px 20px rgba(15, 23, 42, 0.10)",
+        "purpose": "Dialog / Drawer。明确的离台感。"
+      },
+      {
+        "name": "shadow-toast",
+        "value": "0 8px 24px rgba(15, 23, 42, 0.12)",
+        "purpose": "Toast 通知。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "默认缓动。所有状态过渡、Dialog 进出、Dropdown 缩放。"
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Dropdown / Popover / Tooltip 缩放与淡入。"
+      },
+      {
+        "name": "duration-base",
+        "value": "200ms",
+        "purpose": "Button hover / Input focus / 卡片状态切换的默认时长。"
+      },
+      {
+        "name": "duration-overlay",
+        "value": "240ms",
+        "purpose": "Dialog Overlay 与 Drawer 进出动画。"
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主操作按钮。Dialog 确认、表单提交、上传等不可替代的主动作。",
+      "html": "<button class=\"ds-btn-primary\">上传文件</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; background: #2563eb; color: #fff; font: 500 0.875rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border: 0; border-radius: 8px; cursor: pointer; transition: background 200ms cubic-bezier(0.2, 0, 0, 1); } .ds-btn-primary:hover { background: #1d4ed8; } .ds-btn-primary:active { background: #1e40af; } .ds-btn-primary:focus-visible { outline: 2px solid #eff6ff; outline-offset: 2px; box-shadow: 0 0 0 1px #2563eb; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "导航 / Toolbar 默认按钮形态。视觉权重低，hover 才出现底色。",
+      "html": "<button class=\"ds-btn-ghost\">取消</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; background: transparent; color: #334155; font: 400 0.875rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border: 0; border-radius: 8px; cursor: pointer; transition: background 200ms cubic-bezier(0.2, 0, 0, 1), color 200ms cubic-bezier(0.2, 0, 0, 1); } .ds-btn-ghost:hover { background: #f1f5f9; color: #0f172a; } .ds-btn-ghost:focus-visible { outline: 2px solid #eff6ff; outline-offset: 2px; box-shadow: 0 0 0 1px #2563eb; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "仅用于不可逆操作：删除 / 永久删除 / 清空回收站。",
+      "html": "<button class=\"ds-btn-danger\">永久删除</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; background: #dc2626; color: #fff; font: 500 0.875rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border: 0; border-radius: 8px; cursor: pointer; transition: background 200ms cubic-bezier(0.2, 0, 0, 1); } .ds-btn-danger:hover { background: #b91c1c; } .ds-btn-danger:active { background: #991b1b; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "标准文本输入框。表单 / 搜索 / 重命名。",
+      "html": "<input class=\"ds-input\" placeholder=\"搜索文件…\" />",
+      "css": ".ds-input { display: block; width: 100%; height: 36px; padding: 0 12px; background: #fff; color: #0f172a; font: 400 0.875rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border: 1px solid #e2e8f0; border-radius: 8px; transition: border-color 200ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms cubic-bezier(0.2, 0, 0, 1); } .ds-input::placeholder { color: #94a3b8; } .ds-input:hover { border-color: #cbd5e1; } .ds-input:focus { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18); } .ds-input:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }"
+    },
+    {
+      "name": "Nav Item (Active)",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Navbar 当前导航项。primary-soft 大面积出现的唯一允许场景之一。",
+      "html": "<a class=\"ds-nav-active\" href=\"#\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 4h6l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z\"/></svg>文件</a>",
+      "css": ".ds-nav-active { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; background: #eff6ff; color: #2563eb; font: 500 0.875rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 8px; text-decoration: none; transition: background 200ms cubic-bezier(0.2, 0, 0, 1); } .ds-nav-active:hover { background: #dbeafe; }"
+    },
+    {
+      "name": "Nav Item (Default)",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Navbar 未激活导航项。视觉权重让位给文件本身。",
+      "html": "<a class=\"ds-nav\" href=\"#\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/></svg>相册</a>",
+      "css": ".ds-nav { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; background: transparent; color: #334155; font: 400 0.875rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 8px; text-decoration: none; transition: background 200ms cubic-bezier(0.2, 0, 0, 1), color 200ms cubic-bezier(0.2, 0, 0, 1); } .ds-nav:hover { background: #f1f5f9; color: #0f172a; }"
+    },
+    {
+      "name": "File Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "网格视图中的文件卡片。缩略图 + 文件名 + 大小，平面、不浮起。",
+      "html": "<div class=\"ds-file-card\"><div class=\"ds-file-thumb\"><svg width=\"32\" height=\"32\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/></svg></div><div class=\"ds-file-name\">project-plan.pdf</div><div class=\"ds-file-meta\">2.4 MB · 昨天</div></div>",
+      "css": ".ds-file-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; transition: background 200ms cubic-bezier(0.2, 0, 0, 1), border-color 200ms cubic-bezier(0.2, 0, 0, 1); cursor: pointer; } .ds-file-card:hover { background: #f8fafc; } .ds-file-card:focus-visible { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18); } .ds-file-thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; background: #f1f5f9; border-radius: 8px; } .ds-file-name { font: 500 0.875rem/1.4 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-file-meta { font: 400 0.75rem/1.4 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif; color: #64748b; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "File Row",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "列表视图中的文件行。缩略图 + 文件名 + 大小 + 时间，hover 高亮、selected 用 primary-soft。",
+      "html": "<div class=\"ds-file-row\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/></svg><span class=\"ds-file-row-name\">project-plan.pdf</span><span class=\"ds-file-row-size\">2.4 MB</span><span class=\"ds-file-row-time\">昨天 14:32</span></div>",
+      "css": ".ds-file-row { display: grid; grid-template-columns: 16px 1fr 96px 120px; gap: 12px; align-items: center; height: 44px; padding: 0 12px; border-radius: 8px; transition: background 200ms cubic-bezier(0.2, 0, 0, 1); cursor: pointer; } .ds-file-row:hover { background: #f1f5f9; } .ds-file-row[aria-selected=\"true\"] { background: #eff6ff; } .ds-file-row-name { font: 400 0.875rem/1.5 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-file-row-size, .ds-file-row-time { font: 400 0.75rem/1.4 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif; color: #64748b; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "状态徽章。文件状态、上传状态、管理员标记等。pill 形态。",
+      "html": "<span class=\"ds-chip ds-chip-warning\"><span class=\"ds-chip-dot\"></span>上传中</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px; background: #f1f5f9; color: #334155; font: 500 0.75rem/1 'Inter Variable', -apple-system, BlinkMacSystemFont, sans-serif; border-radius: 9999px; } .ds-chip-warning { background: #fffbeb; color: #92400e; } .ds-chip-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; opacity: 0.8; }"
+    },
+    {
+      "name": "Upload Progress Bar",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "上传任务面板里的进度条。transform:scaleX 动画，避免布局回流。",
+      "html": "<div class=\"ds-progress\"><div class=\"ds-progress-fill\" style=\"--p: 0.62;\"></div></div>",
+      "css": ".ds-progress { width: 100%; height: 4px; background: #f1f5f9; border-radius: 9999px; overflow: hidden; } .ds-progress-fill { width: 100%; height: 100%; background: #2563eb; border-radius: 9999px; transform-origin: left center; transform: scaleX(var(--p, 0)); transition: transform 200ms cubic-bezier(0.2, 0, 0, 1); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Workshop",
+    "overview": "NetDisk 不是一个网盘消费产品，是一个自部署的工作间。台面（content surface）保持干净，工具（chrome）退到边缘，文件本身——缩略图、文件名、文件结构——才是被反复看到的主角。系统的整体气质是克制的、可被信任的、桌面优先的：节奏稳、对比稳、动效短，每个状态都有明确的视觉反馈。\n\n视觉上属于「现代工具软件」的家族（参考 Linear / Vercel / Raycast 的工艺水准），但不是它们的模仿：NetDisk 是面向文件、不是面向代码 / 设计 / 启动器的，所以更倾向「Finder 的克制 + Linear 的精度」的中间地带——既不密集到 OA 系统，也不松散到 marketing landing。\n\n这套系统明确拒绝几类常见走向：通用 SaaS 模板、传统国内网盘的消费向 UI、传统企业管理后台、玩具感。",
+    "keyCharacteristics": [
+      "灰阶为主、强调色按事件出现，不按位置预先铺色",
+      "一套精确的 cool-gray 中性体系（轻微偏蓝 ~252°），不是 Tailwind 默认 gray",
+      "一种字体（Inter），靠 weight + size 建立层级",
+      "圆角小而稳定：md (8px) 是主流值，lg (12px) 用于容器",
+      "平面优先（flat-by-default），阴影仅在 overlay / floating 层出现",
+      "动效 150–200ms，cubic-bezier(0.2, 0, 0, 1)，prefers-reduced-motion 全覆盖"
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Workshop Blue 在任一屏幕上的视觉面积不超过 10%。它是用户事件的回音，不是装饰。", "section": "colors" },
+      { "name": "The Cool Hue Rule", "body": "中性灰统一在 hue ≈ 252° 的冷灰上。不混用 Tailwind 默认 gray / zinc / slate。", "section": "colors" },
+      { "name": "The Two-Channel Status Rule", "body": "任何状态信息必须同时用颜色 + 图标 / 文案两个通道传达。", "section": "colors" },
+      { "name": "The Fixed Scale Rule", "body": "产品 UI 字号是固定 rem，不用 clamp()。响应式靠结构折叠，不靠字号。", "section": "typography" },
+      { "name": "The Tabular Number Rule", "body": "所有展示数字必须用 font-variant-numeric: tabular-nums。", "section": "typography" },
+      { "name": "The No-Display-Font-in-Labels Rule", "body": "Body (14px / 400) 在 99% 的场合是正确答案。", "section": "typography" },
+      { "name": "The Flat-At-Rest Rule", "body": "卡片、表格、列表行在 rest 状态没有阴影。hover 不浮起，只换背景。", "section": "elevation" },
+      { "name": "The No-Glassmorphism Rule", "body": "backdrop-filter 仅允许用于 Navbar 与模态遮罩。", "section": "elevation" }
+    ],
+    "dos": [
+      "使用本规范定义的 cool-gray 中性体系（ink-* / surface-* / line-*），它们都对齐到 hue ≈ 252°。",
+      "在所有数字展示场景启用 font-variant-numeric: tabular-nums。",
+      "把按钮统一在 h-8 (32px) + rounded-md (8px)。",
+      "让强调色 Workshop Blue 在屏幕上的视觉面积保持在 10% 以内。",
+      "在 floating 层（Dropdown / Dialog / Toast）才使用阴影。",
+      "给每个交互元素提供 default / hover / focus-visible / active / disabled 五态。",
+      "在错误 / 警告状态同时使用颜色 + 图标 + 文案三通道。",
+      "长任务给出明确的「在哪一步 / 还要多久 / 失败可重试」反馈。",
+      "在 prefers-reduced-motion 下把所有 transform / scale 动画降级为即时切换或交叉淡出。",
+      "用 border-line 1px 边框 + 两层底色构建层次，而不是阴影。"
+    ],
+    "donts": [
+      "用紫蓝渐变 Hero / 大色块装饰背景 / background-clip: text 渐变文字——通用 SaaS 模板的 saturated 反射。",
+      "把 emoji 当作功能图标。所有功能图标走 @lucide/svelte。",
+      "在卡片 / 列表 / 按钮上使用 backdrop-filter: blur()。仅允许在 Navbar 与 Modal Overlay 上使用。",
+      "写 border-left: 4px solid <color> 这类侧条 stripe 作 callout / alert 装饰。",
+      "在产品里放营销页的 hero-metric 组件（大数字 + 小标签 + 渐变 accent）。",
+      "仿照传统国内网盘做广告位、强营销弹窗、红黄 CTA、礼包入口。",
+      "仿照 Ant Design Pro 做蓝白企业后台。",
+      "用卡通插画、亮黄亮粉、过度圆角、bouncy 弹簧动效。",
+      "用 Tailwind 默认 gray-* / slate-* / zinc-* 类名。中性色必须走本规范定义的 ink-* / surface-* / line-*。",
+      "用 clamp() 流体字号。产品 UI 字号固定。",
+      "用大于 rounded-xl (16px) 的圆角，除了头像与状态点。",
+      "嵌套卡片。",
+      "给 rest 态卡片加阴影。",
+      "写「向上浮起」(translateY(-2px) + 加深阴影) 的 hover 反馈。",
+      "用纯装饰 entrance 动画扫过整页。",
+      "用 border-radius 在按钮上做 rounded-full (pill)。",
+      "把 display 字号或 light weight 用在按钮 / 表单标签 / 菜单项上。"
+    ]
+  }
+}
