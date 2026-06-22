@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from './paste-upload';
+import { extractClipboardText, validateTextSize } from './paste-text-upload';
 
 function makeFile(name: string, type = 'text/plain') {
 	return new File(['content'], name, { type });
@@ -78,5 +79,25 @@ describe('isEditablePasteTarget', () => {
 	it('returns false for non-editable elements and null targets', () => {
 		expect(isEditablePasteTarget(target('div'))).toBe(false);
 		expect(isEditablePasteTarget(null)).toBe(false);
+	});
+});
+
+describe('PasteUploadProvider - text handling', () => {
+	it('should prioritize files over text when both present', () => {
+		const file = new File([''], 'test.txt');
+		const clipboard = {
+			files: [file],
+			getData: () => 'text content',
+		} as unknown as DataTransfer;
+
+		const result = extractClipboardFiles(clipboard);
+		expect(result).toHaveLength(1);
+	});
+
+	it('should validate text size before showing dialog', () => {
+		const text = 'a'.repeat(2 * 1024 * 1024 + 1);
+		const result = validateTextSize(text);
+		expect(result.valid).toBe(false);
+		expect(result.error).toContain('2MB');
 	});
 });
