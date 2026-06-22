@@ -180,13 +180,13 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*UserRespons
 	user, err := s.queries.GetUserByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil, model.ErrUnauthorized
+			return nil, nil, model.ErrInvalidCredentials
 		}
 		return nil, nil, fmt.Errorf("get user: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		return nil, nil, model.ErrUnauthorized
+		return nil, nil, model.ErrInvalidCredentials
 	}
 
 	tokens, err := s.issueTokens(ctx, user.ID)

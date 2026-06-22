@@ -68,6 +68,8 @@ func MapError(err error, lang i18n.Language) (int, int, string) {
 		return http.StatusForbidden, model.ErrCodeForbidden, i18n.T(i18n.MsgForbidden, lang)
 	case errors.Is(err, model.ErrInvalidInput):
 		return http.StatusBadRequest, model.ErrCodeInvalidInput, i18n.T(i18n.MsgInvalidInput, lang)
+	case errors.Is(err, model.ErrInvalidCredentials):
+		return http.StatusUnauthorized, model.ErrCodeInvalidCredentials, i18n.T(i18n.MsgInvalidCredentials, lang)
 	case errors.Is(err, model.ErrAlreadyExists):
 		return http.StatusConflict, model.ErrCodeAlreadyExists, i18n.T(i18n.MsgAlreadyExists, lang)
 	case errors.Is(err, model.ErrNameConflict):
