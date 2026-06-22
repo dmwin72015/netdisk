@@ -98,6 +98,7 @@
 
 <div class="auth-shell">
 	<div class="bg-surface-muted"></div>
+	<div class="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(#0f172a_1px,transparent_1px),linear-gradient(90deg,#0f172a_1px,transparent_1px)] [background-size:42px_42px]"></div>
 	<div class="auth-shell__inner">
 		<div class="auth-shell__bar">
 			<a href="/" class="flex items-center gap-2 text-sm font-semibold text-ink">

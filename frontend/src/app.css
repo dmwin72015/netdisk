@@ -131,8 +131,9 @@ output {
 	font-variant-numeric: tabular-nums;
 }
 
-/* Use the same focus ring everywhere; opt-out elements override locally */
-:where(button, [role="button"], a, input, textarea, select, summary):focus-visible {
+/* Use the same focus ring on interactive elements; inputs rely on
+   focus-within:border-primary from their parent wrapper instead */
+:where(button, [role="button"], a):focus-visible {
 	outline: 0;
 	box-shadow: var(--ring-focus);
 }
