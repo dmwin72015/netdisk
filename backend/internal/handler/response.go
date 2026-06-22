@@ -9,6 +9,7 @@ import (
 
 	"github.com/netdisk/server/internal/middleware"
 	"github.com/netdisk/server/internal/model"
+	"github.com/netdisk/server/pkg/i18n"
 )
 
 func OK(c echo.Context, data any) error {
@@ -28,7 +29,8 @@ func EchoErrorHandler(logger zerolog.Logger) echo.HTTPErrorHandler {
 		if c.Response().Committed {
 			return
 		}
-		status, code, msg := MapError(err)
+		lang := i18n.DetectLanguage(c.Request().Header.Get("Accept-Language"))
+		status, code, msg := MapError(err, lang)
 
 		ev := logger.Warn().Err(err).Int("status", status).Int("errCode", code).Str("path", c.Path()).Str("method", c.Request().Method)
 		if uid, ok := middleware.UserID(c); ok && uid != 0 {
@@ -50,7 +52,7 @@ func EchoErrorHandler(logger zerolog.Logger) echo.HTTPErrorHandler {
 	}
 }
 
-func MapError(err error) (int, int, string) {
+func MapError(err error, lang i18n.Language) (int, int, string) {
 	var he *echo.HTTPError
 	if errors.As(err, &he) {
 		msg, _ := he.Message.(string)
@@ -59,43 +61,43 @@ func MapError(err error) (int, int, string) {
 	}
 	switch {
 	case errors.Is(err, model.ErrNotFound):
-		return http.StatusNotFound, model.ErrCodeNotFound, "not found"
+		return http.StatusNotFound, model.ErrCodeNotFound, i18n.T(i18n.MsgNotFound, lang)
 	case errors.Is(err, model.ErrUnauthorized):
-		return http.StatusUnauthorized, model.ErrCodeUnauthorized, "unauthorized"
+		return http.StatusUnauthorized, model.ErrCodeUnauthorized, i18n.T(i18n.MsgUnauthorized, lang)
 	case errors.Is(err, model.ErrForbidden):
-		return http.StatusForbidden, model.ErrCodeForbidden, "forbidden"
+		return http.StatusForbidden, model.ErrCodeForbidden, i18n.T(i18n.MsgForbidden, lang)
 	case errors.Is(err, model.ErrInvalidInput):
-		return http.StatusBadRequest, model.ErrCodeInvalidInput, "invalid input"
+		return http.StatusBadRequest, model.ErrCodeInvalidInput, i18n.T(i18n.MsgInvalidInput, lang)
 	case errors.Is(err, model.ErrAlreadyExists):
-		return http.StatusConflict, model.ErrCodeAlreadyExists, "already exists"
+		return http.StatusConflict, model.ErrCodeAlreadyExists, i18n.T(i18n.MsgAlreadyExists, lang)
 	case errors.Is(err, model.ErrNameConflict):
-		return http.StatusConflict, model.ErrCodeNameConflict, "name conflict"
+		return http.StatusConflict, model.ErrCodeNameConflict, i18n.T(i18n.MsgNameConflict, lang)
 	case errors.Is(err, model.ErrDuplicateFile):
-		return http.StatusConflict, model.ErrCodeDuplicateFile, "duplicate file"
+		return http.StatusConflict, model.ErrCodeDuplicateFile, i18n.T(i18n.MsgDuplicateFile, lang)
 	case errors.Is(err, model.ErrSameFileConflict):
-		return http.StatusConflict, model.ErrCodeSameFileConflict, "same file conflict"
+		return http.StatusConflict, model.ErrCodeSameFileConflict, i18n.T(i18n.MsgSameFileConflict, lang)
 	case errors.Is(err, model.ErrFileTooLarge):
-		return http.StatusRequestEntityTooLarge, model.ErrCodeFileTooLarge, "file exceeds size limit"
+		return http.StatusRequestEntityTooLarge, model.ErrCodeFileTooLarge, i18n.T(i18n.MsgFileTooLarge, lang)
 	case errors.Is(err, model.ErrUnsupportedType):
-		return http.StatusBadRequest, model.ErrCodeUnsupportedType, "unsupported file type"
+		return http.StatusBadRequest, model.ErrCodeUnsupportedType, i18n.T(i18n.MsgUnsupportedType, lang)
 	case errors.Is(err, model.ErrQuotaExceeded):
-		return http.StatusInsufficientStorage, model.ErrCodeQuotaExceeded, "storage quota exceeded"
+		return http.StatusInsufficientStorage, model.ErrCodeQuotaExceeded, i18n.T(i18n.MsgQuotaExceeded, lang)
 	case errors.Is(err, model.ErrChallengeExpired):
-		return http.StatusNotFound, model.ErrCodeChallengeExpired, "challenge expired"
+		return http.StatusNotFound, model.ErrCodeChallengeExpired, i18n.T(i18n.MsgChallengeExpired, lang)
 	case errors.Is(err, model.ErrChallengeMismatch):
-		return http.StatusForbidden, model.ErrCodeChallengeMismatch, "challenge mismatch"
+		return http.StatusForbidden, model.ErrCodeChallengeMismatch, i18n.T(i18n.MsgChallengeMismatch, lang)
 	case errors.Is(err, model.ErrDirNotEmpty):
-		return http.StatusConflict, model.ErrCodeDirNotEmpty, "directory is not empty"
+		return http.StatusConflict, model.ErrCodeDirNotEmpty, i18n.T(i18n.MsgDirNotEmpty, lang)
 	case errors.Is(err, model.ErrFileRequired):
-		return http.StatusBadRequest, model.ErrCodeFileRequired, "file is required"
+		return http.StatusBadRequest, model.ErrCodeFileRequired, i18n.T(i18n.MsgFileRequired, lang)
 	case errors.Is(err, model.ErrUnsupportedImage):
-		return http.StatusBadRequest, model.ErrCodeUnsupportedImage, "only JPEG, PNG and WebP are supported"
+		return http.StatusBadRequest, model.ErrCodeUnsupportedImage, i18n.T(i18n.MsgUnsupportedImage, lang)
 	case errors.Is(err, model.ErrSystemFileLocked):
-		return http.StatusForbidden, model.ErrCodeSystemFileLocked, "system file cannot be modified"
+		return http.StatusForbidden, model.ErrCodeSystemFileLocked, i18n.T(i18n.MsgSystemFileLocked, lang)
 	case errors.Is(err, model.ErrDirectoryLocked):
-		return http.StatusLocked, model.ErrCodeDirectoryLocked, "directory is locked"
+		return http.StatusLocked, model.ErrCodeDirectoryLocked, i18n.T(i18n.MsgDirectoryLocked, lang)
 	default:
-		return http.StatusInternalServerError, model.ErrCodeInternal, "internal error"
+		return http.StatusInternalServerError, model.ErrCodeInternal, i18n.T(i18n.MsgInternal, lang)
 	}
 }
 

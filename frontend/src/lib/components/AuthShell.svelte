@@ -12,7 +12,6 @@
 			position: relative;
 			height: 100dvh;
 			min-height: 600px;
-			overflow: hidden;
 			background: #f5f7fb;
 			color: #020617;
 		}
@@ -45,7 +44,6 @@
 			display: flex;
 			flex: 1 1 auto;
 			min-height: 0;
-			overflow: hidden;
 		}
 
 		.auth-grid {

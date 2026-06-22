@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/netdisk/server/internal/model"
+	"github.com/netdisk/server/pkg/i18n"
 )
 
 func TestMapError(t *testing.T) {
@@ -61,7 +62,7 @@ func TestMapError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			status, code, msg := MapError(tt.err)
+			status, code, msg := MapError(tt.err, i18n.LangEN)
 			if status != tt.status || code != tt.code || msg != tt.msg {
 				t.Errorf("MapError(%v) = (%d, %d, %q), want (%d, %d, %q)",
 					tt.err, status, code, msg, tt.status, tt.code, tt.msg)
@@ -138,7 +139,7 @@ func TestMapError_EchoHTTPError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			status, code, msg := MapError(tt.err)
+			status, code, msg := MapError(tt.err, i18n.LangEN)
 			if status != tt.status || code != tt.code || msg != tt.msg {
 				t.Errorf("MapError(%v) = (%d, %d, %q), want (%d, %d, %q)",
 					tt.err, status, code, msg, tt.status, tt.code, tt.msg)
@@ -149,7 +150,7 @@ func TestMapError_EchoHTTPError(t *testing.T) {
 
 func TestMapError_NilError(t *testing.T) {
 	// nil error should still go through the switch and hit default
-	status, code, msg := MapError(nil)
+	status, code, msg := MapError(nil, i18n.LangEN)
 	if status != 500 || code != 1005 || msg != "internal error" {
 		t.Errorf("MapError(nil) = (%d, %d, %q), want (500, 1005, %q)",
 			status, code, msg, "internal error")

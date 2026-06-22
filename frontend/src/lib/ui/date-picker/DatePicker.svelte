@@ -65,7 +65,7 @@
 >
 	<div class="relative">
 		<DatePicker.Input
-			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-muted px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary focus-within:bg-white"
+			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-muted px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary"
 			onclick={openCalendar}
 		>
 			{#snippet children({ segments })}
