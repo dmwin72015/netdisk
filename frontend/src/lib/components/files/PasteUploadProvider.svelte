@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { toast } from 'svelte-sonner';
 	import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from '$lib/paste-upload';
-	import { extractClipboardText, validateTextSize, getDefaultFileName, createTextFile } from '$lib/paste-text-upload';
+	import { extractClipboardText, validateTextSize, getDefaultFileName } from '$lib/paste-text-upload';
 	import PasteUploadConfirmDialog from './PasteUploadConfirmDialog.svelte';
 	import PasteTextUploadConfirmDialog from './PasteTextUploadConfirmDialog.svelte';
 
@@ -46,6 +46,8 @@
 
 	function handlePaste(event: ClipboardEvent) {
 		if (!enabled) return;
+
+		if (isEditablePasteTarget(event.target)) return;
 
 		// 优先检测文件
 		const pastedFiles = extractClipboardFiles(event.clipboardData);
