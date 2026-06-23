@@ -67,6 +67,7 @@ import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
   let deleting = $state(false);
   let notFound = $state(false);
   let refreshId = 0;
+  let loadingRequestId = 0;
 
   // --- Preferences ---
   let viewMode = $state<ViewMode>(
@@ -120,7 +121,7 @@ import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
   $effect(() => {
     upload.updateMaxConcurrent(getUploadConcurrency());
     upload.setGetCurrentSlug(() => currentSlug);
-    upload.setOnCompleted(() => refresh());
+    upload.setOnCompleted(() => refresh(false, true));
     upload.setOnNameConflicts((conflicts) => {
       return new Promise<Map<string, NameConflictResult>>((resolve) => {
         conflictQueue.push({ conflicts, resolve });
@@ -243,10 +244,13 @@ import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
   });
 
   // --- File listing ---
-  async function refresh(showLoading = false) {
+  async function refresh(showLoading = false, force = false) {
     if (!$user) return;
     const id = ++refreshId;
-    if (showLoading) loading = true;
+    if (showLoading) {
+      loadingRequestId = id;
+      loading = true;
+    }
     loadingMore = false;
     notFound = false;
     try {
@@ -261,22 +265,22 @@ import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
         false,
         getShowSystemDirs(),
       );
-      if (id !== refreshId) return;
+      if (id !== refreshId && !force) return;
       files = data.files;
       total = data.total;
     } catch (e) {
-      if (id !== refreshId) return;
+      if (id !== refreshId && !force) return;
       if (e instanceof ApiError && e.status === 404) {
         notFound = true;
       } else if (e instanceof ApiError && e.status === 423 && currentSlug) {
         if (await unlockDir(currentSlug, crumbs.at(-1)?.name)) {
-          void refresh(showLoading);
+          void refresh(showLoading, force);
         }
       } else {
         toast.error(e instanceof Error ? e.message : m.load_failed());
       }
     } finally {
-      if (id === refreshId) loading = false;
+      if (id === loadingRequestId) loading = false;
     }
   }
 
