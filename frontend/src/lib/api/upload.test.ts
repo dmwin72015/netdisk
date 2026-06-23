@@ -12,6 +12,8 @@ import {
 	uploadChunk,
 	completeUpload,
 	getUploadStatus,
+	checkFileDedup,
+	urlUpload,
 } from './upload';
 
 // ── helpers ────────────────────────────────────────────────────────
@@ -255,5 +257,64 @@ describe('getUploadStatus', () => {
 		const result = await getUploadStatus('upload-2');
 		expect(result.status).toBe('failed');
 		expect(result.error).toBe('hash mismatch');
+	});
+});
+
+// ── checkFileDedup ───────────────────────────────────────────────────
+
+describe('checkFileDedup', () => {
+	it('posts fileHash to dedup endpoint', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ exists: true, physicalFileSlug: 'phys-1' }));
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		const result = await checkFileDedup('abc123');
+
+		const [url, init] = fetchSpy.mock.calls[0];
+		expect(url).toBe('/api/v1/upload/dedup-by-hash');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body)).toEqual({ fileHash: 'abc123' });
+		expect(result.exists).toBe(true);
+		expect(result.physicalFileSlug).toBe('phys-1');
+	});
+
+	it('returns exists=false when no match', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ exists: false }));
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		const result = await checkFileDedup('newhash');
+		expect(result.exists).toBe(false);
+	});
+});
+
+// ── urlUpload ───────────────────────────────────────────────────────
+
+describe('urlUpload', () => {
+	it('posts url and optional fileName/parentSlug', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ taskSlug: 'task-1', status: 'pending' }));
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		const result = await urlUpload('https://example.com/video.mp4', 'video.mp4', 'dir-1');
+
+		const [url, init] = fetchSpy.mock.calls[0];
+		expect(url).toBe('/api/v1/upload/from-url');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body)).toEqual({ url: 'https://example.com/video.mp4', fileName: 'video.mp4', parentSlug: 'dir-1' });
+		expect(result.taskSlug).toBe('task-1');
+	});
+
+	it('omits fileName and parentSlug when not provided', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ taskSlug: 'task-2', status: 'pending' }));
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		await urlUpload('https://example.com/file.zip');
+
+		const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+		expect(body.url).toBe('https://example.com/file.zip');
+		expect(body.fileName).toBe('');
+		expect(body.parentSlug).toBe('');
 	});
 });
