@@ -339,7 +339,7 @@
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{#each items as item (item.mediaSlug)}
 						{@const isSelected = selected.has(item.mediaSlug)}
-						<div class="group relative overflow-hidden rounded-xl border-line bg-white transition-all hover:border-line {isSelected ? 'border-primary ring-2 ring-primary-soft' : ''} {item.status === 'done' ? '' : 'cursor-default'}">
+						<div class="group relative overflow-hidden rounded-xl border border-line bg-white transition-all hover:border-line {isSelected ? 'border-primary ring-2 ring-primary-soft' : ''} {item.status === 'done' ? '' : 'cursor-default'}">
 							<button
 								type="button"
 								aria-pressed={isSelected}
