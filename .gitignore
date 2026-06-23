@@ -7,6 +7,9 @@ backend/server.pid
 backend/data
 backend/data/*
 backend/nohup.out
+backend/config.yaml
+
+# Data
 data
 
 # Frontend
@@ -18,7 +21,6 @@ frontend/.env
 # Env / secrets
 .env
 *.local
-backend/config.yaml
 
 # Editor
 .vscode/
