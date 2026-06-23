@@ -38,6 +38,7 @@
 		"bits-ui": "^2.18.1",
 		"hls.js": "^1.6.16",
 		"svelte-sonner": "^1.1.1",
+		"tailwind-merge": "^3.6.0",
 		"tailwindcss": "^4.3.0"
 	}
 }

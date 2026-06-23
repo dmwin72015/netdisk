@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Tooltip, type Tooltip as TooltipTypes } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	type TriggerProps = Omit<TooltipTypes.TriggerProps, 'class' | 'disabled' | 'children'>;
 
@@ -19,7 +20,7 @@
 
 <Tooltip.Trigger
 	{type}
-	class="inline-flex items-center justify-center outline-none {className}"
+	class={cn('inline-flex items-center justify-center outline-none', className)}
 	{disabled}
 	{...restProps}
 >

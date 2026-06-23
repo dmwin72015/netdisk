@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { AlertDialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -15,10 +16,12 @@
 </script>
 
 <AlertDialog.Cancel
-	class="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-2
-		hover:bg-surface-muted active:bg-surface-sunken
-		disabled:pointer-events-none disabled:opacity-50
-		{className}"
+	class={cn(
+		'inline-flex h-9 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink-2',
+		'hover:bg-surface-muted active:bg-surface-sunken',
+		'disabled:pointer-events-none disabled:opacity-50',
+		className,
+	)}
 	{disabled}
 	{...restProps}
 >

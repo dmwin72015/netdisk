@@ -122,7 +122,7 @@
   footer={false}
   closable={!loading}
   class="max-w-lg"
-  bodyClass="!p-0"
+  bodyClass="p-0"
 >
   {#if loading}
     <!-- Loading state -->

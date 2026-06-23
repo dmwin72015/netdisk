@@ -1,37 +1,40 @@
 <script lang="ts">
 	import { fmtSize } from '$lib/utils/format';
-	import { FileText, Check, X, AlertTriangle, ChevronDown, ChevronUp } from '@lucide/svelte';
+	import { FileText, Check, X, ChevronDown, ChevronUp, AlertTriangle } from '@lucide/svelte';
 	import { Dialog } from '$lib/ui/dialog';
-	import { MAX_PASTE_TEXT_SIZE, getDefaultFileName } from '$lib/paste-text-upload';
+	import { MAX_PASTE_TEXT_SIZE } from '$lib/paste-text-upload';
 
 	let {
 		open = $bindable(false),
-		text,
 		targetLabel,
-		defaultFileName,
-		sizeError,
 		onConfirm,
 		onCancel
 	}: {
 		open?: boolean;
-		text: string;
 		targetLabel: string;
-		defaultFileName?: string;
-		sizeError?: string;
 		onConfirm: (file: File) => void | Promise<void>;
 		onCancel: () => void;
 	} = $props();
 
+	let text = $state('');
 	let fileName = $state('');
+	let submitting = $state(false);
 	let expanded = $state(false);
 
 	const PREVIEW_MAX_LENGTH = 500;
 	const isLongText = $derived(text.length > PREVIEW_MAX_LENGTH);
 	const displayText = $derived(expanded || !isLongText ? text : text.slice(0, PREVIEW_MAX_LENGTH));
+	const charCount = $derived(text.length);
+	const textSize = $derived(new Blob([text]).size);
+	const sizeError = $derived(textSize > MAX_PASTE_TEXT_SIZE ? `文本大小 (${fmtSize(textSize)}) 超出最大限制 (${fmtSize(MAX_PASTE_TEXT_SIZE)})` : undefined);
+	const canConfirm = $derived(text.trim().length > 0 && fileName.trim().length > 0 && !sizeError && !submitting);
 
 	$effect(() => {
 		if (open) {
-			fileName = defaultFileName ?? getDefaultFileName(text);
+			text = '';
+			fileName = '';
+			submitting = false;
+			expanded = false;
 		}
 	});
 
@@ -39,14 +42,15 @@
 		if (!value) onCancel();
 	}
 
-	function handleConfirm() {
-		if (!fileName.trim() || sizeError) return;
-		const file = new File([text], fileName.trim(), { type: 'text/plain;charset=utf-8' });
-		onConfirm(file);
-	}
-
-	function togglePreview() {
-		expanded = !expanded;
+	async function handleConfirm() {
+		if (!canConfirm) return;
+		submitting = true;
+		try {
+			const file = new File([text], fileName.trim(), { type: 'text/plain;charset=utf-8' });
+			await onConfirm(file);
+		} finally {
+			submitting = false;
+		}
 	}
 </script>
 
@@ -60,7 +64,7 @@
 	bodyClass="p-0"
 >
 	{#if sizeError}
-		<!-- Error state -->
+		<!-- Error header -->
 		<div class="border-b border-error/30 bg-error-soft px-5 py-4">
 			<div class="flex items-start gap-2.5">
 				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error">
@@ -72,7 +76,7 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Normal state header -->
+		<!-- Header -->
 		<div class="border-b border-line-soft px-5 py-4">
 			<div class="flex items-start gap-3">
 				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
@@ -83,7 +87,7 @@
 						将粘贴文本保存到 <span class="font-semibold text-ink">{targetLabel}</span>
 					</p>
 					<p class="mt-1 text-xs text-ink-4">
-						文本大小 {fmtSize(new Blob([text]).size)}，共 {text.length} 个字符
+						大小 {fmtSize(textSize)} · {charCount} 个字符
 					</p>
 				</div>
 			</div>
@@ -91,45 +95,65 @@
 
 		<!-- Filename input -->
 		<div class="border-b border-line-soft px-5 py-3">
-			<label for="filename" class="text-sm font-medium text-ink-3">文件名</label>
+			<label for="filename-input" class="text-sm font-medium text-ink-2">
+				文件名
+			</label>
 			<input
-				id="filename"
+				id="filename-input"
 				type="text"
 				bind:value={fileName}
-				placeholder="请输入文件名"
+				placeholder="请输入文件名，如：note.txt"
 				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
 
-		<!-- Preview -->
+		<!-- Text content input -->
 		<div class="border-b border-line-soft px-5 py-3">
-			<button
-				type="button"
-				onclick={togglePreview}
-				class="flex w-full items-center justify-between text-left"
-			>
-				<span class="text-sm font-medium text-ink-3">文本预览</span>
-				<div class="flex items-center gap-1.5 text-xs text-ink-4">
-					<span>{text.length} 个字符</span>
-					{#if isLongText}
-						{#if expanded}
-							<ChevronUp size={14} />
-						{:else}
-							<ChevronDown size={14} />
-						{/if}
-					{/if}
-				</div>
-			</button>
-			{#if isLongText && !expanded}
-				<p class="mt-2 rounded-lg bg-surface-sunken p-2.5 font-mono text-xs text-ink-3">
-					{displayText}...
-				</p>
-			{:else}
-				<p class="mt-2 max-h-[30vh] overflow-y-auto rounded-lg bg-surface-sunken p-2.5 font-mono text-xs text-ink-3 whitespace-pre-wrap">
-					{displayText}
-				</p>
-			{/if}
+			<label for="text-content" class="text-sm font-medium text-ink-2">
+				文本内容
+			</label>
+			<textarea
+				id="text-content"
+				bind:value={text}
+				rows={6}
+				placeholder="在此粘贴或输入文本内容..."
+				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
+			></textarea>
 		</div>
+
+		<!-- Text preview -->
+		{#if charCount > 0}
+			<div class="border-b border-line-soft px-5 py-3">
+				<button
+					type="button"
+					onclick={() => (expanded = !expanded)}
+					class="flex w-full items-center justify-between text-left"
+				>
+					<span class="text-sm font-medium text-ink-2">文本预览</span>
+					<div class="flex items-center gap-1.5 text-xs text-ink-4">
+						<span>{charCount} 个字符</span>
+						{#if isLongText}
+							{#if expanded}
+								<ChevronUp size={14} />
+							{:else}
+								<ChevronDown size={14} />
+							{/if}
+						{/if}
+					</div>
+				</button>
+				{#if isLongText && !expanded}
+					<p class="mt-2 rounded-lg bg-surface-sunken p-2.5 font-mono text-xs text-ink-3 whitespace-pre-wrap">
+						{displayText}...
+					</p>
+				{:else}
+					<p
+						class="mt-2 max-h-[30vh] overflow-y-auto rounded-lg bg-surface-sunken p-2.5 font-mono text-xs text-ink-3 whitespace-pre-wrap"
+					>
+						{displayText}
+					</p>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 
 	<!-- Footer -->
@@ -144,7 +168,7 @@
 		<button
 			type="button"
 			onclick={handleConfirm}
-			disabled={!fileName.trim() || !!sizeError}
+			disabled={!canConfirm}
 			class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 		>
 			<Check size={14} /> 确认

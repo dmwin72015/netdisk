@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as PopoverBase from './base';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		open = $bindable(false),
@@ -28,11 +29,11 @@
 </script>
 
 <PopoverBase.Root bind:open {onOpenChange}>
-	<PopoverBase.Trigger class={triggerClass}>
+	<PopoverBase.Trigger class={cn(triggerClass)}>
 		{@render trigger()}
 	</PopoverBase.Trigger>
 
-	<PopoverBase.Content class={contentClass} style={contentStyle} {side} {sideOffset} {align}>
+	<PopoverBase.Content class={cn(contentClass)} style={contentStyle} {side} {sideOffset} {align}>
 		{@render children()}
 	</PopoverBase.Content>
 </PopoverBase.Root>

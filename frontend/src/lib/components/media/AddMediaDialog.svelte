@@ -110,7 +110,7 @@
 	footer={false}
 	class="h-[70vh]"
 	contentStyle="max-width: 56rem"
-	bodyClass="!p-0 flex flex-col min-h-0 !overflow-hidden"
+	bodyClass="p-0 flex flex-col min-h-0 overflow-hidden"
 >
 		<!-- Search -->
 		<div class="border-b border-line-soft px-5 py-2.5">

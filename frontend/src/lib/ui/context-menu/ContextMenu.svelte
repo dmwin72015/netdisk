@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as ContextMenuBase from './base';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		open = $bindable(false),
@@ -24,11 +25,11 @@
 </script>
 
 <ContextMenuBase.Root bind:open {onOpenChange}>
-	<ContextMenuBase.Trigger class={triggerClass}>
+	<ContextMenuBase.Trigger class={cn(triggerClass)}>
 		{@render trigger()}
 	</ContextMenuBase.Trigger>
 
-	<ContextMenuBase.Content class={contentClass} {sideOffset} {align}>
+	<ContextMenuBase.Content class={cn(contentClass)} {sideOffset} {align}>
 		{@render children()}
 	</ContextMenuBase.Content>
 </ContextMenuBase.Root>

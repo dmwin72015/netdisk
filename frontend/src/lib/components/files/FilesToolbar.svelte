@@ -10,6 +10,7 @@
     ArrowUp,
     ArrowDown,
     Globe,
+    FileText,
   } from "@lucide/svelte";
   import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
   import { Popover } from "$lib/ui/popover";
@@ -39,6 +40,7 @@
     onUploadFolder,
     onCreateDir,
     onUploadFromURL,
+    onUploadText,
   }: {
     sortBy: SortField;
     sortDir: "ASC" | "DESC";
@@ -49,6 +51,7 @@
     onUploadFolder: () => void;
     onCreateDir: () => void;
     onUploadFromURL?: () => void;
+    onUploadText?: () => void;
   } = $props();
 
   let showUploadMenu = $state(false);
@@ -192,6 +195,19 @@
               >
                 <Globe size={15} class="text-ink-4" />
                 {m.remote_upload()}
+              </button>
+            {/if}
+            {#if onUploadText}
+              <button
+                type="button"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
+                onclick={() => {
+                  showUploadMenu = false;
+                  onUploadText();
+                }}
+              >
+                <FileText size={15} class="text-ink-4" />
+                粘贴文本
               </button>
             {/if}
             <div class="bg-line-soft mx-1 my-1 h-px"></div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as AlertDialogBase from './base';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		open = $bindable(false),
@@ -67,7 +68,7 @@
 </script>
 
 <AlertDialogBase.Root bind:open onOpenChange={handleOpenChange}>
-	<AlertDialogBase.Content class={contentClass}>
+	<AlertDialogBase.Content class={cn(contentClass)}>
 		<AlertDialogBase.Title>{title}</AlertDialogBase.Title>
 		{#if description}
 			<AlertDialogBase.Description>{description}</AlertDialogBase.Description>

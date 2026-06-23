@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as DropdownBase from './base';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		open = $bindable(false),
@@ -28,11 +29,11 @@
 </script>
 
 <DropdownBase.Root bind:open {onOpenChange}>
-	<DropdownBase.Trigger class={triggerClass} {disabled}>
+	<DropdownBase.Trigger class={cn(triggerClass)} {disabled}>
 		{@render trigger()}
 	</DropdownBase.Trigger>
 
-	<DropdownBase.Content class={contentClass} {sideOffset} {align} {preventScroll}>
+	<DropdownBase.Content class={cn(contentClass)} {sideOffset} {align} {preventScroll}>
 		{@render children()}
 	</DropdownBase.Content>
 </DropdownBase.Root>

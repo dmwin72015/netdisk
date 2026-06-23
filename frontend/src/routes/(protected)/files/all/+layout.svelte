@@ -30,6 +30,7 @@
   import ShareDialog from "$lib/components/files/ShareDialog.svelte";
   import FolderUploadDialog from "$lib/components/files/FolderUploadDialog.svelte";
   import RemoteUploadDialog from "$lib/components/files/RemoteUploadDialog.svelte";
+import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
   import ConflictDialog from "$lib/components/files/ConflictDialog.svelte";
   import type {
     NameConflictInfo,
@@ -97,6 +98,7 @@
   const upload = getContext<UploadManager>("upload");
 
   let remoteUploadOpen = $state(false);
+  let textUploadOpen = $state(false);
 
   // --- Conflict resolution dialog ---
   type ConflictRequest = {
@@ -579,6 +581,9 @@
         onUploadFromURL={() => {
           remoteUploadOpen = true;
         }}
+        onUploadText={() => {
+          textUploadOpen = true;
+        }}
       />
       <input
         bind:this={fileInput}
@@ -671,6 +676,17 @@
 />
 
 <RemoteUploadDialog bind:open={remoteUploadOpen} parentSlug={currentSlug} />
+
+<TextUploadDialog
+  bind:open={textUploadOpen}
+  targetLabel={pasteTargetLabel}
+  onConfirm={async (file) => {
+    await upload.enqueueFiles([file]);
+  }}
+  onCancel={() => {
+    textUploadOpen = false;
+  }}
+/>
 
 <ConflictDialog
   bind:open={conflictDialogOpen}

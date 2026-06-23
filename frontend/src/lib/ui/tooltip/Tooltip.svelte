@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { type Tooltip as TooltipTypes } from 'bits-ui';
 	import * as TooltipBase from './base';
+	import { cn } from '$lib/utils/cn';
 
 	type TriggerProps = Omit<TooltipTypes.TriggerProps, 'class' | 'disabled' | 'children'>;
 
@@ -38,11 +39,11 @@
 
 <TooltipBase.Provider {delayDuration} {skipDelayDuration} {disableHoverableContent} {disabled}>
 	<TooltipBase.Root bind:open {onOpenChange} {delayDuration} {disableHoverableContent} {disabled}>
-		<TooltipBase.Trigger class={triggerClass} {...triggerProps}>
+		<TooltipBase.Trigger class={cn(triggerClass)} {...triggerProps}>
 			{@render children()}
 		</TooltipBase.Trigger>
 
-		<TooltipBase.Content class={contentClass} {side} {sideOffset}>
+		<TooltipBase.Content class={cn(contentClass)} {side} {sideOffset}>
 			{content}
 		</TooltipBase.Content>
 	</TooltipBase.Root>

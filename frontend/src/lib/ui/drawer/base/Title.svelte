@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -15,7 +16,7 @@
 
 <Dialog.Title
 	{level}
-	class="text-base font-semibold leading-none tracking-tight {className}"
+	class={cn('text-base font-semibold leading-none tracking-tight', className)}
 >
 	{@render children()}
 </Dialog.Title>

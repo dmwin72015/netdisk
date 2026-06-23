@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { AlertDialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -13,7 +14,7 @@
 </script>
 
 <AlertDialog.Title
-	class="text-sm font-medium leading-5 text-ink-2 {className}"
+	class={cn('text-sm font-medium leading-5 text-ink-2', className)}
 	{...restProps}
 >
 	{@render children()}

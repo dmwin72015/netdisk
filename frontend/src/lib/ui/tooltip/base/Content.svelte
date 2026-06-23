@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Tooltip } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -20,11 +21,14 @@
 	<Tooltip.Content
 		{side}
 		{sideOffset}
-		class="z-50 rounded-md bg-ink px-3 py-1.5 text-sm text-white 			data-[state=open]:animate-in data-[state=closed]:animate-out
-			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
-			data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2
-			data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2
-			{className}"
+		class={cn(
+			'z-50 rounded-md bg-ink px-3 py-1.5 text-sm text-white',
+			'data-[state=open]:animate-in data-[state=closed]:animate-out',
+			'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
+			'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
+			'data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2',
+			className,
+		)}
 		{...restProps}
 	>
 		{@render children()}

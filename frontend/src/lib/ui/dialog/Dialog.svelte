@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import { X } from "@lucide/svelte";
   import * as DialogBase from "./base";
+  import { cn } from "$lib/utils/cn";
 
   let {
     open = $bindable(false),
@@ -79,7 +80,7 @@
 
 <DialogBase.Root bind:open {onOpenChange} {onOpenChangeComplete}>
   <DialogBase.Content
-    class="max-h-[90vh] flex flex-col overflow-hidden {className}"
+    class={cn('max-h-[90vh] flex flex-col overflow-hidden', className)}
     style={contentStyle}
   >
     <div
@@ -116,7 +117,7 @@
       {/if}
     </div>
 
-    <div class="flex-1 overflow-auto px-5 py-4 {bodyClass}">
+    <div class="flex-1 overflow-auto {cn('px-5 py-4', bodyClass)}">
       {#if children}
         {@render children()}
       {/if}

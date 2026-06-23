@@ -36,7 +36,7 @@
 	title="确认上传粘贴的文件？"
 	footer={false}
 	class="max-w-lg"
-	bodyClass="!p-0"
+	bodyClass="p-0"
 >
 	<div class="border-b border-line-soft px-5 py-4">
 		<div class="flex items-start gap-3">

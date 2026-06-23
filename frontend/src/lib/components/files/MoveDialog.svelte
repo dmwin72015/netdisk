@@ -150,7 +150,7 @@
 	footer={false}
 	closable={!submitting}
 	class="h-[68vh] max-w-xl"
-	bodyClass="!p-0 flex flex-col min-h-0 !overflow-hidden"
+	bodyClass="p-0 flex flex-col min-h-0 overflow-hidden"
 >
 	<div class="flex items-center gap-2 border-b border-line-soft px-5 py-2.5">
 		<button

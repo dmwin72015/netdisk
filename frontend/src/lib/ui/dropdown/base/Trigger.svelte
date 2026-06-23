@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -15,7 +16,7 @@
 </script>
 
 <DropdownMenu.Trigger
-	class="inline-flex items-center outline-none {className}"
+	class={cn('inline-flex items-center outline-none', className)}
 	{disabled}
 	{...restProps}
 >

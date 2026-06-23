@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ContextMenu } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -28,7 +29,11 @@
 </script>
 
 <ContextMenu.Item
-	class="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors duration-150 select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 {variantClasses} {className}"
+	class={cn(
+		'flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm outline-none transition-colors duration-150 select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+		variantClasses,
+		className,
+	)}
 	{disabled}
 	{onSelect}
 >

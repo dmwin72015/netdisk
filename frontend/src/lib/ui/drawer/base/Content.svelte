@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	type Side = 'left' | 'right' | 'top' | 'bottom';
 
@@ -35,10 +36,13 @@
 
 <Dialog.Portal>
 	<Dialog.Content
-		class="fixed z-50 bg-surface border-line shadow-pop outline-none rounded-lg
-			data-[state=open]:animate-in data-[state=open]:duration-300
-			data-[state=closed]:animate-out data-[state=closed]:duration-200
-			{panelClass} {className}"
+		class={cn(
+			'fixed z-50 bg-surface border-line shadow-pop outline-none rounded-lg',
+			'data-[state=open]:animate-in data-[state=open]:duration-300',
+			'data-[state=closed]:animate-out data-[state=closed]:duration-200',
+			panelClass,
+			className,
+		)}
 		{...restProps}
 	>
 		{@render children()}

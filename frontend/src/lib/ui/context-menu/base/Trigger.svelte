@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ContextMenu } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -15,7 +16,7 @@
 </script>
 
 <ContextMenu.Trigger
-	class="inline-flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 {className}"
+	class={cn('inline-flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2', className)}
 	{disabled}
 	{...restProps}
 >

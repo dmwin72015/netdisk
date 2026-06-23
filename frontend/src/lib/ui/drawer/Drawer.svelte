@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as DrawerBase from './base';
+	import { cn } from '$lib/utils/cn';
 
 	type Side = 'left' | 'right' | 'top' | 'bottom';
 
@@ -34,7 +35,7 @@
 
 	<DrawerBase.Overlay />
 
-	<DrawerBase.Content {side} class={className}>
+	<DrawerBase.Content {side} class={cn(className)}>
 		{#if title || description}
 			<DrawerBase.Header>
 				{#if title}

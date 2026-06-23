@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		size = 24,
@@ -25,7 +26,7 @@
 	stroke-width={strokeWidth}
 	stroke-linecap="round"
 	stroke-linejoin="round"
-	class="animate-spin {className}"
+	class={cn('animate-spin', className)}
 	role="status"
 	aria-label="Loading"
 	{...rest}

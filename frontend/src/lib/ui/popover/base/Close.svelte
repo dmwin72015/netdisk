@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Popover } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils/cn';
 
 	let {
 		children,
@@ -13,7 +14,7 @@
 </script>
 
 <Popover.Close
-	class="inline-flex items-center justify-center rounded-md p-1 text-ink-4 outline-none transition-colors hover:text-ink-3 {className}"
+	class={cn('inline-flex items-center justify-center rounded-md p-1 text-ink-4 outline-none transition-colors hover:text-ink-3', className)}
 	{...restProps}
 >
 	{#if children}
