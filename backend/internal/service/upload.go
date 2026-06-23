@@ -592,7 +592,7 @@ func (s *UploadService) PreCheck(ctx context.Context, userID int64, req PreCheck
 	// Check Redis pre-cache
 	slug, err := s.cache.PreCache.Get(ctx, req.FileSize, req.PreHash)
 	if err == nil {
-		s.logger.Debug().Int64("userID", userID).Str("preHash", req.PreHash[:8]+"...").Int64("fileSize", req.FileSize).Str("cachedSlug", slug).Msg("pre-check cache hit")
+		s.logger.Debug().Int64("userID", userID).Str("preHash", safeHashPrefix(req.PreHash)).Int64("fileSize", req.FileSize).Str("cachedSlug", slug).Msg("pre-check cache hit")
 		return &PreCheckResponse{Status: "SUSPECT_HIT"}, nil
 	}
 
@@ -602,12 +602,12 @@ func (s *UploadService) PreCheck(ctx context.Context, userID int64, req PreCheck
 		FileSize: req.FileSize,
 	})
 	if err == nil {
-		s.logger.Debug().Int64("userID", userID).Str("preHash", req.PreHash[:8]+"...").Int64("fileSize", req.FileSize).Int64("physicalID", pf.ID).Msg("pre-check db hit")
+		s.logger.Debug().Int64("userID", userID).Str("preHash", safeHashPrefix(req.PreHash)).Int64("fileSize", req.FileSize).Int64("physicalID", pf.ID).Msg("pre-check db hit")
 		_ = s.cache.PreCache.Set(ctx, req.FileSize, req.PreHash, "")
 		return &PreCheckResponse{Status: "SUSPECT_HIT"}, nil
 	}
 
-	s.logger.Debug().Int64("userID", userID).Str("preHash", req.PreHash[:8]+"...").Int64("fileSize", req.FileSize).Msg("pre-check miss")
+	s.logger.Debug().Int64("userID", userID).Str("preHash", safeHashPrefix(req.PreHash)).Int64("fileSize", req.FileSize).Msg("pre-check miss")
 	return &PreCheckResponse{Status: "NOT_FOUND"}, nil
 }
 
@@ -622,7 +622,7 @@ func (s *UploadService) RequestChallenge(ctx context.Context, userID int64, req 
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Msg("request challenge: file not found")
+			s.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Msg("request challenge: file not found")
 			return &RequestChallengeResponse{Status: "NOT_FOUND"}, nil
 		}
 		return nil, fmt.Errorf("get physical file: %w", err)
@@ -632,7 +632,7 @@ func (s *UploadService) RequestChallenge(ctx context.Context, userID int64, req 
 	// uploads of the same file share one challenge instead of overwriting each other.
 	existingOffset, existingToken, err := s.cache.Challenge.GetChallenge(ctx, userID, req.FileHash)
 	if err == nil {
-		s.logger.Debug().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("offset", existingOffset).Msg("request challenge: reusing existing challenge")
+		s.logger.Debug().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Int("offset", existingOffset).Msg("request challenge: reusing existing challenge")
 		return &RequestChallengeResponse{
 			Status:          "CHALLENGE",
 			ChallengeOffset: int64(existingOffset),
@@ -647,11 +647,11 @@ func (s *UploadService) RequestChallenge(ctx context.Context, userID int64, req 
 	}
 
 	if err := s.cache.Challenge.SetChallenge(ctx, userID, req.FileHash, offset, token); err != nil {
-		s.logger.Error().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("request challenge: set challenge failed")
+		s.logger.Error().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Err(err).Msg("request challenge: set challenge failed")
 		return nil, fmt.Errorf("set challenge: %w", err)
 	}
 
-	s.logger.Info().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("offset", offset).Int64("fileSize", pf.FileSize).Msg("request challenge: issued")
+	s.logger.Info().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Int("offset", offset).Int64("fileSize", pf.FileSize).Msg("request challenge: issued")
 	return &RequestChallengeResponse{
 		Status:          "CHALLENGE",
 		ChallengeOffset: int64(offset),
@@ -666,14 +666,14 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 
 	offset, token, err := s.cache.Challenge.ConsumeChallenge(ctx, userID, req.FileHash)
 	if err != nil {
-		s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("verify: consume challenge failed, treating as MISS")
+		s.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Err(err).Msg("verify: consume challenge failed, treating as MISS")
 		return &VerifyResponse{Status: "MISS"}, nil
 	}
 
 	diskBytes, err := s.store.ReadAt(req.FileHash, int64(offset), 1024)
 	if err != nil {
-		s.logger.Error().Str("fileHash", req.FileHash[:8]+"...").Int("offset", offset).Err(err).Msg("verify: read file for challenge failed")
-		return nil, fmt.Errorf("read file: %w", err)
+		s.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Int("offset", offset).Err(err).Msg("verify: read file for challenge failed, treating as MISS")
+		return &VerifyResponse{Status: "MISS"}, nil
 	}
 
 	h := sha256.New()
@@ -682,7 +682,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 	expected := hex.EncodeToString(h.Sum(nil))
 
 	if expected != req.ProofCode {
-		s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("offset", offset).Msg("verify: proof mismatch")
+		s.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Int("offset", offset).Msg("verify: proof mismatch")
 		return &VerifyResponse{Status: "MISS"}, nil
 	}
 
@@ -691,7 +691,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 		FileHash: req.FileHash,
 	})
 	if err != nil {
-		s.logger.Error().Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("verify: get physical file after proof match failed")
+		s.logger.Error().Str("fileHash", safeHashPrefix(req.FileHash)).Err(err).Msg("verify: get physical file after proof match failed")
 		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
@@ -714,7 +714,7 @@ func (s *UploadService) Verify(ctx context.Context, userID int64, req VerifyRequ
 		}
 	}
 
-	s.logger.Info().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Int("existingFiles", len(existingFiles)).Msg("verify: hit")
+	s.logger.Info().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Int("existingFiles", len(existingFiles)).Msg("verify: hit")
 	return &VerifyResponse{
 		Status:           "HIT",
 		PhysicalFileSlug: pf.Slug,
@@ -742,7 +742,7 @@ func (s *UploadService) Init(ctx context.Context, userID int64, sessionID string
 		})
 		if err != nil {
 			if !errors.Is(err, pgx.ErrNoRows) {
-				s.logger.Warn().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Err(err).Msg("init: resume query failed")
+				s.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Err(err).Msg("init: resume query failed")
 			}
 		} else if existing.ID != 0 && existing.Status != "done" && existing.Status != "failed" {
 			s.logger.Info().Str("slug", existing.Slug).Int64("existingTaskID", existing.ID).Str("status", existing.Status).Int32("totalChunks", existing.TotalChunks).Int32("chunkSize", existing.ChunkSize).Int64("fileSize", existing.FileSize).Msg("init: found existing upload task, trying resume")
@@ -771,7 +771,7 @@ func (s *UploadService) Init(ctx context.Context, userID int64, sessionID string
 				CompletedChunks: filteredChunks,
 			}, nil
 		} else if existing.ID != 0 {
-			s.logger.Debug().Int64("userID", userID).Str("fileHash", req.FileHash[:8]+"...").Str("status", existing.Status).Int64("existingTaskID", existing.ID).Msg("init: existing task found but not resumable (done/failed)")
+			s.logger.Debug().Int64("userID", userID).Str("fileHash", safeHashPrefix(req.FileHash)).Str("status", existing.Status).Int64("existingTaskID", existing.ID).Msg("init: existing task found but not resumable (done/failed)")
 		}
 	}
 
@@ -897,7 +897,7 @@ func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req Update
 		return model.ErrUnauthorized
 	}
 	if task.FileHash != "" {
-		s.logger.Debug().Str("slug", req.UploadSlug).Str("existingHash", task.FileHash[:8]+"...").Msg("update-hash: already set, skipping")
+		s.logger.Debug().Str("slug", req.UploadSlug).Str("existingHash", safeHashPrefix(task.FileHash)).Msg("update-hash: already set, skipping")
 		return nil // already set
 	}
 	if err := s.queries.UpdateUploadTaskFileHash(ctx, sqlc.UpdateUploadTaskFileHashParams{
@@ -913,7 +913,7 @@ func (s *UploadService) UpdateHash(ctx context.Context, userID int64, req Update
 			PreHash: req.PreHash,
 		})
 	}
-	s.logger.Info().Str("slug", req.UploadSlug).Str("fileHash", req.FileHash[:8]+"...").Msg("update-hash: done")
+	s.logger.Info().Str("slug", req.UploadSlug).Str("fileHash", safeHashPrefix(req.FileHash)).Msg("update-hash: done")
 	return nil
 }
 
