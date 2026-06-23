@@ -8,7 +8,7 @@ const TIMEOUTS = {
 	init: 30_000,
 	chunk: 300_000,
 	updateHash: 30_000,
-	complete: 120_000,
+	complete: 300_000,
 	status: 30_000,
 } as const;
 
