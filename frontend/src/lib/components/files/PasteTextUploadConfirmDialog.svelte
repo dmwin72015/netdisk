@@ -43,6 +43,7 @@
 		if (!fileName.trim() || sizeError) return;
 		const file = new File([text], fileName.trim(), { type: 'text/plain;charset=utf-8' });
 		onConfirm(file);
+		open = false;
 	}
 
 	function togglePreview() {

@@ -35,6 +35,9 @@ backend/config.yaml
 .codex
 docs
 .superpowers
+.impeccable
+opencode.json
+skills-lock.json
 .pnpm-store/
 .claude/worktrees/
 .claude/agent-memory

@@ -48,6 +48,7 @@
 		try {
 			const file = new File([text], fileName.trim(), { type: 'text/plain;charset=utf-8' });
 			await onConfirm(file);
+			open = false;
 		} finally {
 			submitting = false;
 		}

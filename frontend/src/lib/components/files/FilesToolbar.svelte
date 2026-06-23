@@ -164,62 +164,62 @@
           >
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-primary-soft hover:text-primary"
               onclick={() => {
                 showUploadMenu = false;
                 onUploadFiles();
               }}
             >
-              <Upload size={15} class="text-ink-4" />
+              <Upload size={15} class="text-primary" />
               {m.upload_files()}
             </button>
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-primary-soft hover:text-primary"
               onclick={() => {
                 showUploadMenu = false;
                 onUploadFolder();
               }}
             >
-              <FolderOpen size={15} class="text-ink-4" />
+              <FolderOpen size={15} class="text-primary" />
               {m.upload_folder()}
             </button>
             {#if onUploadFromURL}
               <button
                 type="button"
-                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-purple-50 hover:text-purple-600"
                 onclick={() => {
                   showUploadMenu = false;
                   onUploadFromURL();
                 }}
               >
-                <Globe size={15} class="text-ink-4" />
+                <Globe size={15} class="text-purple-500" />
                 {m.remote_upload()}
               </button>
             {/if}
             {#if onUploadText}
               <button
                 type="button"
-                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-amber-50 hover:text-amber-600"
                 onclick={() => {
                   showUploadMenu = false;
                   onUploadText();
                 }}
               >
-                <FileText size={15} class="text-ink-4" />
+                <FileText size={15} class="text-amber-500" />
                 粘贴文本
               </button>
             {/if}
             <div class="bg-line-soft mx-1 my-1 h-px"></div>
             <button
               type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-surface-sunken hover:text-ink"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-green-50 hover:text-green-600"
               onclick={() => {
                 showUploadMenu = false;
                 onCreateDir();
               }}
             >
-              <FolderPlus size={15} class="text-ink-4" />
+              <FolderPlus size={15} class="text-green-500" />
               {m.new_folder()}
             </button>
           </div>
