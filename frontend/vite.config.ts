@@ -74,14 +74,7 @@ export default defineConfig(({ mode }) => {
     test: {
       include: ["tests/**/*.test.ts"],
       globals: true,
-      environment: 'jsdom',
       setupFiles: ['./tests/setup.ts'],
-      ssr: {
-        noExternal: ['@lucide/svelte', 'bits-ui'],
-      },
-      deps: {
-        inline: ['@testing-library/svelte-core'],
-      },
       coverage: {
         provider: 'v8',
         reporter: ['text', 'html'],
