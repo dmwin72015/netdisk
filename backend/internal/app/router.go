@@ -144,12 +144,18 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 
 	// Admin routes
 	admin := authed.Group("/admin", mw.AdminRequired(queries))
+	admin.GET("/dashboard/stats", h.Admin.DashboardStats)
 	admin.GET("/users", h.Admin.ListUsers)
+	admin.POST("/users", h.Admin.CreateUser)
 	admin.GET("/users/:id", h.Admin.GetUser)
 	admin.PATCH("/users/:id", h.Admin.UpdateUser)
 	admin.PATCH("/users/:id/storage-base", h.Admin.UpdateStorageBase)
 	admin.DELETE("/users/:id", h.Admin.DeleteUser)
 	admin.GET("/files", h.Admin.ListFiles)
+	admin.DELETE("/files/:id", h.Admin.DeleteFile)
+	admin.PATCH("/files/:id/restore", h.Admin.RestoreFile)
+	admin.GET("/storage/stats", h.Admin.StorageStats)
+	admin.GET("/system/info", h.Admin.SystemInfo)
 
 	// Photo routes
 	photos := authed.Group("/photos")

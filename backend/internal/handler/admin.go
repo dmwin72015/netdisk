@@ -5,16 +5,18 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/netdisk/server/internal/config"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
 
 type AdminHandler struct {
 	svc *service.AdminService
+	cfg *config.Config
 }
 
-func NewAdminHandler(svc *service.AdminService) *AdminHandler {
-	return &AdminHandler{svc: svc}
+func NewAdminHandler(svc *service.AdminService, cfg *config.Config) *AdminHandler {
+	return &AdminHandler{svc: svc, cfg: cfg}
 }
 
 func requireAdminUserID(c echo.Context) (int64, error) {
@@ -24,6 +26,14 @@ func requireAdminUserID(c echo.Context) (int64, error) {
 		return 0, model.ErrInvalidInput
 	}
 	return id, nil
+}
+
+func (h *AdminHandler) DashboardStats(c echo.Context) error {
+	stats, err := h.svc.DashboardStats(c.Request().Context())
+	if err != nil {
+		return err
+	}
+	return OK(c, stats)
 }
 
 func (h *AdminHandler) ListUsers(c echo.Context) error {
@@ -36,7 +46,15 @@ func (h *AdminHandler) ListUsers(c echo.Context) error {
 		offset = 0
 	}
 
-	items, total, err := h.svc.ListUsers(c.Request().Context(), limit, offset)
+	params := service.AdminListUsersParams{
+		Limit:  limit,
+		Offset: offset,
+		Search: c.QueryParam("search"),
+		Role:   c.QueryParam("role"),
+		Sort:   c.QueryParam("sort"),
+	}
+
+	items, total, err := h.svc.ListUsers(c.Request().Context(), params)
 	if err != nil {
 		return err
 	}
@@ -47,6 +65,31 @@ func (h *AdminHandler) ListUsers(c echo.Context) error {
 		"limit":  limit,
 		"offset": offset,
 	})
+}
+
+func (h *AdminHandler) CreateUser(c echo.Context) error {
+	var input struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if input.Username == "" || input.Email == "" || input.Password == "" {
+		return model.ErrInvalidInput
+	}
+	if input.Role == "" {
+		input.Role = "user"
+	}
+
+	user, err := h.svc.CreateUser(c.Request().Context(), input.Username, input.Email, input.Password, input.Role)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, user)
 }
 
 func (h *AdminHandler) GetUser(c echo.Context) error {
@@ -131,7 +174,16 @@ func (h *AdminHandler) ListFiles(c echo.Context) error {
 		offset = 0
 	}
 
-	items, total, err := h.svc.ListFiles(c.Request().Context(), limit, offset)
+	params := service.AdminListFilesParams{
+		Limit:    limit,
+		Offset:   offset,
+		Search:   c.QueryParam("search"),
+		Category: c.QueryParam("category"),
+		Trashed:  c.QueryParam("trashed"),
+		Sort:     c.QueryParam("sort"),
+	}
+
+	items, total, err := h.svc.ListFiles(c.Request().Context(), params)
 	if err != nil {
 		return err
 	}
@@ -142,4 +194,62 @@ func (h *AdminHandler) ListFiles(c echo.Context) error {
 		"limit":  limit,
 		"offset": offset,
 	})
+}
+
+func (h *AdminHandler) StorageStats(c echo.Context) error {
+	stats, err := h.svc.StorageStats(c.Request().Context())
+	if err != nil {
+		return err
+	}
+	return OK(c, stats)
+}
+
+func (h *AdminHandler) SystemInfo(c echo.Context) error {
+	info := map[string]any{
+		"upload": map[string]any{
+			"chunkSize":     h.cfg.Upload.ChunkSize,
+			"maxUploadSize": h.cfg.Storage.MaxUploadSize,
+		},
+		"limits": map[string]any{
+			"defaultStorageQuota": h.cfg.Limits.DefaultStorageQuota,
+			"avatarMaxSize":       h.cfg.Limits.AvatarMaxSize,
+		},
+		"trash": map[string]any{
+			"retentionDays": h.cfg.Trash.RetentionDays,
+		},
+		"jwt": map[string]any{
+			"accessTTLMin":   h.cfg.JWT.AccessTTLMin,
+			"refreshTTLHour": h.cfg.JWT.RefreshTTLHour,
+		},
+		"server": map[string]any{
+			"port": h.cfg.Server.Port,
+		},
+	}
+	return OK(c, info)
+}
+
+func (h *AdminHandler) DeleteFile(c echo.Context) error {
+	id, err := requireAdminUserID(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.svc.DeleteFile(c.Request().Context(), id); err != nil {
+		return err
+	}
+
+	return c.NoContent(204)
+}
+
+func (h *AdminHandler) RestoreFile(c echo.Context) error {
+	id, err := requireAdminUserID(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.svc.RestoreFile(c.Request().Context(), id); err != nil {
+		return err
+	}
+
+	return c.NoContent(204)
 }

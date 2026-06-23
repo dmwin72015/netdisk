@@ -56,8 +56,43 @@ export type AdminFileList = {
 	offset: number;
 };
 
-export async function adminListUsers(limit = 20, offset = 0): Promise<AdminUserList> {
-	return api<AdminUserList>(`/api/v1/admin/users?limit=${limit}&offset=${offset}`);
+export type AdminDashboardStats = {
+	totalUsers: number;
+	totalFiles: number;
+	totalStorage: number;
+	storageUsed: number;
+	newTodayUsers: number;
+	newTodayFiles: number;
+	diskTotal: number;
+	diskUsed: number;
+	diskFree: number;
+};
+
+export async function adminDashboardStats(): Promise<AdminDashboardStats> {
+	return api<AdminDashboardStats>('/api/v1/admin/dashboard/stats');
+}
+
+export async function adminListUsers(
+	limit = 20,
+	offset = 0,
+	search?: string,
+	role?: string,
+	sort?: string
+): Promise<AdminUserList> {
+	const params = new URLSearchParams();
+	params.set('limit', String(limit));
+	params.set('offset', String(offset));
+	if (search) params.set('search', search);
+	if (role) params.set('role', role);
+	if (sort) params.set('sort', sort);
+	return api<AdminUserList>(`/api/v1/admin/users?${params}`);
+}
+
+export async function adminCreateUser(username: string, email: string, password: string, role = 'user'): Promise<AdminUser> {
+	return api<AdminUser>('/api/v1/admin/users', {
+		method: 'POST',
+		body: JSON.stringify({ username, email, password, role }),
+	});
 }
 
 export async function adminGetUser(id: string): Promise<AdminUser> {
@@ -82,6 +117,50 @@ export async function adminDeleteUser(id: string): Promise<void> {
 	await api<void>(`/api/v1/admin/users/${id}`, { method: 'DELETE' });
 }
 
-export async function adminListFiles(limit = 20, offset = 0): Promise<AdminFileList> {
-	return api<AdminFileList>(`/api/v1/admin/files?limit=${limit}&offset=${offset}`);
+export async function adminListFiles(
+	limit = 20,
+	offset = 0,
+	search?: string,
+	category?: string,
+	trashed?: string,
+	sort?: string
+): Promise<AdminFileList> {
+	const params = new URLSearchParams();
+	params.set('limit', String(limit));
+	params.set('offset', String(offset));
+	if (search) params.set('search', search);
+	if (category) params.set('category', category);
+	if (trashed) params.set('trashed', trashed);
+	if (sort) params.set('sort', sort);
+	return api<AdminFileList>(`/api/v1/admin/files?${params}`);
+}
+
+export async function adminDeleteFile(id: string): Promise<void> {
+	await api<void>(`/api/v1/admin/files/${id}`, { method: 'DELETE' });
+}
+
+export async function adminRestoreFile(id: string): Promise<void> {
+	await api<void>(`/api/v1/admin/files/${id}/restore`, { method: 'PATCH' });
+}
+
+export type CategoryStat = {
+	category: string;
+	bytes: number;
+	count: number;
+};
+
+export async function adminStorageStats(): Promise<CategoryStat[]> {
+	return api<CategoryStat[]>('/api/v1/admin/storage/stats');
+}
+
+export type AdminSystemInfo = {
+	upload: { chunkSize: number; maxUploadSize: number };
+	limits: { defaultStorageQuota: number; avatarMaxSize: number };
+	trash: { retentionDays: number };
+	jwt: { accessTTLMin: number; refreshTTLHour: number };
+	server: { port: number };
+};
+
+export async function adminSystemInfo(): Promise<AdminSystemInfo> {
+	return api<AdminSystemInfo>('/api/v1/admin/system/info');
 }

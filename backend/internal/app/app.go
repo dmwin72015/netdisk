@@ -317,7 +317,7 @@ func buildHandlers(
 ) *handlers {
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb)
 	userSvc := service.NewUserService(queries, pg, cfg)
-	adminSvc := service.NewAdminService(queries, pg, logger)
+	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root)
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb, cfg)
@@ -337,7 +337,7 @@ func buildHandlers(
 		Media:  handler.NewMediaHandler(mediaSvc, broadcaster),
 		Photo:  handler.NewPhotoHandler(photoSvc),
 		Config: handler.NewConfigHandler(cfg),
-		Admin:  handler.NewAdminHandler(adminSvc),
+		Admin:  handler.NewAdminHandler(adminSvc, cfg),
 	}
 }
 
