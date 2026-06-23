@@ -11,12 +11,12 @@ vi.mock('$lib/paraglide/messages', () => ({
 const openConfirmMock = vi.fn();
 const openPromptMock = vi.fn();
 
-vi.mock('./dialog-state.svelte', () => ({
+vi.mock('$lib/dialog-state.svelte', () => ({
 	openConfirm: (...args: unknown[]) => openConfirmMock(...args),
 	openPrompt: (...args: unknown[]) => openPromptMock(...args),
 }));
 
-import { confirmDelete, promptInput, confirmAction } from './dialog';
+import { confirmDelete, promptInput, confirmAction } from '$lib/dialog';
 
 beforeEach(() => {
 	openConfirmMock.mockReset();

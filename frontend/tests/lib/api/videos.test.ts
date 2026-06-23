@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { listVideos, getVideo, uploadThumbnail, captureFrameThumbnail } from './videos';
+import { listVideos, getVideo, uploadThumbnail, captureFrameThumbnail } from '$lib/api/videos';
 
 // ── helpers ────────────────────────────────────────────────────────
 

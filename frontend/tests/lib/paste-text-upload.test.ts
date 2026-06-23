@@ -6,7 +6,7 @@ import {
 	extractClipboardText,
 	getDefaultFileName,
 	validateTextSize,
-} from './paste-text-upload';
+} from '$lib/paste-text-upload';
 
 describe('extractClipboardText', () => {
 	it('extracts plain text from clipboardData', () => {

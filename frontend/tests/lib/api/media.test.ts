@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { addToLibrary, listMedia, getMediaItem, removeFromLibrary, getHLSUrl, readdExistingUploadToLibrary } from './media';
+import { addToLibrary, listMedia, getMediaItem, removeFromLibrary, getHLSUrl, readdExistingUploadToLibrary } from '$lib/api/media';
 
 // ── helpers ────────────────────────────────────────────────────────
 

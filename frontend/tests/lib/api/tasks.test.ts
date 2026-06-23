@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { listTasks, getTask, deleteTask, computeFileSHA256 } from './tasks';
+import { listTasks, getTask, deleteTask, computeFileSHA256 } from '$lib/api/tasks';
 import { computeSHA256 } from '$lib/upload-hash';
 
 // ── listTasks ──────────────────────────────────────────────────────

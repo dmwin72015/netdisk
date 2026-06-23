@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { listUploadTasks, retryUploadTask } from './upload-tasks';
+import { listUploadTasks, retryUploadTask } from '$lib/api/upload-tasks';
 
 // ── helpers ────────────────────────────────────────────────────────
 

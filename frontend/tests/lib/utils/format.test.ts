@@ -16,7 +16,7 @@ vi.mock('$lib/paraglide/messages', () => ({
 	years_ago: ({ n }: { n: number }) => `${n} years ago`,
 }));
 
-import { fmtSize, fmtTime, fmtSpeed, fmtDurationHMS, fmtDurationText, timeAgo, authedUrl } from './format';
+import { fmtSize, fmtTime, fmtSpeed, fmtDurationHMS, fmtDurationText, timeAgo, authedUrl } from '$lib/utils/format';
 
 // ── localStorage mock ─────────────────────────────────────────────
 

@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('setUser', () => {
 	it('stores user in localStorage', async () => {
-		const { setUser } = await import('./auth');
+		const { setUser } = await import('$lib/stores/auth');
 		const userInfo = {
 			slug: 'alice',
 			username: 'alice',
@@ -43,7 +43,7 @@ describe('setUser', () => {
 	});
 
 	it('clears user from localStorage when null', async () => {
-		const { setUser } = await import('./auth');
+		const { setUser } = await import('$lib/stores/auth');
 
 		setUser(null);
 
@@ -51,7 +51,7 @@ describe('setUser', () => {
 	});
 
 	it('updates the store value', async () => {
-		const { setUser, user } = await import('./auth');
+		const { setUser, user } = await import('$lib/stores/auth');
 		const userInfo = {
 			slug: 'bob',
 			username: 'bob',
@@ -72,7 +72,7 @@ describe('setUser', () => {
 	});
 
 	it('sets authReady to true', async () => {
-		const { setUser, authReady } = await import('./auth');
+		const { setUser, authReady } = await import('$lib/stores/auth');
 
 		let ready = false;
 		const unsub = authReady.subscribe((v) => { ready = v; });

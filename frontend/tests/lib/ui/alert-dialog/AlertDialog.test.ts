@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAlertDialogController } from './AlertDialog.svelte';
+import { createAlertDialogController } from '$lib/ui/alert-dialog/AlertDialog.svelte';
 
 describe('AlertDialog', () => {
 	it('runs the confirm callback when the confirm button is clicked', () => {

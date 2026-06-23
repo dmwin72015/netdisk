@@ -14,7 +14,7 @@ import {
 	getUploadStatus,
 	checkFileDedup,
 	urlUpload,
-} from './upload';
+} from '$lib/api/upload';
 
 // ── helpers ────────────────────────────────────────────────────────
 

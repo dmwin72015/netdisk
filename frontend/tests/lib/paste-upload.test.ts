@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from './paste-upload';
-import { extractClipboardText, validateTextSize } from './paste-text-upload';
+import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from '$lib/paste-upload';
+import { extractClipboardText, validateTextSize } from '$lib/paste-text-upload';
 
 function makeFile(name: string, type = 'text/plain') {
 	return new File(['content'], name, { type });

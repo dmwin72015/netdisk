@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getUploadChunkCount, shouldUseSmallFileFastPath } from './upload-strategy';
+import { getUploadChunkCount, shouldUseSmallFileFastPath } from '$lib/upload-strategy';
 
 describe('upload strategy', () => {
 	it('uses fast path for files that fit in one chunk', () => {

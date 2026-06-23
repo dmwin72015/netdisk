@@ -8,7 +8,7 @@ vi.mock('$lib/api/config', () => ({
 	getClientConfig: vi.fn(),
 }));
 
-import { clientConfig, configError, fetchConfig, isConfigReady, getChunkSize, getMaxUploadSize, getAvatarMaxSize } from './config';
+import { clientConfig, configError, fetchConfig, isConfigReady, getChunkSize, getMaxUploadSize, getAvatarMaxSize } from '$lib/stores/config';
 import { get } from 'svelte/store';
 import { getClientConfig } from '$lib/api/config';
 

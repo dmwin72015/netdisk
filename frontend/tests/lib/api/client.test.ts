@@ -14,8 +14,8 @@ import {
 	getRefreshToken,
 	updateTokens,
 	api,
-} from './client';
-import type { UserInfo, Tokens } from './client';
+} from '$lib/api/client';
+import type { UserInfo, Tokens } from '$lib/api/client';
 
 // ── localStorage mock ─────────────────────────────────────────────
 

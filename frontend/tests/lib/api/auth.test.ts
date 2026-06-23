@@ -3,12 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { login, register, logout } from './auth';
-import { getAccessToken, getRefreshToken, getStoredUser } from './client';
+import { login, register, logout } from '$lib/api/auth';
+import { getAccessToken, getRefreshToken, getStoredUser } from '$lib/api/client';
 
 // ── helpers ────────────────────────────────────────────────────────
-
-let store: Record<string, string>;
 
 function jsonResponse(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify({ data }), {
@@ -25,13 +23,7 @@ function errorResponse(status: number, error: string): Response {
 }
 
 beforeEach(() => {
-	store = {};
-	vi.stubGlobal('localStorage', {
-		getItem: (k: string) => store[k] ?? null,
-		setItem: (k: string, v: string) => { store[k] = v; },
-		removeItem: (k: string) => { delete store[k]; },
-		clear: () => { store = {}; },
-	});
+	(globalThis.localStorage as { clear(): void }).clear();
 });
 
 afterEach(() => {
@@ -132,8 +124,8 @@ describe('register', () => {
 describe('logout', () => {
 	it('posts refreshToken and clears session', async () => {
 		// Pre-populate session
-		store['nd.refresh'] = 'ref-token';
-		store['nd.access'] = 'acc-token';
+		localStorage.setItem('nd.refresh', 'ref-token');
+		localStorage.setItem('nd.access', 'acc-token');
 
 		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse(null));
 		vi.stubGlobal('fetch', fetchSpy);
@@ -162,8 +154,8 @@ describe('logout', () => {
 	});
 
 	it('clears session even if API call fails', async () => {
-		store['nd.refresh'] = 'ref-token';
-		store['nd.access'] = 'acc-token';
+		localStorage.setItem('nd.refresh', 'ref-token');
+		localStorage.setItem('nd.access', 'acc-token');
 
 		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
 

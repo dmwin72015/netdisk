@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { UploadRequestPool, UPLOAD_CHUNK_CONCURRENCY_PER_FILE, UPLOAD_FILE_CONCURRENCY, UPLOAD_FILE_CONCURRENCY_DEFAULT, UPLOAD_REQUEST_POOL_SIZE } from './upload-concurrency';
+import { UploadRequestPool, UPLOAD_CHUNK_CONCURRENCY_PER_FILE, UPLOAD_FILE_CONCURRENCY, UPLOAD_FILE_CONCURRENCY_DEFAULT, UPLOAD_REQUEST_POOL_SIZE } from '$lib/upload-concurrency';
 
 describe('upload concurrency constants', () => {
 	it('uses requested limits', () => {

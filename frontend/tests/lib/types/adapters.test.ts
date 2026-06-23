@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-import { normalizeFileItem, normalizeDriveFile } from './adapters';
+import { normalizeFileItem, normalizeDriveFile } from '$lib/types/adapters';
 import type { FileItem } from '$lib/api/files';
 import type { DriveFile } from '$lib/api/drive';
-import type { NormalizedFile } from './file';
+import type { NormalizedFile } from '$lib/types/file';
 
 // ── normalizeFileItem ─────────────────────────────────────────────
 

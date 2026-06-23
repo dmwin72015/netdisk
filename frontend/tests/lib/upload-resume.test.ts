@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getUploadedBytesFromCompletedChunks, getUploadProgress, normalizeCompletedChunks } from './upload-resume';
+import { getUploadedBytesFromCompletedChunks, getUploadProgress, normalizeCompletedChunks } from '$lib/upload-resume';
 
 describe('normalizeCompletedChunks', () => {
 	it('keeps valid unique chunk indexes only', () => {

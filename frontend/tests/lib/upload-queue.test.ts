@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { createUploadQueue } from './upload-queue';
+import { createUploadQueue } from '$lib/upload-queue';
 
 // ── createUploadQueue ──────────────────────────────────────────────
 

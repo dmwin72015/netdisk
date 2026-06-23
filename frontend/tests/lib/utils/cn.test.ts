@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cn } from './cn';
+import { cn } from '$lib/utils/cn';
 
 describe('cn', () => {
 	it('joins truthy class names', () => {

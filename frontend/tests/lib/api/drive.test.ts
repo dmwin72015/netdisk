@@ -11,10 +11,10 @@ vi.mock('$lib/upload-hash', () => ({
 }));
 
 import { computeSHA256 } from '$lib/upload-hash';
-import { getDownloadUrl, getPreviewUrl, listDrive, driveCheckUpload, initDriveUpload, uploadDriveFileWithProgress } from './drive';
+import { getDownloadUrl, getPreviewUrl, listDrive, driveCheckUpload, initDriveUpload, uploadDriveFileWithProgress } from '$lib/api/drive';
 import { clientConfig } from '$lib/stores/config';
 import { fmtSize } from '$lib/utils/format';
-import { ApiError } from './client';
+import { ApiError } from '$lib/api/client';
 
 const mockedComputeSHA256 = computeSHA256 as ReturnType<typeof vi.fn>;
 
@@ -202,7 +202,7 @@ import {
 	driveCheckHash, driveClaimHash, listDriveSessions, getDriveSession,
 	uploadDriveChunk, completeDriveUpload, cancelDriveUpload,
 	uploadDriveFile, driveChunkedUpload, resumeDriveUpload, renameDriveFile, deleteDriveFile,
-} from './drive';
+} from '$lib/api/drive';
 
 function jsonResponse(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify({ data }), {
@@ -471,7 +471,7 @@ describe('driveChunkedUpload / resumeDriveUpload', () => {
 		// uploadChunks reads chunk size from config store
 		clientConfig.set({ device: 'web', configs: { 'upload.chunkSize': 4194304 } });
 
-		const driveModule = await import('./drive');
+		const driveModule = await import('$lib/api/drive');
 		const file = new File(['x'], 'small.txt');
 		const result = await driveModule.driveChunkedUpload(file, 'text/plain', {}, null);
 		expect(result.fileId).toBe('f1');
@@ -489,7 +489,7 @@ describe('driveChunkedUpload / resumeDriveUpload', () => {
 		vi.stubGlobal('fetch', fetchSpy);
 		vi.stubGlobal('localStorage', { getItem: () => null });
 
-		const driveModule = await import('./drive');
+		const driveModule = await import('$lib/api/drive');
 		const file = new File(['x'.repeat(100)], 'f.txt');
 		const result = await driveModule.driveChunkedUpload(file, 'text/plain', {}, null);
 		expect(result.fileId).toBe('f2');
@@ -503,7 +503,7 @@ describe('driveChunkedUpload / resumeDriveUpload', () => {
 		vi.stubGlobal('fetch', fetchSpy);
 		vi.stubGlobal('localStorage', { getItem: () => null });
 
-		const driveModule = await import('./drive');
+		const driveModule = await import('$lib/api/drive');
 		const file = new File(['x'.repeat(1000)], 'f.txt');
 		const result = await driveModule.resumeDriveUpload(file, 's1', {});
 		expect(result.fileId).toBe('f1');

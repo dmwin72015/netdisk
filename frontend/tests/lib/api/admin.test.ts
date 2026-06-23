@@ -9,7 +9,7 @@ import {
 	adminUpdateRole,
 	adminUpdateStorageBase,
 	adminDeleteUser,
-} from './admin';
+} from '$lib/api/admin';
 
 // ── helpers ────────────────────────────────────────────────────────
 

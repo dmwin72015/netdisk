@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { computeSHA256, computeSHA256Chunked } from './upload-hash';
+import { computeSHA256, computeSHA256Chunked } from '$lib/upload-hash';
 
 // ── Worker mock ──────────────────────────────────────────────────────
 

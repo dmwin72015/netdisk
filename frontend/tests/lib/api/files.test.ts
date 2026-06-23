@@ -22,7 +22,7 @@ import {
 	listStarred,
 	downloadUrl,
 	getBreadcrumb,
-} from './files';
+} from '$lib/api/files';
 
 // ── helpers ────────────────────────────────────────────────────────
 

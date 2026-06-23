@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { getProfile, updateProfile, uploadAvatar, getStorageBreakdown } from './profile';
+import { getProfile, updateProfile, uploadAvatar, getStorageBreakdown } from '$lib/api/profile';
 
 // ── helpers ────────────────────────────────────────────────────────
 
