@@ -5,6 +5,7 @@ import type { NormalizedFile } from './file';
 export function normalizeFileItem(f: FileItem): NormalizedFile {
 	return {
 		id: f.slug,
+		slug: f.slug,
 		name: f.fileName,
 		isDir: f.isDir,
 		isLocked: f.isLocked,
@@ -22,6 +23,7 @@ export function normalizeFileItem(f: FileItem): NormalizedFile {
 export function normalizeDriveFile(f: DriveFile): NormalizedFile {
 	return {
 		id: f.id,
+		slug: f.id,
 		name: f.name,
 		isDir: f.isDir,
 		isLocked: false,

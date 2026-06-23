@@ -159,6 +159,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	admin.GET("/system/config", h.Admin.ListSystemConfig)
 	admin.PUT("/system/config", h.Admin.UpdateSystemConfig)
 	admin.POST("/system/config/reset", h.Admin.ResetSystemConfig)
+	admin.POST("/cleanup/file", h.Admin.CleanupFile)
 
 	// Photo routes
 	photos := authed.Group("/photos")

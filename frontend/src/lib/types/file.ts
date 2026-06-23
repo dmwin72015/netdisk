@@ -1,5 +1,6 @@
 export interface NormalizedFile {
 	id: string;
+	slug: string;
 	name: string;
 	isDir: boolean;
 	isLocked: boolean;

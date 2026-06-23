@@ -18,6 +18,7 @@
 		Menu,
 		X,
 		Activity,
+		Trash2,
 	} from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 	import LanguageDropdown from '$lib/components/LanguageDropdown.svelte';
@@ -44,6 +45,11 @@
 		{ href: '/admin/files', match: '/admin/files', label: m.admin_files(), icon: FileText, key: 'files' },
 		{ href: '/admin/storage', match: '/admin/storage', label: m.admin_storage(), icon: HardDrive, key: 'storage' },
 		{ href: '/admin/settings', match: '/admin/settings', label: m.admin_settings(), icon: Settings, key: 'settings' },
+	];
+
+	// Utility function items rendered as a separate section
+	const utilityItems: NavItem[] = [
+		{ href: '/admin/cleanup', match: '/admin/cleanup', label: m.admin_cleanup(), icon: Trash2, key: 'cleanup' },
 	];
 
 	function isActive(item: NavItem) {
@@ -141,6 +147,31 @@
 						</li>
 					{/each}
 				</ul>
+
+				{#if utilityItems.length > 0}
+					<div class="mt-4 pt-3 border-t border-line">
+						<span class="px-3 text-[10px] font-medium uppercase tracking-wider text-ink-4">{m.admin_utility_section()}</span>
+						<ul class="mt-2 space-y-1">
+							{#each utilityItems as item}
+								{@const active = isActive(item)}
+								{@const Icon = item.icon}
+								<li>
+									<a
+										href={item.href}
+										class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+										class:bg-primary-soft={active}
+										class:text-primary={active}
+										class:text-ink-3={!active}
+										class:pointer-events-none={active}
+									>
+										<Icon size={18} />
+										{item.label}
+									</a>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 			</nav>
 
 			<!-- Bottom section -->

@@ -190,3 +190,47 @@ export async function adminResetSystemConfig(key?: string): Promise<SystemConfig
 		body: JSON.stringify(key ? { key } : {}),
 	});
 }
+
+export type CleanupUploadTask = {
+	id: number;
+	ownerUserId: number;
+	username: string;
+	status: string;
+	fileSize: number;
+	originalName: string;
+	createdAt: number;
+};
+
+export type CleanupUserFile = {
+	id: number;
+	userId: number;
+	username: string;
+	fileName: string;
+	fileSize: number;
+	physicalFileId?: number;
+	createdAt: number;
+};
+
+export type CleanupPhysicalFile = {
+	id: number;
+	fileHash: string;
+	fileSize: number;
+	storagePath: string;
+	refCount?: number;
+};
+
+export type CleanupFileResult = {
+	slug: string;
+	uploadTasks: CleanupUploadTask[];
+	userFiles: CleanupUserFile[];
+	physicalFiles: CleanupPhysicalFile[];
+	deleted: boolean;
+	message?: string;
+};
+
+export async function adminCleanupFile(slug: string, confirm = false): Promise<CleanupFileResult> {
+	return api<CleanupFileResult>('/api/v1/admin/cleanup/file', {
+		method: 'POST',
+		body: JSON.stringify({ slug, confirm }),
+	});
+}

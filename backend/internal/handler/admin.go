@@ -307,3 +307,22 @@ func (h *AdminHandler) ResetSystemConfig(c echo.Context) error {
 	items, _ := h.configSvc.List(c.Request().Context())
 	return OK(c, items)
 }
+
+func (h *AdminHandler) CleanupFile(c echo.Context) error {
+	var input struct {
+		Slug    string `json:"slug"`
+		Confirm bool   `json:"confirm"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if input.Slug == "" {
+		return model.ErrInvalidInput
+	}
+
+	result, err := h.svc.CleanupFile(c.Request().Context(), input.Slug, input.Confirm)
+	if err != nil {
+		return err
+	}
+	return OK(c, result)
+}

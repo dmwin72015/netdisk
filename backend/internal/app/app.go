@@ -362,7 +362,7 @@ func buildHandlers(
 
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb, configSvc)
 	userSvc := service.NewUserService(queries, pg, cfg)
-	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root, configSvc)
+	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root, cfg.Storage.FilesDir, configSvc)
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb, cfg)

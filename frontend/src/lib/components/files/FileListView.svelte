@@ -1,5 +1,5 @@
 <script lang="ts">
- import { LoaderCircle, Folder, FolderPlus, Star, Check, Download, Trash2, X, FolderInput, Share2, Lock } from "@lucide/svelte";
+ import { LoaderCircle, Folder, FolderPlus, Star, Check, Download, Trash2, X, FolderInput, Share2, Lock, Copy } from "@lucide/svelte";
  import { fade, fly } from "svelte/transition";
  import type { NormalizedFile } from "$lib/types/file";
  import { fmtSize, fmtTime, copyToClipboard } from "$lib/utils/format";
@@ -179,7 +179,16 @@
  }
  }
 
- function describeFolder(file: NormalizedFile): string {
+
+ async function copySlug(slug: string) {
+	if (await copyToClipboard(slug)) {
+		toast.success(m.copied());
+	} else {
+		toast.error(m.copy_failed());
+	}
+}
+
+function describeFolder(file: NormalizedFile): string {
  const size = fmtSize(detailSummary?.size ?? file.size);
  if (detailSummary) {
  return m.folder_detail_size({
@@ -649,6 +658,16 @@
  <span class="underline underline-offset-4">{part}</span>
  {/each}
  </p>
+ </div>
+
+ <div>
+ <p class="text-xs leading-5 text-ink-3">{m.file_slug()}</p>
+ <div class="mt-1.5 flex items-center gap-2">
+ <p class="text-sm leading-5 text-ink-2 font-mono">{detailFile.slug}</p>
+ <button onclick={() => copySlug(detailFile.slug)} class="rounded p-1 text-ink-4 hover:text-ink hover:bg-surface-sunken transition-colors">
+ <Copy size={14} />
+ </button>
+ </div>
  </div>
 
  <div>

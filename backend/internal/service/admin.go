@@ -2,15 +2,20 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"syscall"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/netdisk/server/internal/db/sqlc"
+	"github.com/netdisk/server/internal/storage"
 )
 
 type AdminService struct {
@@ -18,11 +23,12 @@ type AdminService struct {
 	pg          *pgxpool.Pool
 	logger      zerolog.Logger
 	storageRoot string
+	filesDir    string
 	configSvc   *SystemConfigService
 }
 
-func NewAdminService(queries *sqlc.Queries, pg *pgxpool.Pool, logger zerolog.Logger, storageRoot string, configSvc *SystemConfigService) *AdminService {
-	return &AdminService{queries: queries, pg: pg, logger: logger, storageRoot: storageRoot, configSvc: configSvc}
+func NewAdminService(queries *sqlc.Queries, pg *pgxpool.Pool, logger zerolog.Logger, storageRoot string, filesDir string, configSvc *SystemConfigService) *AdminService {
+	return &AdminService{queries: queries, pg: pg, logger: logger, storageRoot: storageRoot, filesDir: filesDir, configSvc: configSvc}
 }
 
 func (s *AdminService) Queries() *sqlc.Queries { return s.queries }
@@ -562,4 +568,245 @@ func (s *AdminService) RestoreFile(ctx context.Context, fileID int64) error {
 		return fmt.Errorf("file not found or not trashed")
 	}
 	return nil
+}
+
+
+type CleanupFileResult struct {
+	Slug          string                `json:"slug"`
+	UploadTasks   []CleanupUploadTask   `json:"uploadTasks"`
+	UserFiles     []CleanupUserFile     `json:"userFiles"`
+	PhysicalFiles []CleanupPhysicalFile `json:"physicalFiles"`
+	Deleted       bool                  `json:"deleted"`
+	Message       string                `json:"message,omitempty"`
+}
+
+type CleanupUploadTask struct {
+	ID           int64  `json:"id"`
+	OwnerUserID  int64  `json:"ownerUserId"`
+	Username     string `json:"username,omitempty"`
+	Status       string `json:"status"`
+	FileSize     int64  `json:"fileSize"`
+	OriginalName string `json:"originalName"`
+	CreatedAt    int64  `json:"createdAt"`
+}
+
+type CleanupUserFile struct {
+	ID               int64   `json:"id"`
+	UserID           int64   `json:"userId"`
+	Username         string  `json:"username"`
+	FileName         string  `json:"fileName"`
+	FileSize         int64   `json:"fileSize"`
+	PhysicalFileID   *int64  `json:"physicalFileId,omitempty"`
+	CreatedAt        int64   `json:"createdAt"`
+}
+
+type CleanupPhysicalFile struct {
+	ID          int64   `json:"id"`
+	FileHash    string  `json:"fileHash"`
+	FileSize    int64   `json:"fileSize"`
+	StoragePath string  `json:"storagePath"`
+	RefCount    *int64  `json:"refCount"`
+}
+
+func (s *AdminService) CleanupFile(ctx context.Context, slug string, doDelete bool) (*CleanupFileResult, error) {
+	result := &CleanupFileResult{
+		Slug:          slug,
+		UploadTasks:   []CleanupUploadTask{},
+		UserFiles:     []CleanupUserFile{},
+		PhysicalFiles: []CleanupPhysicalFile{},
+	}
+
+	task, err := s.queries.GetUploadTaskBySlug(ctx, slug)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("query upload task: %w", err)
+	}
+	if err == nil {
+		var username string
+		_ = s.pg.QueryRow(ctx, `SELECT username FROM users WHERE id = $1`, task.OwnerUserID).Scan(&username)
+
+		var createdAt int64
+		if task.CreatedAt.Valid {
+			createdAt = task.CreatedAt.Time.Unix()
+		}
+
+		result.UploadTasks = append(result.UploadTasks, CleanupUploadTask{
+			ID:           task.ID,
+			OwnerUserID:  task.OwnerUserID,
+			Username:     username,
+			Status:       task.Status,
+			FileSize:     task.FileSize,
+			OriginalName: task.OriginalName,
+			CreatedAt:    createdAt,
+		})
+	}
+
+	rows, err := s.pg.Query(ctx, `
+		SELECT uf.id, uf.user_id, u.username, uf.file_name, uf.file_size,
+		       uf.physical_file_id, EXTRACT(EPOCH FROM uf.created_at)::bigint
+		FROM user_files uf
+		JOIN users u ON u.id = uf.user_id
+		WHERE uf.slug = $1
+	`, slug)
+	if err != nil {
+		return nil, fmt.Errorf("query user files: %w", err)
+	}
+	defer rows.Close()
+
+	pfIDSet := make(map[int64]bool)
+	for rows.Next() {
+		var uf CleanupUserFile
+		var pfID pgtype.Int8
+		var createdAt int64
+		if err := rows.Scan(&uf.ID, &uf.UserID, &uf.Username, &uf.FileName, &uf.FileSize, &pfID, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan user file: %w", err)
+		}
+		if pfID.Valid {
+			id := pfID.Int64
+			uf.PhysicalFileID = &id
+			pfIDSet[id] = true
+		}
+		uf.CreatedAt = createdAt
+		result.UserFiles = append(result.UserFiles, uf)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(pfIDSet) > 0 {
+		ids := make([]int64, 0, len(pfIDSet))
+		for id := range pfIDSet {
+			ids = append(ids, id)
+		}
+
+		pfRows, err := s.pg.Query(ctx, `
+			SELECT id, file_hash, file_size, storage_path
+			FROM physical_files
+			WHERE id = ANY($1::bigint[])
+		`, ids)
+		if err != nil {
+			return nil, fmt.Errorf("query physical files: %w", err)
+		}
+		defer pfRows.Close()
+
+		pfPathMap := make(map[int64]string)
+		for pfRows.Next() {
+			var pf CleanupPhysicalFile
+			if err := pfRows.Scan(&pf.ID, &pf.FileHash, &pf.FileSize, &pf.StoragePath); err != nil {
+				return nil, fmt.Errorf("scan physical file: %w", err)
+			}
+			refCount, err := s.queries.CountReferencesByFileID(ctx, pgtype.Int8{Int64: pf.ID, Valid: true})
+			if err != nil {
+				return nil, fmt.Errorf("count references: %w", err)
+			}
+			v := int64(refCount)
+			pf.RefCount = &v
+			pfPathMap[pf.ID] = pf.StoragePath
+			result.PhysicalFiles = append(result.PhysicalFiles, pf)
+		}
+		if err := pfRows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	// If no results found by slug, try searching by physical file hash prefix
+	if len(result.UploadTasks) == 0 && len(result.UserFiles) == 0 {
+		pfRow := s.pg.QueryRow(ctx, `
+			SELECT id, file_size, storage_path FROM physical_files
+			WHERE file_hash LIKE $1 || '%'
+			LIMIT 1
+		`, slug)
+		var pfID int64
+		var pfSize int64
+		var pfPath string
+		if err := pfRow.Scan(&pfID, &pfSize, &pfPath); err == nil {
+			pfRows, err := s.pg.Query(ctx, `
+				SELECT uf.id, uf.user_id, u.username, uf.file_name, uf.file_size,
+				       uf.physical_file_id, EXTRACT(EPOCH FROM uf.created_at)::bigint
+				FROM user_files uf
+				JOIN users u ON u.id = uf.user_id
+				WHERE uf.physical_file_id = $1
+			`, pfID)
+			if err == nil {
+				for pfRows.Next() {
+					var uf CleanupUserFile
+					var physicalFileID pgtype.Int8
+					var createdAt int64
+					if err := pfRows.Scan(&uf.ID, &uf.UserID, &uf.Username, &uf.FileName, &uf.FileSize, &physicalFileID, &createdAt); err == nil {
+						if physicalFileID.Valid {
+							id := physicalFileID.Int64
+							uf.PhysicalFileID = &id
+						}
+						uf.CreatedAt = createdAt
+						result.UserFiles = append(result.UserFiles, uf)
+					}
+				}
+				pfRows.Close()
+			}
+			if len(result.UserFiles) > 0 {
+				refCount, _ := s.queries.CountReferencesByFileID(ctx, pgtype.Int8{Int64: pfID, Valid: true})
+				rc := int64(refCount)
+				result.PhysicalFiles = append(result.PhysicalFiles, CleanupPhysicalFile{
+					ID:          pfID,
+					FileHash:    slug,
+					FileSize:    pfSize,
+					StoragePath: pfPath,
+					RefCount:    &rc,
+				})
+				for i := range result.UserFiles {
+					if result.UserFiles[i].PhysicalFileID != nil {
+					}
+				}
+			}
+		}
+	}
+
+	if !doDelete {
+		return result, nil
+	}
+
+	tx, err := s.pg.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	if len(result.UploadTasks) > 0 {
+		if err := qtx.DeleteUploadTaskBySlug(ctx, sqlc.DeleteUploadTaskBySlugParams{Slug: slug, OwnerUserID: result.UploadTasks[0].OwnerUserID}); err != nil {
+			return nil, fmt.Errorf("delete upload task: %w", err)
+		}
+	}
+
+	for _, uf := range result.UserFiles {
+		if uf.PhysicalFileID != nil {
+			_, err := qtx.AtomicIncrementStorage(ctx, sqlc.AtomicIncrementStorageParams{
+				UserID:      uf.UserID,
+				StorageUsed: -uf.FileSize,
+			})
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return nil, fmt.Errorf("decrement storage: %w", err)
+			}
+		}
+		if err := qtx.DeleteFile(ctx, uf.ID); err != nil {
+			return nil, fmt.Errorf("delete user file: %w", err)
+		}
+	}
+
+	for _, pf := range result.PhysicalFiles {
+		if *pf.RefCount == 0 {
+			_ = os.Remove(storage.AbsPath(s.storageRoot, pf.FileHash, s.filesDir))
+			if err := qtx.DeletePhysicalFile(ctx, pf.ID); err != nil {
+				return nil, fmt.Errorf("delete physical file: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	result.Deleted = true
+	result.Message = "Cleanup completed"
+	return result, nil
 }
