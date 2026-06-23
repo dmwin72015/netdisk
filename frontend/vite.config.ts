@@ -75,6 +75,11 @@ export default defineConfig(({ mode }) => {
       include: ["tests/**/*.test.ts"],
       globals: true,
       setupFiles: ['./tests/setup.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        reportsDirectory: './coverage',
+      },
     },
   };
 });
