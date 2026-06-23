@@ -238,8 +238,9 @@
 		</Select.Root>
 		<button
 			onclick={handleSearch}
-			class="rounded-lg bg-surface-sunken px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-muted"
+			class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
 		>
+			<Search size={14} />
 			{m.admin_search()}
 		</button>
 		<span class="ml-auto text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
@@ -355,33 +356,48 @@
 
 <!-- Create User Dialog -->
 <Dialog bind:open={createOpen} title={m.admin_create_user()} onConfirm={handleCreateUser} confirmText={creating ? m.admin_creating() : m.admin_create_user()} showCancel class="max-w-sm">
-	<div class="space-y-4">
-		<div>
-			<label class="mb-1 block text-xs text-ink-3">{m.username()}</label>
-			<input
-				bind:value={createUsername}
-				placeholder="Username"
-				class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
-			/>
-		</div>
-		<div>
-			<label class="mb-1 block text-xs text-ink-3">{m.email()}</label>
-			<input
-				bind:value={createEmail}
-				type="email"
-				placeholder="Email"
-				class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
-			/>
-		</div>
-		<div>
-			<label class="mb-1 block text-xs text-ink-3">{m.password()}</label>
-			<input
-				bind:value={createPassword}
-				type="password"
-				placeholder="Password"
-				class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
-			/>
-		</div>
+	<form autocomplete="off" onsubmit={(e) => e.preventDefault()}>
+		<input type="text" name="prevent_autofill" autocomplete="username" value="" class="hidden" tabindex="-1" aria-hidden="true" />
+		<input type="password" name="prevent_autofill_pw" autocomplete="current-password" value="" class="hidden" tabindex="-1" aria-hidden="true" />
+		<div class="space-y-4">
+			<div>
+				<label class="mb-1 block text-xs text-ink-3">{m.username()}</label>
+				<input
+					bind:value={createUsername}
+					name="new-admin-username"
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					placeholder="Username"
+					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+				/>
+			</div>
+			<div>
+				<label class="mb-1 block text-xs text-ink-3">{m.email()}</label>
+				<input
+					bind:value={createEmail}
+					type="email"
+					name="new-admin-email"
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					placeholder="Email"
+					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+				/>
+			</div>
+			<div>
+				<label class="mb-1 block text-xs text-ink-3">{m.password()}</label>
+				<input
+					bind:value={createPassword}
+					type="password"
+					name="new-admin-password"
+					autocomplete="new-password"
+					placeholder="Password"
+					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+				/>
+			</div>
 		<div>
 			<label class="mb-1 block text-xs text-ink-3">{m.col_role()}</label>
 			<Select.Root type="single" bind:value={createRole}>
@@ -389,7 +405,8 @@
 					<Select.Value placeholder="user" />
 					<ChevronDown size={14} class="text-ink-4" />
 				</Select.Trigger>
-				<Select.Content class="z-50 overflow-hidden rounded-lg border border-line bg-surface p-1 shadow-pop" sideOffset={4} align="start">
+				<Select.Portal>
+				<Select.Content class="z-[60] overflow-hidden rounded-lg border border-line bg-surface p-1 shadow-pop" sideOffset={4} side="top" align="start">
 				{#each roleOptions as opt}
 					<Select.Item value={opt.value} class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink outline-none transition-colors hover:bg-primary/5 data-[highlighted]:bg-primary-soft data-[highlighted]:text-primary data-[state=checked]:bg-primary-soft data-[state=checked]:text-primary data-[state=checked]:font-semibold">
 						{opt.label}
@@ -397,9 +414,10 @@
 					</Select.Item>
 				{/each}
 				</Select.Content>
+				</Select.Portal>
 			</Select.Root>
 		</div>
-	</div>
+	</form>
 </Dialog>
 
 <!-- Edit User Dialog -->

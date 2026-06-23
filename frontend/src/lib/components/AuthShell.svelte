@@ -12,7 +12,10 @@
 			position: relative;
 			height: 100dvh;
 			min-height: 600px;
-			background: #f5f7fb;
+			background:
+				radial-gradient(ellipse 55% 50% at 38% 30%, rgba(37, 99, 235, 0.14) 0%, transparent 55%),
+				radial-gradient(ellipse 70% 55% at 35% 50%, rgba(37, 99, 235, 0.06) 0%, transparent 55%),
+				#f5f7fb;
 			color: #020617;
 		}
 

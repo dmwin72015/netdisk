@@ -16,6 +16,7 @@
 	} from '$lib/api/admin';
 	import { fmtSize } from '$lib/utils/format';
 	import { confirmDelete } from '$lib/dialog';
+	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	const PAGE_SIZE = 20;
@@ -119,18 +120,6 @@
 	function fmtDate(ts: number): string {
 		return new Date(ts * 1000).toLocaleString();
 	}
-
-	function dirIcon(f: AdminFile): string {
-		if (f.isDir) return '\u{1F4C1}';
-		switch (f.fileCategory) {
-			case 'video': return '\u{1F3AC}';
-			case 'audio': return '\u{1F3B5}';
-			case 'image': return '\u{1F5BC}';
-			case 'document': return '\u{1F4C4}';
-			case 'archive': return '\u{1F4E6}';
-			default: return '\u{1F4C4}';
-		}
-	}
 </script>
 
 <div class="space-y-5">
@@ -193,24 +182,25 @@
 		</Select.Root>
 		<button
 			onclick={handleSearch}
-			class="rounded-lg bg-surface-sunken px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-muted"
+			class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
 		>
+			<Search size={14} />
 			{m.admin_search()}
 		</button>
 		<span class="ml-auto text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
 	</div>
 
 	<div class="overflow-hidden rounded-xl border border-line">
-		<table class="w-full text-left text-sm">
+		<table class="w-full table-fixed text-left text-sm">
 			<thead class="border-b border-line bg-surface-sunken text-xs text-ink-4">
 				<tr>
-					<th class="px-4 py-3 font-medium">{m.col_filename()}</th>
-					<th class="px-4 py-3 font-medium">{m.admin_owner()}</th>
+					<th class="w-[320px] px-4 py-3 font-medium">{m.col_filename()}</th>
+					<th class="w-[140px] px-4 py-3 font-medium">{m.admin_owner()}</th>
 					<th class="px-4 py-3 font-medium">{m.col_type()}</th>
-					<th class="px-4 py-3 font-medium">{m.col_size()}</th>
-					<th class="px-4 py-3 font-medium">{m.admin_uploaded()}</th>
-					<th class="px-4 py-3 font-medium">{m.status()}</th>
-					<th class="px-4 py-3 font-medium">{m.col_actions()}</th>
+					<th class="w-[100px] px-4 py-3 font-medium">{m.col_size()}</th>
+					<th class="w-[170px] px-4 py-3 font-medium">{m.admin_uploaded()}</th>
+					<th class="w-[120px] px-4 py-3 font-medium">{m.status()}</th>
+					<th class="w-[110px] px-4 py-3 font-medium">{m.col_actions()}</th>
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-line-soft">
@@ -227,21 +217,29 @@
 				{:else}
 					{#each files as f (f.id)}
 						<tr class="transition-colors hover:bg-surface-muted" class:opacity-60={f.isTrashed}>
-							<td class="px-4 py-3">
+							<td class="w-[320px] px-4 py-3">
 								<div class="flex items-center gap-2">
-									<span class="text-base">{dirIcon(f)}</span>
-									<span class="font-medium text-ink">{f.fileName}</span>
+									<MimeIcon
+										mimeType={f.mimeType}
+										name={f.fileName}
+										isDir={f.isDir}
+										category={f.fileCategory}
+										size={18}
+										class="shrink-0"
+									/>
+									<span class="min-w-0 truncate font-medium text-ink" title={f.fileName}>{f.fileName}</span>
 								</div>
 							</td>
-							<td class="px-4 py-3">
+							<td class="truncate px-4 py-3">
 								<button
-									class="text-primary hover:underline"
+									class="truncate text-primary hover:underline"
 									onclick={() => goto(`/admin/users/${f.userId}`)}
+									title={f.username}
 								>
 									{f.username}
 								</button>
 							</td>
-							<td class="px-4 py-3 text-ink-3">
+							<td class="truncate px-4 py-3 text-ink-3" title={f.isDir ? '' : (f.mimeType || f.fileCategory || '')}>
 								{f.isDir ? m.admin_directory() : (f.mimeType || f.fileCategory || '-')}
 							</td>
 							<td class="px-4 py-3 font-mono text-xs text-ink-3">

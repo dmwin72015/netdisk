@@ -20,13 +20,38 @@
 	let editingItem = $state<SystemConfigItem | null>(null);
 	let showDialog = $state(false);
 	let editValue = $state<string>('');
+	let editUnit = $state<number>(1); // bytes-per-unit multiplier
 	let editError = $state('');
 
+	const BYTE_UNITS: { label: string; value: number }[] = [
+		{ label: 'B', value: 1 },
+		{ label: 'KB', value: 1024 },
+		{ label: 'MB', value: 1024 ** 2 },
+		{ label: 'GB', value: 1024 ** 3 },
+		{ label: 'TB', value: 1024 ** 4 }
+	];
+
+	function bestUnit(bytes: number): number {
+		if (!Number.isFinite(bytes) || bytes <= 0) return 1;
+		for (let i = BYTE_UNITS.length - 1; i >= 0; i--) {
+			const u = BYTE_UNITS[i].value;
+			if (bytes >= u && bytes % u === 0) return u;
+		}
+		return 1;
+	}
+
+	let bytesPreview = $derived.by(() => {
+		if (!editingItem || editingItem.type !== 'bytes') return 0;
+		const n = Number(editValue);
+		if (!Number.isFinite(n) || n < 0) return 0;
+		return Math.round(n * editUnit);
+	});
+
 	const typeLabels: Record<string, string> = {
-		bytes: 'Bytes',
-		number: 'Number',
-		string: 'Text',
-		bool: 'Boolean'
+		bytes: m.admin_config_type_bytes(),
+		number: m.admin_config_type_number(),
+		string: m.admin_config_type_string(),
+		bool: m.admin_config_type_bool()
 	};
 
 	onMount(() => {
@@ -65,8 +90,15 @@
 
 	function openEdit(item: SystemConfigItem) {
 		editingItem = item;
-		editValue = String(item.value);
 		editError = '';
+		if (item.type === 'bytes' && typeof item.value === 'number') {
+			const unit = bestUnit(item.value);
+			editUnit = unit;
+			editValue = String(item.value / unit);
+		} else {
+			editUnit = 1;
+			editValue = String(item.value);
+		}
 		showDialog = true;
 	}
 
@@ -74,6 +106,7 @@
 		showDialog = false;
 		editingItem = null;
 		editValue = '';
+		editUnit = 1;
 		editError = '';
 	}
 
@@ -83,14 +116,12 @@
 
 		let parsed: unknown;
 		if (item.type === 'bytes' || item.type === 'number') {
-			parsed = Number(editValue);
-			if (isNaN(parsed as number) || (parsed as number) < 0) {
-				editError = 'Please enter a valid positive number';
+			const n = Number(editValue);
+			if (isNaN(n) || n < 0) {
+				editError = m.admin_config_invalid_number();
 				return;
 			}
-			if (item.type === 'bytes') {
-				parsed = Math.round(parsed as number);
-			}
+			parsed = item.type === 'bytes' ? Math.round(n * editUnit) : n;
 		} else if (item.type === 'bool') {
 			parsed = editValue === 'true';
 		} else {
@@ -132,7 +163,7 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-ink">{m.admin_settings()}</h1>
-			<p class="mt-1 text-sm text-ink-4">System configuration and server settings</p>
+			<p class="mt-1 text-sm text-ink-4">{m.admin_settings_desc()}</p>
 		</div>
 		<button
 			class="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-sunken disabled:opacity-50"
@@ -140,7 +171,7 @@
 			disabled={loading}
 		>
 			<RotateCw size={15} />
-			Reset All
+			{m.admin_reset_all()}
 		</button>
 	</div>
 
@@ -153,11 +184,11 @@
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-line bg-surface-sunken text-xs text-ink-3">
 					<tr>
-						<th class="px-5 py-3 font-medium">Setting</th>
-						<th class="px-5 py-3 font-medium">Current Value</th>
-						<th class="px-5 py-3 font-medium">Default</th>
-						<th class="px-5 py-3 font-medium">Type</th>
-						<th class="px-5 py-3 text-right font-medium">Actions</th>
+						<th class="px-5 py-3 font-medium">{m.admin_config_col_setting()}</th>
+						<th class="px-5 py-3 font-medium">{m.admin_config_col_current()}</th>
+						<th class="px-5 py-3 font-medium">{m.admin_config_col_default()}</th>
+						<th class="px-5 py-3 font-medium">{m.admin_config_col_type()}</th>
+						<th class="px-5 py-3 text-right font-medium">{m.admin_config_col_actions()}</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-line">
@@ -183,7 +214,7 @@
 									<button
 										class="rounded-lg p-2 text-ink-4 transition-colors hover:bg-primary-soft hover:text-primary"
 										onclick={() => openEdit(item)}
-										title="Edit"
+										title={m.admin_config_edit()}
 									>
 										<Pencil size={15} />
 									</button>
@@ -191,7 +222,7 @@
 										class="rounded-lg p-2 text-ink-4 transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-30"
 										onclick={() => handleReset(item)}
 										disabled={!isModified(item)}
-										title="Reset to default"
+										title={m.admin_config_reset_to_default()}
 									>
 										<RotateCcw size={15} />
 									</button>
@@ -205,7 +236,7 @@
 	{/if}
 </div>
 
-<Dialog bind:open={showDialog} title="Edit Setting" onCancel={closeEdit} showFooter={false}>
+<Dialog bind:open={showDialog} title={m.admin_config_edit_title()} onCancel={closeEdit} showFooter={false} class="max-w-md">
 	{#if editingItem}
 		<div class="space-y-4">
 			<div>
@@ -221,19 +252,40 @@
 					<option value="true">true</option>
 					<option value="false">false</option>
 				</select>
+			{:else if editingItem.type === 'bytes'}
+				<div>
+					<div class="flex gap-2">
+						<input
+							type="number"
+							class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+							class:border-danger={!!editError}
+							bind:value={editValue}
+							min="0"
+							step="any"
+						/>
+						<select
+							class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+							bind:value={editUnit}
+						>
+							{#each BYTE_UNITS as u}
+								<option value={u.value}>{u.label}</option>
+							{/each}
+						</select>
+					</div>
+					<p class="mt-1.5 font-mono text-xs text-ink-4">
+						= {bytesPreview.toLocaleString()} bytes
+					</p>
+				</div>
 			{:else}
 				<div>
 					<input
-						type={editingItem.type === 'number' || editingItem.type === 'bytes' ? 'number' : 'text'}
+						type={editingItem.type === 'number' ? 'number' : 'text'}
 						class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
 						class:border-danger={!!editError}
 						bind:value={editValue}
 						placeholder={String(editingItem.defaultValue)}
 						min="0"
 					/>
-					{#if editingItem.type === 'bytes'}
-						<p class="mt-1 text-xs text-ink-4">Value in bytes</p>
-					{/if}
 				</div>
 			{/if}
 
@@ -246,7 +298,7 @@
 					class="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-surface-sunken"
 					onclick={closeEdit}
 				>
-					Cancel
+					{m.admin_config_cancel()}
 				</button>
 				<button
 					class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
@@ -256,7 +308,7 @@
 					{#if saving}
 						<LoaderCircle size={15} class="animate-spin" />
 					{/if}
-					Save
+					{m.admin_config_save()}
 				</button>
 			</div>
 		</div>

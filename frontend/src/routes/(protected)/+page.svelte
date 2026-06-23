@@ -72,7 +72,12 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-8">
+	<div class="relative">
+		<div
+			class="pointer-events-none absolute inset-0 -z-10"
+			style="background: radial-gradient(ellipse 55% 40% at 50% 8%, rgba(37,99,235,0.1) 0%, transparent 55%), radial-gradient(ellipse 75% 50% at 50% 30%, rgba(37,99,235,0.04) 0%, transparent 55%);"
+		></div>
+		<div class="relative space-y-8">
 		<!-- Welcome -->
 		<header>
 			<h1 class="text-ink text-[22px] font-semibold tracking-tight">
@@ -193,5 +198,6 @@
 				</div>
 			{/if}
 		</section>
+	</div>
 	</div>
 {/if}

@@ -18,10 +18,11 @@ type AdminService struct {
 	pg          *pgxpool.Pool
 	logger      zerolog.Logger
 	storageRoot string
+	configSvc   *SystemConfigService
 }
 
-func NewAdminService(queries *sqlc.Queries, pg *pgxpool.Pool, logger zerolog.Logger, storageRoot string) *AdminService {
-	return &AdminService{queries: queries, pg: pg, logger: logger, storageRoot: storageRoot}
+func NewAdminService(queries *sqlc.Queries, pg *pgxpool.Pool, logger zerolog.Logger, storageRoot string, configSvc *SystemConfigService) *AdminService {
+	return &AdminService{queries: queries, pg: pg, logger: logger, storageRoot: storageRoot, configSvc: configSvc}
 }
 
 func (s *AdminService) Queries() *sqlc.Queries { return s.queries }
@@ -120,9 +121,10 @@ func (s *AdminService) DashboardStats(ctx context.Context) (*AdminDashboardStats
 	if s.storageRoot != "" {
 		var stat syscall.Statfs_t
 		if err := syscall.Statfs(s.storageRoot, &stat); err == nil {
-			stats.DiskTotal = int64(stat.Blocks) * stat.Bsize
-			stats.DiskFree = int64(stat.Bavail) * stat.Bsize
-			stats.DiskUsed = stats.DiskTotal - int64(stat.Bfree)*stat.Bsize
+			bsize := int64(stat.Bsize)
+			stats.DiskTotal = int64(stat.Blocks) * bsize
+			stats.DiskFree = int64(stat.Bavail) * bsize
+			stats.DiskUsed = stats.DiskTotal - int64(stat.Bfree)*bsize
 		}
 	}
 
@@ -244,10 +246,19 @@ func (s *AdminService) CreateUser(ctx context.Context, username, email, password
 		return nil, fmt.Errorf("insert user: %w", err)
 	}
 
-	_, err = tx.Exec(ctx, `
-		INSERT INTO user_storage_stats (user_id, storage_used, storage_quota)
-		VALUES ($1, 0, $2)
-	`, userID, int64(500<<30)) // default 500GB
+		quota := int64(500 << 30)
+		if v, ok := s.configSvc.Get("default_quota"); ok {
+			switch n := v.(type) {
+			case int64:
+				quota = n
+			case float64:
+				quota = int64(n)
+			}
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO user_storage_stats (user_id, storage_used, storage_quota)
+			VALUES ($1, 0, $2)
+		`, userID, quota)
 	if err != nil {
 		return nil, fmt.Errorf("insert storage stats: %w", err)
 	}

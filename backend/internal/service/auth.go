@@ -29,15 +29,28 @@ import (
 )
 
 type AuthService struct {
-	queries *sqlc.Queries
-	pg      *pgxpool.Pool
-	jwtMgr  *jwtutil.Manager
-	cfg     *config.Config
-	rdb     *redis.Client
+	queries   *sqlc.Queries
+	pg        *pgxpool.Pool
+	jwtMgr    *jwtutil.Manager
+	cfg       *config.Config
+	rdb       *redis.Client
+	configSvc *SystemConfigService
 }
 
-func NewAuthService(queries *sqlc.Queries, pg *pgxpool.Pool, jwtMgr *jwtutil.Manager, cfg *config.Config, rdb *redis.Client) *AuthService {
-	return &AuthService{queries: queries, pg: pg, jwtMgr: jwtMgr, cfg: cfg, rdb: rdb}
+func NewAuthService(queries *sqlc.Queries, pg *pgxpool.Pool, jwtMgr *jwtutil.Manager, cfg *config.Config, rdb *redis.Client, configSvc *SystemConfigService) *AuthService {
+	return &AuthService{queries: queries, pg: pg, jwtMgr: jwtMgr, cfg: cfg, rdb: rdb, configSvc: configSvc}
+}
+
+func (s *AuthService) defaultQuota() int64 {
+	if v, ok := s.configSvc.Get("default_quota"); ok {
+		switch n := v.(type) {
+		case int64:
+			return n
+		case float64:
+			return int64(n)
+		}
+	}
+	return s.cfg.Limits.DefaultStorageQuota
 }
 
 func (s *AuthService) Cfg() *config.Config {
@@ -133,7 +146,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 
 	_, err = qtx.CreateStorageStats(ctx, sqlc.CreateStorageStatsParams{
 		UserID:       user.ID,
-		StorageQuota: s.cfg.Limits.DefaultStorageQuota,
+		StorageQuota: s.defaultQuota(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create storage stats: %w", err)
@@ -163,7 +176,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 			DisplayName: user.Username,
 		},
 		Storage: StorageData{
-			StorageQuota: s.cfg.Limits.DefaultStorageQuota,
+			StorageQuota: s.defaultQuota(),
 		},
 		Level: LevelData{
 			LevelCode: "vip1",
@@ -942,7 +955,7 @@ func (s *AuthService) createUserFromOAuth(ctx context.Context, provider string, 
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_storage_stats (user_id, storage_quota) VALUES ($1, $2)
-	`, user.ID, s.cfg.Limits.DefaultStorageQuota); err != nil {
+	`, user.ID, s.defaultQuota()); err != nil {
 		return nil, fmt.Errorf("create oauth storage stats: %w", err)
 	}
 

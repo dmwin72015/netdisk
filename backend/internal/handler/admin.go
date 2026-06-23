@@ -206,13 +206,23 @@ func (h *AdminHandler) StorageStats(c echo.Context) error {
 }
 
 func (h *AdminHandler) SystemInfo(c echo.Context) error {
+	defaultQuota := h.cfg.Limits.DefaultStorageQuota
+	if v, ok := h.configSvc.Get("default_quota"); ok {
+		switch n := v.(type) {
+		case int64:
+			defaultQuota = n
+		case float64:
+			defaultQuota = int64(n)
+		}
+	}
+
 	info := map[string]any{
 		"upload": map[string]any{
 			"chunkSize":     h.cfg.Upload.ChunkSize,
 			"maxUploadSize": h.cfg.Storage.MaxUploadSize,
 		},
 		"limits": map[string]any{
-			"defaultStorageQuota": h.cfg.Limits.DefaultStorageQuota,
+			"defaultStorageQuota": defaultQuota,
 			"avatarMaxSize":       h.cfg.Limits.AvatarMaxSize,
 		},
 		"trash": map[string]any{

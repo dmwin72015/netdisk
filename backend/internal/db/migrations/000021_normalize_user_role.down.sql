@@ -1,0 +1,2 @@
+-- No-op: re-adding the historical mixed-case CHECK would block the lowercase
+-- values written by current application code, so we intentionally don't recreate it.

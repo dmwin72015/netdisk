@@ -355,13 +355,14 @@ func buildHandlers(
 	jwtMgr *jwtutil.Manager,
 	broadcaster *media.Broadcaster,
 ) *handlers {
-	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb)
-	userSvc := service.NewUserService(queries, pg, cfg)
-	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root)
 	configSvc := service.NewSystemConfigService(pg, logger)
 	if err := configSvc.Load(ctx); err != nil {
 		logger.Warn().Err(err).Msg("system config load (using defaults)")
 	}
+
+	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb, configSvc)
+	userSvc := service.NewUserService(queries, pg, cfg)
+	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root, configSvc)
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb, cfg)
