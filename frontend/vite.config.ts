@@ -79,6 +79,12 @@ export default defineConfig(({ mode }) => {
         provider: 'v8',
         reporter: ['text', 'html'],
         reportsDirectory: './coverage',
+        exclude: [
+          '**/node_modules/**',
+          '**/tests/setup.ts',
+          '**/src/lib/ui/**/base/**',
+          '**/src/lib/ui/**/base.svelte',
+        ],
       },
     },
   };
