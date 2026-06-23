@@ -126,12 +126,23 @@ func TestDetectImage(t *testing.T) {
 		"webp": {append(append([]byte("RIFF"), 0, 0, 0, 0), []byte("WEBPVP8")...), ImageWebP},
 		"empty":     {[]byte{}, ""},
 		"text":      {[]byte("hello world"), ""},
-		"gif":       {[]byte{0x47, 0x49, 0x46, 0x38, 0x39, 0x61}, ""}, // GIF intentionally unsupported
+		"gif":       {[]byte{0x47, 0x49, 0x46, 0x38, 0x39, 0x61}, ImageGIF},
 		"short-jpg": {[]byte{0xFF, 0xD8}, ""},
+		"avif":      {avifHead("avif"), ImageAVIF},
+		"avis":      {avifHead("avis"), ImageAVIF},
+		"avif-short": {[]byte{0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p'}, ""},
 	}
 	for name, tc := range cases {
 		if got := DetectImage(tc.head); got != tc.want {
 			t.Errorf("%s: got %q want %q", name, got, tc.want)
 		}
 	}
+}
+
+func avifHead(brand string) []byte {
+	head := make([]byte, 16)
+	head[0], head[1], head[2], head[3] = 0x00, 0x00, 0x00, 0x20
+	copy(head[4:8], []byte("ftyp"))
+	copy(head[8:12], []byte(brand))
+	return head
 }

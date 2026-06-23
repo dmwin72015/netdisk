@@ -98,5 +98,5 @@
 		{/if}
 	</div>
 
-	<AlbumCreateDialog bind:show={showCreate} onCreated={onCreated} />
+	<AlbumCreateDialog bind:open={showCreate} onCreated={onCreated} />
 {/if}

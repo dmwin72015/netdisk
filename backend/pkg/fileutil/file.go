@@ -216,6 +216,7 @@ const (
 	ImageWebP ImageFormat = "webp"
 	ImageGIF  ImageFormat = "gif"
 	ImageBMP  ImageFormat = "bmp"
+	ImageAVIF ImageFormat = "avif"
 )
 
 func (f ImageFormat) Ext() string {
@@ -230,6 +231,8 @@ func (f ImageFormat) Ext() string {
 		return ".gif"
 	case ImageBMP:
 		return ".bmp"
+	case ImageAVIF:
+		return ".avif"
 	default:
 		return ""
 	}
@@ -247,6 +250,8 @@ func (f ImageFormat) MIME() string {
 		return "image/gif"
 	case ImageBMP:
 		return "image/bmp"
+	case ImageAVIF:
+		return "image/avif"
 	default:
 		return ""
 	}
@@ -267,11 +272,22 @@ func DetectImage(head []byte) ImageFormat {
 		return ImageGIF
 	case len(head) >= 2 && bytes.Equal(head[:2], []byte("BM")):
 		return ImageBMP
+	case isAVIF(head):
+		return ImageAVIF
 	}
 	return ""
 }
 
 var pngMagic = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+
+// isAVIF checks for the ftyp box with an AVIF brand. AVIF files are ISO base
+// media files (like MP4) whose major brand at offset 8 is "avif" or "avis".
+func isAVIF(head []byte) bool {
+	return len(head) >= 12 &&
+		bytes.Equal(head[4:8], []byte("ftyp")) &&
+		(bytes.Equal(head[8:12], []byte("avif")) ||
+			bytes.Equal(head[8:12], []byte("avis")))
+}
 
 // FileCategory represents a broad file type classification.
 type FileCategory string

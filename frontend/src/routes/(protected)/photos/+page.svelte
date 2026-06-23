@@ -28,6 +28,7 @@
 
 	// Lightbox
 	let viewerSlug = $state<string | null>(null);
+	let viewerOpen = $state(false);
 	let viewerIndex = $state(0);
 	let allSlugs = $derived(photos.map(p => p.slug));
 
@@ -126,6 +127,7 @@
 	function openViewer(slug: string) {
 		viewerIndex = allSlugs.indexOf(slug);
 		viewerSlug = slug;
+		viewerOpen = true;
 	}
 
 	onMount(() => {
@@ -360,16 +362,15 @@
 		</div>
 
 		<!-- Lightbox -->
-	{#if viewerSlug}
 		<PhotoViewer
+			bind:open={viewerOpen}
 			slug={viewerSlug}
 			bind:fileSlugs={allSlugs}
 			index={viewerIndex}
-			close={() => (viewerSlug = null)}
+			onClose={() => (viewerSlug = null)}
 			{photos}
 		/>
-	{/if}
 
 	<!-- Create Album dialog -->
-	<AlbumCreateDialog bind:show={showCreateAlbum} onCreated={() => {}} />
+	<AlbumCreateDialog bind:open={showCreateAlbum} onCreated={() => {}} />
 {/if}

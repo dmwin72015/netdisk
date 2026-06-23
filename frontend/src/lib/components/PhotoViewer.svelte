@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Dialog } from 'bits-ui';
 	import { authedUrl, copyToClipboard } from '$lib/utils/format';
 	import {
 		ChevronLeft,
@@ -30,13 +31,15 @@
 		slug,
 		fileSlugs = $bindable([]),
 		index,
-		close,
+		open = $bindable(false),
+		onClose,
 		photos = [],
 	}: {
 		slug: string | null;
 		fileSlugs: string[];
 		index: number;
-		close: () => void;
+		open?: boolean;
+		onClose?: () => void;
 		photos: PhotoItem[];
 	} = $props();
 
@@ -46,7 +49,6 @@
 	let visibleSlug = $state<string | null>(null);
 	let loading = $state(true);
 	let isSwitchingImage = $state(false);
-	let closing = $state(false);
 	let scale = $state(1);
 	let rotation = $state(0);
 	let offsetX = $state(0);
@@ -244,13 +246,12 @@
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') close();
 		if (e.key === 'ArrowLeft') prev();
-		if (e.key === 'ArrowRight') next();
-		if (e.key === '+' || e.key === '=') zoomIn();
-		if (e.key === '-') zoomOut();
-		if (e.key === '0') resetView();
-		if (e.key.toLowerCase() === 'r') rotateRight();
+		else if (e.key === 'ArrowRight') next();
+		else if (e.key === '+' || e.key === '=') zoomIn();
+		else if (e.key === '-') zoomOut();
+		else if (e.key === '0') resetView();
+		else if (e.key.toLowerCase() === 'r') rotateRight();
 	}
 
 	async function toggleStar(e: Event) {
@@ -292,18 +293,7 @@
 		} else {
 			void goto('/files/all');
 		}
-		close();
-	}
-
-	function closeViewer() {
-		if (closing) return;
-		closing = true;
-	}
-
-	function onOverlayEnd() {
-		if (closing) {
-			close();
-		}
+		open = false;
 	}
 
 	function stopPropagation(e: Event) {
@@ -313,21 +303,23 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<!-- Overlay -->
-{#if currentSlug}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div
-		role="dialog"
-		aria-modal="true"
-		tabindex="-1"
-		class="photo-viewer-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-		class:photo-viewer-overlay-closing={closing}
-		onclick={closeViewer}
-		onanimationend={onOverlayEnd}
+<Dialog.Root bind:open onOpenChange={(v) => { if (!v) onClose?.(); }}>
+	<Dialog.Overlay
+		class="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm
+			data-[state=open]:animate-in data-[state=closed]:animate-out
+			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
+			duration-200"
+	/>
+	<Dialog.Content
+		class="fixed inset-0 z-50 flex items-center justify-center
+			data-[state=open]:animate-in data-[state=closed]:animate-out
+			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
+			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
+			duration-200"
 	>
 		<!-- Top-right actions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="photo-viewer-actions absolute right-4 top-4 z-10 flex items-center gap-2" onclick={stopPropagation}>
+		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="absolute right-4 top-4 z-10 flex items-center gap-2" onclick={stopPropagation}>
 			<button
 				type="button"
 				onclick={toggleStar}
@@ -359,7 +351,7 @@
 			</button>
 			<button
 				type="button"
-				onclick={closeViewer}
+				onclick={() => (open = false)}
 				class="rounded-full bg-black/50 p-2 text-white transition-all duration-150 ease-out hover:scale-110 hover:bg-black/70 active:scale-95"
 			>
 				<X size={20} />
@@ -386,45 +378,45 @@
 			>
 				<ChevronRight size={28} />
 			</button>
-			{/if}
+		{/if}
 
-			<!-- Image -->
-			<div class="relative flex h-full w-full items-center justify-center overflow-hidden p-4" onwheel={handleWheel}>
-				{#if loading}
-					<div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-						<ImageIcon size={40} class="animate-pulse text-gray-500" />
-					</div>
-				{/if}
-				{#if visibleSlug}
-					<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-					<div
-						bind:this={imageFrame}
-						role="presentation"
-						class="photo-viewer-image-wrap inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
-						style:transform={panTransform}
-						onclick={stopPropagation}
-						onpointerdown={startPan}
-						onpointermove={movePan}
-						onpointerup={endPan}
-						onpointercancel={endPan}
-					>
-						{#key visibleSlug}
-							<img
-								src={authedUrl(downloadUrl(visibleSlug))}
-								alt={visiblePhoto?.fileName ?? ''}
-								loading="eager"
-								class="photo-viewer-image max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-dialog will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
-								style:transform={imageTransform}
-								draggable="false"
-							/>
-						{/key}
-					</div>
-				{/if}
-			</div>
+		<!-- Image -->
+		<div class="relative flex h-full w-full items-center justify-center overflow-hidden p-4" onwheel={handleWheel}>
+			{#if loading}
+				<div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+					<ImageIcon size={40} class="animate-pulse text-gray-500" />
+				</div>
+			{/if}
+			{#if visibleSlug}
+				<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+				<div
+					bind:this={imageFrame}
+					role="presentation"
+					class="inline-flex touch-none select-none will-change-transform {scale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}"
+					style:transform={panTransform}
+					onclick={stopPropagation}
+					onpointerdown={startPan}
+					onpointermove={movePan}
+					onpointerup={endPan}
+					onpointercancel={endPan}
+				>
+					{#key visibleSlug}
+						<img
+							src={authedUrl(downloadUrl(visibleSlug))}
+							alt={visiblePhoto?.fileName ?? ''}
+							loading="eager"
+							class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-dialog will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
+							style:transform={imageTransform}
+							draggable="false"
+						/>
+					{/key}
+				</div>
+			{/if}
+		</div>
 
 		<!-- Toolbar -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="photo-viewer-toolbar absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-sm text-white shadow-pop backdrop-blur" onclick={stopPropagation}>
+		<div role="toolbar" aria-label={m.preview()} tabindex="-1" class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-sm text-white shadow-pop backdrop-blur" onclick={stopPropagation}>
 			<span class="min-w-14 px-2 text-center text-white/80">{currentIndex + 1} / {fileSlugs.length}</span>
 			<div class="h-5 w-px bg-white/20"></div>
 			<button type="button" onclick={zoomOut} class="rounded-full p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40" disabled={scale <= MIN_SCALE} title={m.zoom_out()} aria-label={m.zoom_out()}>
@@ -445,5 +437,5 @@
 				<RefreshCcw size={18} />
 			</button>
 		</div>
-	</div>
-{/if}
+	</Dialog.Content>
+</Dialog.Root>

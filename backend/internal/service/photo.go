@@ -218,7 +218,7 @@ func (s *PhotoService) GetThumbnailPath(ctx context.Context, userID int64, sessi
 		return nil, fmt.Errorf("get physical file: %w", err)
 	}
 
-	thumbPath, err := storage.ServeThumbnail(s.cfg.Storage.Root, s.cfg.Storage.FilesDir, pf.FileHash)
+	thumbPath, err := storage.ServeThumbnail(s.cfg.Storage.Root, s.cfg.Storage.FilesDir, pf.FileHash, s.cfg.FFmpeg.Path)
 	if err != nil {
 		return nil, fmt.Errorf("serve thumbnail: %w", err)
 	}

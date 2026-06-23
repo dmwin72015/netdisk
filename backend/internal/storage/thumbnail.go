@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/jpeg"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"golang.org/x/image/draw"
@@ -30,7 +31,7 @@ func EnsureThumbDir(root, fileHash string) error {
 	return os.MkdirAll(dir, 0o755)
 }
 
-func GenerateThumbnail(inputPath, outputPath string) error {
+func GenerateThumbnail(inputPath, outputPath, ffmpegPath string) error {
 	src, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("open source: %w", err)
@@ -39,6 +40,10 @@ func GenerateThumbnail(inputPath, outputPath string) error {
 
 	img, _, err := image.Decode(src)
 	if err != nil {
+		if ffmpegPath != "" {
+			_ = src.Close()
+			return generateThumbnailWithFFmpeg(inputPath, outputPath, ffmpegPath)
+		}
 		return fmt.Errorf("decode image: %w", err)
 	}
 
@@ -75,7 +80,26 @@ func GenerateThumbnail(inputPath, outputPath string) error {
 	return jpeg.Encode(out, dst, &jpeg.Options{Quality: ThumbQuality})
 }
 
-func ServeThumbnail(root, filesDir, fileHash string) (string, error) {
+func generateThumbnailWithFFmpeg(inputPath, outputPath, ffmpegPath string) error {
+	vf := fmt.Sprintf("scale='if(gt(iw,ih),%d,iw)':'if(gt(ih,iw),%d,ih)':force_original_aspect_ratio=decrease", ThumbWidth, ThumbHeight)
+
+	cmd := exec.Command(ffmpegPath,
+		"-i", inputPath,
+		"-vf", vf,
+		"-frames:v", "1",
+		"-update", "1",
+		"-q:v", "2",
+		"-y",
+		outputPath,
+	)
+
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg thumbnail: %w: %s", err, string(out))
+	}
+	return nil
+}
+
+func ServeThumbnail(root, filesDir, fileHash, ffmpegPath string) (string, error) {
 	thumbPath := ThumbnailAbsPath(root, fileHash)
 	if _, err := os.Stat(thumbPath); err == nil {
 		return thumbPath, nil
@@ -86,7 +110,11 @@ func ServeThumbnail(root, filesDir, fileHash string) (string, error) {
 		return "", fmt.Errorf("original file not found: %w", err)
 	}
 
-	if err := GenerateThumbnail(inputPath, thumbPath); err != nil {
+	if err := EnsureThumbDir(root, fileHash); err != nil {
+		return "", fmt.Errorf("ensure thumb dir: %w", err)
+	}
+
+	if err := GenerateThumbnail(inputPath, thumbPath, ffmpegPath); err != nil {
 		return "", fmt.Errorf("generate thumbnail: %w", err)
 	}
 
