@@ -500,6 +500,9 @@
   "admin_used_storage": "已用 {used} / 总 {total}",
   "admin_used": "已用",
   "admin_bio": "个人简介",
+  "admin_config_saved": "配置已保存",
+  "admin_config_reset": "设置已恢复默认",
+  "admin_config_reset_all": "所有设置已恢复默认",
 
   "oauth_popup_blocked": "弹窗被拦截，请允许此网站的弹窗",
   "oauth_link_existing_title": "关联已有账号？",

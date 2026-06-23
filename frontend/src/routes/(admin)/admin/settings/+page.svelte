@@ -1,116 +1,264 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { LoaderCircle, Server, Upload, Shield, Clock, HardDrive, Trash2 } from '@lucide/svelte';
+	import { LoaderCircle, RotateCcw, Pencil, Settings, RotateCw } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
-	import { adminSystemInfo, type AdminSystemInfo } from '$lib/api/admin';
+	import {
+		adminListSystemConfig,
+		adminUpdateSystemConfig,
+		adminResetSystemConfig,
+		type SystemConfigItem
+	} from '$lib/api/admin';
 	import { fmtSize } from '$lib/utils/format';
+	import Dialog from '$lib/ui/dialog/Dialog.svelte';
 	import * as m from '$lib/paraglide/messages';
 
-	let info = $state<AdminSystemInfo | null>(null);
+	let items = $state<SystemConfigItem[]>([]);
 	let loading = $state(true);
+	let saving = $state(false);
 
-	type SettingGroup = {
-		title: string;
-		icon: typeof Server;
-		color: string;
-		items: { label: string; value: string }[];
+	let editingItem = $state<SystemConfigItem | null>(null);
+	let showDialog = $state(false);
+	let editValue = $state<string>('');
+	let editError = $state('');
+
+	const typeLabels: Record<string, string> = {
+		bytes: 'Bytes',
+		number: 'Number',
+		string: 'Text',
+		bool: 'Boolean'
 	};
-
-	const groups = $derived<SettingGroup[]>(info ? [
-		{
-			title: 'Server',
-			icon: Server,
-			color: 'text-primary',
-			items: [
-				{ label: 'Port', value: String(info.server.port) },
-			],
-		},
-		{
-			title: 'Upload',
-			icon: Upload,
-			color: 'text-info',
-			items: [
-				{ label: 'Chunk Size', value: fmtSize(info.upload.chunkSize) },
-				{ label: 'Max Upload Size', value: fmtSize(info.upload.maxUploadSize) },
-			],
-		},
-		{
-			title: 'Limits',
-			icon: Shield,
-			color: 'text-success',
-			items: [
-				{ label: 'Default Storage Quota', value: fmtSize(info.limits.defaultStorageQuota) },
-				{ label: 'Avatar Max Size', value: fmtSize(info.limits.avatarMaxSize) },
-			],
-		},
-		{
-			title: 'Trash',
-			icon: Trash2,
-			color: 'text-danger',
-			items: [
-				{ label: 'Retention Days', value: `${info.trash.retentionDays} days` },
-			],
-		},
-		{
-			title: 'JWT',
-			icon: Clock,
-			color: 'text-warning',
-			items: [
-				{ label: 'Access Token TTL', value: `${info.jwt.accessTTLMin} min` },
-				{ label: 'Refresh Token TTL', value: `${info.jwt.refreshTTLHour} hours` },
-			],
-		},
-	] : []);
 
 	onMount(() => {
 		if (!browser) return;
-		loadInfo();
+		load();
 	});
 
-	async function loadInfo() {
+	async function load() {
 		loading = true;
 		try {
-			info = await adminSystemInfo();
+			items = await adminListSystemConfig();
 		} catch {
 			toast.error(m.admin_load_failed());
 		} finally {
 			loading = false;
 		}
 	}
+
+	function fmtValue(item: SystemConfigItem): string {
+		if (item.type === 'bytes' && typeof item.value === 'number') {
+			return fmtSize(item.value);
+		}
+		return String(item.value);
+	}
+
+	function fmtDefault(item: SystemConfigItem): string {
+		if (item.type === 'bytes' && typeof item.defaultValue === 'number') {
+			return fmtSize(item.defaultValue);
+		}
+		return String(item.defaultValue);
+	}
+
+	function isModified(item: SystemConfigItem): boolean {
+		return item.value !== item.defaultValue;
+	}
+
+	function openEdit(item: SystemConfigItem) {
+		editingItem = item;
+		editValue = String(item.value);
+		editError = '';
+		showDialog = true;
+	}
+
+	function closeEdit() {
+		showDialog = false;
+		editingItem = null;
+		editValue = '';
+		editError = '';
+	}
+
+	async function saveEdit() {
+		if (!editingItem) return;
+		const item = editingItem;
+
+		let parsed: unknown;
+		if (item.type === 'bytes' || item.type === 'number') {
+			parsed = Number(editValue);
+			if (isNaN(parsed as number) || (parsed as number) < 0) {
+				editError = 'Please enter a valid positive number';
+				return;
+			}
+			if (item.type === 'bytes') {
+				parsed = Math.round(parsed as number);
+			}
+		} else if (item.type === 'bool') {
+			parsed = editValue === 'true';
+		} else {
+			parsed = editValue;
+		}
+
+		saving = true;
+		try {
+			items = await adminUpdateSystemConfig({ [item.key]: parsed });
+			closeEdit();
+			toast.success(m.admin_config_saved());
+		} catch {
+			toast.error(m.admin_update_failed());
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function handleReset(item: SystemConfigItem) {
+		try {
+			items = await adminResetSystemConfig(item.key);
+			toast.success(m.admin_config_reset());
+		} catch {
+			toast.error(m.admin_update_failed());
+		}
+	}
+
+	async function handleResetAll() {
+		try {
+			items = await adminResetSystemConfig();
+			toast.success(m.admin_config_reset_all());
+		} catch {
+			toast.error(m.admin_update_failed());
+		}
+	}
 </script>
 
 <div class="space-y-6">
-	<div>
-		<h1 class="text-2xl font-bold text-ink">{m.admin_settings()}</h1>
-		<p class="mt-1 text-sm text-ink-4">System configuration and server settings</p>
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-2xl font-bold text-ink">{m.admin_settings()}</h1>
+			<p class="mt-1 text-sm text-ink-4">System configuration and server settings</p>
+		</div>
+		<button
+			class="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-sunken disabled:opacity-50"
+			onclick={handleResetAll}
+			disabled={loading}
+		>
+			<RotateCw size={15} />
+			Reset All
+		</button>
 	</div>
 
 	{#if loading}
 		<div class="flex justify-center py-16">
 			<LoaderCircle size={24} class="animate-spin text-ink-4" />
 		</div>
-	{:else if groups.length > 0}
-		<div class="grid gap-6 sm:grid-cols-2">
-			{#each groups as group}
-				{@const Icon = group.icon}
-				<div class="rounded-xl border border-line bg-surface p-5">
-					<div class="mb-4 flex items-center gap-2">
-						<div class="rounded-lg bg-surface-sunken p-1.5">
-							<Icon size={16} class={group.color} />
-						</div>
-						<h2 class="text-sm font-semibold text-ink-2">{group.title}</h2>
-					</div>
-					<dl class="space-y-2 text-sm">
-						{#each group.items as item}
-							<div class="flex items-center justify-between">
-								<dt class="text-ink-3">{item.label}</dt>
-								<dd class="font-mono text-xs text-ink">{item.value}</dd>
-							</div>
-						{/each}
-					</dl>
-				</div>
-			{/each}
+	{:else}
+		<div class="overflow-hidden rounded-xl border border-line bg-surface">
+			<table class="w-full text-left text-sm">
+				<thead class="border-b border-line bg-surface-sunken text-xs text-ink-3">
+					<tr>
+						<th class="px-5 py-3 font-medium">Setting</th>
+						<th class="px-5 py-3 font-medium">Current Value</th>
+						<th class="px-5 py-3 font-medium">Default</th>
+						<th class="px-5 py-3 font-medium">Type</th>
+						<th class="px-5 py-3 text-right font-medium">Actions</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-line">
+					{#each items as item (item.key)}
+						<tr class="transition-colors hover:bg-surface-sunken/50">
+							<td class="px-5 py-4">
+								<div class="font-medium text-ink">{item.description}</div>
+								<div class="mt-0.5 font-mono text-xs text-ink-4">{item.key}</div>
+							</td>
+							<td class="px-5 py-4">
+								<div class="font-mono text-sm text-ink">{fmtValue(item)}</div>
+							</td>
+							<td class="px-5 py-4">
+								<div class="font-mono text-sm text-ink-4">{fmtDefault(item)}</div>
+							</td>
+							<td class="px-5 py-4">
+								<span class="rounded-md bg-surface-sunken px-2 py-0.5 text-xs font-medium text-ink-3">
+									{typeLabels[item.type] ?? item.type}
+								</span>
+							</td>
+							<td class="px-5 py-4 text-right">
+								<div class="flex items-center justify-end gap-1">
+									<button
+										class="rounded-lg p-2 text-ink-4 transition-colors hover:bg-primary-soft hover:text-primary"
+										onclick={() => openEdit(item)}
+										title="Edit"
+									>
+										<Pencil size={15} />
+									</button>
+									<button
+										class="rounded-lg p-2 text-ink-4 transition-colors hover:bg-danger-soft hover:text-danger disabled:opacity-30"
+										onclick={() => handleReset(item)}
+										disabled={!isModified(item)}
+										title="Reset to default"
+									>
+										<RotateCcw size={15} />
+									</button>
+								</div>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
 		</div>
 	{/if}
 </div>
+
+<Dialog bind:open={showDialog} title="Edit Setting" onCancel={closeEdit} showFooter={false}>
+	{#if editingItem}
+		<div class="space-y-4">
+			<div>
+				<label class="block text-sm font-medium text-ink-3">{editingItem.description}</label>
+				<p class="mt-0.5 font-mono text-xs text-ink-4">{editingItem.key}</p>
+			</div>
+
+			{#if editingItem.type === 'bool'}
+				<select
+					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+					bind:value={editValue}
+				>
+					<option value="true">true</option>
+					<option value="false">false</option>
+				</select>
+			{:else}
+				<div>
+					<input
+						type={editingItem.type === 'number' || editingItem.type === 'bytes' ? 'number' : 'text'}
+						class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+						class:border-danger={!!editError}
+						bind:value={editValue}
+						placeholder={String(editingItem.defaultValue)}
+						min="0"
+					/>
+					{#if editingItem.type === 'bytes'}
+						<p class="mt-1 text-xs text-ink-4">Value in bytes</p>
+					{/if}
+				</div>
+			{/if}
+
+			{#if editError}
+				<p class="text-xs text-danger">{editError}</p>
+			{/if}
+
+			<div class="flex justify-end gap-2 pt-1">
+				<button
+					class="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink transition-colors hover:bg-surface-sunken"
+					onclick={closeEdit}
+				>
+					Cancel
+				</button>
+				<button
+					class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+					onclick={saveEdit}
+					disabled={saving}
+				>
+					{#if saving}
+						<LoaderCircle size={15} class="animate-spin" />
+					{/if}
+					Save
+				</button>
+			</div>
+		</div>
+	{/if}
+</Dialog>

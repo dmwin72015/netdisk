@@ -11,12 +11,13 @@ import (
 )
 
 type AdminHandler struct {
-	svc *service.AdminService
-	cfg *config.Config
+	svc        *service.AdminService
+	cfg        *config.Config
+	configSvc  *service.SystemConfigService
 }
 
-func NewAdminHandler(svc *service.AdminService, cfg *config.Config) *AdminHandler {
-	return &AdminHandler{svc: svc, cfg: cfg}
+func NewAdminHandler(svc *service.AdminService, cfg *config.Config, configSvc *service.SystemConfigService) *AdminHandler {
+	return &AdminHandler{svc: svc, cfg: cfg, configSvc: configSvc}
 }
 
 func requireAdminUserID(c echo.Context) (int64, error) {
@@ -252,4 +253,47 @@ func (h *AdminHandler) RestoreFile(c echo.Context) error {
 	}
 
 	return c.NoContent(204)
+}
+
+func (h *AdminHandler) ListSystemConfig(c echo.Context) error {
+	items, err := h.configSvc.List(c.Request().Context())
+	if err != nil {
+		return err
+	}
+	return OK(c, items)
+}
+
+func (h *AdminHandler) UpdateSystemConfig(c echo.Context) error {
+	var input map[string]any
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if len(input) == 0 {
+		return model.ErrInvalidInput
+	}
+	if err := h.configSvc.SetBatch(c.Request().Context(), input); err != nil {
+		return err
+	}
+	items, _ := h.configSvc.List(c.Request().Context())
+	return OK(c, items)
+}
+
+func (h *AdminHandler) ResetSystemConfig(c echo.Context) error {
+	var input struct {
+		Key string `json:"key"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if input.Key != "" {
+		if err := h.configSvc.Reset(c.Request().Context(), input.Key); err != nil {
+			return err
+		}
+	} else {
+		if err := h.configSvc.ResetAll(c.Request().Context()); err != nil {
+			return err
+		}
+	}
+	items, _ := h.configSvc.List(c.Request().Context())
+	return OK(c, items)
 }

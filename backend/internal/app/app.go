@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -72,6 +73,11 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 
 	queries := sqlc.New(pg)
 
+	if err := initSystemConfig(ctx, cfg, pg, logger); err != nil {
+		a.closePartial()
+		return nil, fmt.Errorf("init system config: %w", err)
+	}
+
 	if err := migrateStoragePaths(ctx, cfg, pg); err != nil {
 		a.closePartial()
 		return nil, fmt.Errorf("migrate storage paths: %w", err)
@@ -88,7 +94,7 @@ func New(ctx context.Context, cfg *config.Config, logger zerolog.Logger) (*App, 
 	)
 
 	broadcaster := media.NewBroadcaster()
-	handlers := buildHandlers(cfg, logger, queries, pg, rdb, a.jwtMgr, broadcaster)
+	handlers := buildHandlers(ctx, cfg, logger, queries, pg, rdb, a.jwtMgr, broadcaster)
 
 	// Start media worker
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
@@ -294,6 +300,39 @@ func migrateStoragePaths(ctx context.Context, cfg *config.Config, pg *pgxpool.Po
 	return nil
 }
 
+func initSystemConfig(ctx context.Context, cfg *config.Config, pg *pgxpool.Pool, logger zerolog.Logger) error {
+	defs := []struct {
+		key   string
+		value any
+	}{
+		{"max_upload_size", cfg.Storage.MaxUploadSize},
+		{"chunk_size", cfg.Upload.ChunkSize},
+		{"default_quota", cfg.Limits.DefaultStorageQuota},
+		{"avatar_max_size", cfg.Limits.AvatarMaxSize},
+		{"retention_days", cfg.Trash.RetentionDays},
+		{"access_ttl_min", cfg.JWT.AccessTTLMin},
+		{"refresh_ttl_hour", cfg.JWT.RefreshTTLHour},
+		{"task_expiry_days", cfg.Upload.TaskExpiryDays},
+		{"api_requests_per_min", cfg.RateLimit.APIRequestsPerMin},
+	}
+
+	for _, d := range defs {
+		data, err := json.Marshal(d.value)
+		if err != nil {
+			return fmt.Errorf("marshal default %s: %w", d.key, err)
+		}
+		_, err = pg.Exec(ctx, `
+			INSERT INTO system_configs (key, value, updated_at)
+			VALUES ($1, $2, NOW())
+			ON CONFLICT (key) DO NOTHING
+		`, d.key, data)
+		if err != nil {
+			return fmt.Errorf("init config %s: %w", d.key, err)
+		}
+	}
+	return nil
+}
+
 type handlers struct {
 	Auth   *handler.AuthHandler
 	User   *handler.UserHandler
@@ -307,6 +346,7 @@ type handlers struct {
 }
 
 func buildHandlers(
+	ctx context.Context,
 	cfg *config.Config,
 	logger zerolog.Logger,
 	queries *sqlc.Queries,
@@ -318,6 +358,10 @@ func buildHandlers(
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb)
 	userSvc := service.NewUserService(queries, pg, cfg)
 	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root)
+	configSvc := service.NewSystemConfigService(pg, logger)
+	if err := configSvc.Load(ctx); err != nil {
+		logger.Warn().Err(err).Msg("system config load (using defaults)")
+	}
 
 	store := storage.NewLocal(cfg.Storage.Root, cfg.Storage.TmpDir, cfg.Storage.FilesDir)
 	c := cache.New(rdb, cfg)
@@ -337,7 +381,7 @@ func buildHandlers(
 		Media:  handler.NewMediaHandler(mediaSvc, broadcaster),
 		Photo:  handler.NewPhotoHandler(photoSvc),
 		Config: handler.NewConfigHandler(cfg),
-		Admin:  handler.NewAdminHandler(adminSvc, cfg),
+		Admin:  handler.NewAdminHandler(adminSvc, cfg, configSvc),
 	}
 }
 

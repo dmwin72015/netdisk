@@ -164,3 +164,29 @@ export type AdminSystemInfo = {
 export async function adminSystemInfo(): Promise<AdminSystemInfo> {
 	return api<AdminSystemInfo>('/api/v1/admin/system/info');
 }
+
+export type SystemConfigItem = {
+	key: string;
+	value: number | string | boolean;
+	defaultValue: number | string | boolean;
+	description: string;
+	type: 'bytes' | 'number' | 'string' | 'bool';
+};
+
+export async function adminListSystemConfig(): Promise<SystemConfigItem[]> {
+	return api<SystemConfigItem[]>('/api/v1/admin/system/config');
+}
+
+export async function adminUpdateSystemConfig(updates: Record<string, unknown>): Promise<SystemConfigItem[]> {
+	return api<SystemConfigItem[]>('/api/v1/admin/system/config', {
+		method: 'PUT',
+		body: JSON.stringify(updates),
+	});
+}
+
+export async function adminResetSystemConfig(key?: string): Promise<SystemConfigItem[]> {
+	return api<SystemConfigItem[]>('/api/v1/admin/system/config/reset', {
+		method: 'POST',
+		body: JSON.stringify(key ? { key } : {}),
+	});
+}

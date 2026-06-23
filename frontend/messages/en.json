@@ -592,6 +592,9 @@
   "admin_restore_failed": "Restore failed",
   "admin_please_fill": "Please fill all fields",
   "admin_used_storage": "{used} / {total}",
+  "admin_config_saved": "Configuration saved",
+  "admin_config_reset": "Setting reset to default",
+  "admin_config_reset_all": "All settings reset to defaults",
 
   "oauth_popup_blocked": "Popup was blocked. Please allow popups for this site.",
   "oauth_link_existing_title": "Link existing account?",
