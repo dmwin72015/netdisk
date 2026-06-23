@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { listTasks, getTask, deleteTask, computeFileSHA256 } from '$lib/api/tasks';
+import { listTasks, getTask, deleteTask, computeFileSHA256, uploadFile } from '$lib/api/tasks';
 import { computeSHA256 } from '$lib/upload-hash';
 
 // ── listTasks ──────────────────────────────────────────────────────
@@ -112,5 +112,64 @@ describe('computeFileSHA256', () => {
 		const file = new File([], 'empty.bin');
 		const hash = await computeFileSHA256(file);
 		expect(hash).toMatch(/^[a-f0-9]{64}$/);
+	});
+});
+
+// ── uploadFile ─────────────────────────────────────────────────────
+
+describe('uploadFile', () => {
+	it('includes X-File-SHA256 header when sha256 is provided', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: { taskId: 'task-1' } }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			})
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		const file = new File(['content'], 'test.mp4', { type: 'video/mp4' });
+		const result = await uploadFile(file, 'abc123sha256');
+
+		const [, init] = fetchSpy.mock.calls[0];
+		expect(init.headers.get('X-File-SHA256')).toBe('abc123sha256');
+		expect(result.taskId).toBe('task-1');
+	});
+
+	it('omits X-File-SHA256 header when sha256 is not provided', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: { taskId: 'task-2' } }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			})
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		const file = new File(['content'], 'test.mp4', { type: 'video/mp4' });
+		await uploadFile(file);
+
+		const [, init] = fetchSpy.mock.calls[0];
+		expect(init.headers.get('X-File-SHA256')).toBeNull();
+	});
+
+	it('sends FormData body with file appended', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: { taskId: 'task-3' } }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			})
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		vi.stubGlobal('localStorage', { getItem: () => null });
+
+		const file = new File(['content'], 'test.mp4', { type: 'video/mp4' });
+		await uploadFile(file);
+
+		const [, init] = fetchSpy.mock.calls[0];
+		expect(init.body).toBeInstanceOf(FormData);
+		// FormData should contain the file
+		const fd = init.body as FormData;
+		expect(fd.get('file')).toBe(file);
 	});
 });

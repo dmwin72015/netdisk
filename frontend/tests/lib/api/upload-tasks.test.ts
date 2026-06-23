@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/paraglide/messages', () => ({}));
 
-import { listUploadTasks, retryUploadTask } from '$lib/api/upload-tasks';
+import { listUploadTasks, retryUploadTask, deleteUploadTask, deleteUploadTasks } from '$lib/api/upload-tasks';
 
 // ── helpers ────────────────────────────────────────────────────────
 
@@ -78,6 +78,16 @@ describe('listUploadTasks', () => {
 		expect(url).not.toContain('end_date');
 	});
 
+	it('includes status filter when provided', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse({ items: [], total: 0, limit: 20, offset: 0 }));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		await listUploadTasks(20, 0, undefined, undefined, 'failed');
+
+		const url = fetchSpy.mock.calls[0][0] as string;
+		expect(url).toContain('status=failed');
+	});
+
 	it('returns the response data', async () => {
 		const responseData = {
 			items: [
@@ -145,5 +155,36 @@ describe('retryUploadTask', () => {
 		const result = await retryUploadTask('task-2');
 		expect(result.completedChunks).toEqual([0, 1, 2, 3]);
 		expect(result.totalChunks).toBe(10);
+	});
+});
+
+// ── deleteUploadTask ───────────────────────────────────────────────
+
+describe('deleteUploadTask', () => {
+	it('sends DELETE request for a single task', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse(null));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		await deleteUploadTask('task-1');
+
+		const [url, init] = fetchSpy.mock.calls[0];
+		expect(url).toBe('/api/v1/upload/tasks/task-1');
+		expect(init.method).toBe('DELETE');
+	});
+});
+
+// ── deleteUploadTasks ──────────────────────────────────────────────
+
+describe('deleteUploadTasks', () => {
+	it('sends DELETE with slugs array to batch delete', async () => {
+		const fetchSpy = vi.fn().mockResolvedValue(jsonResponse(null));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		await deleteUploadTasks(['task-1', 'task-2']);
+
+		const [url, init] = fetchSpy.mock.calls[0];
+		expect(url).toBe('/api/v1/upload/tasks');
+		expect(init.method).toBe('DELETE');
+		expect(JSON.parse(init.body)).toEqual({ slugs: ['task-1', 'task-2'] });
 	});
 });

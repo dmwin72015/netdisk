@@ -55,4 +55,66 @@ describe('UploadRequestPool', () => {
 		firstRelease.resolve();
 		await first;
 	});
+
+	it('runs tasks immediately when limit is 0', async () => {
+		const pool = new UploadRequestPool(0);
+		let ran = false;
+		await pool.schedule(async () => {
+			ran = true;
+		});
+		expect(ran).toBe(true);
+	});
+
+	it('rejects immediately when signal is already aborted', async () => {
+		const pool = new UploadRequestPool(2);
+		const controller = new AbortController();
+		controller.abort('already aborted');
+
+		await expect(
+			pool.schedule(async () => 'should not run', controller.signal)
+		).rejects.toThrow('already aborted');
+	});
+
+	it('does not call logStats when pool is idle', () => {
+		const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+		// Create pool and let it sit — logStats runs on interval but should be silent when idle
+		const pool = new UploadRequestPool(2);
+		// Manually call logStats to verify silence
+		pool['logStats']();
+		expect(debugSpy).not.toHaveBeenCalled();
+		debugSpy.mockRestore();
+	});
+
+	it('drains aborted items from queue without decrementing active', async () => {
+		const pool = new UploadRequestPool(1);
+		const controller = new AbortController();
+
+		// Schedule first task that holds the slot
+		const firstRelease = Promise.withResolvers<void>();
+		const first = pool.schedule(async () => {
+			await firstRelease.promise;
+		});
+
+		// Schedule second task with already-aborted signal
+		const second = pool.schedule(async () => 'second', controller.signal);
+		controller.abort();
+
+		// The aborted second task should be rejected and not block the queue
+		await expect(second).rejects.toThrow();
+		firstRelease.resolve();
+		await first;
+		// If we got here without hanging, the pool drained correctly
+	});
+
+	it('abort without reason uses DOMException fallback', async () => {
+		const pool = new UploadRequestPool(1);
+		const controller = new AbortController();
+		// Abort without a reason (undefined)
+		controller.abort();
+
+		// Schedule a task with the aborted signal
+		await expect(
+			pool.schedule(async () => 'should not run', controller.signal)
+		).rejects.toThrow();
+	});
 });

@@ -77,8 +77,7 @@
 		}
 	}
 
-	async function confirmUpload() {
-		const files = acceptedFiles;
+	async function confirmUpload(files: File[]) {
 		reset();
 		try {
 			await onUpload(files);

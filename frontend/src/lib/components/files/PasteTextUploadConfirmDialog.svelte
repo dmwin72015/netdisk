@@ -35,8 +35,10 @@
 		}
 	});
 
-	function handleOpenChange(value: boolean) {
-		if (!value) onCancel();
+	function handleOpenChangeComplete(value: boolean) {
+		if (!value) {
+			onCancel();
+		}
 	}
 
 	function handleConfirm() {
@@ -53,12 +55,13 @@
 
 <Dialog
 	bind:open
-	onOpenChange={handleOpenChange}
+	onOpenChangeComplete={handleOpenChangeComplete}
 	onCancel={onCancel}
 	title={sizeError ? '文本大小超出限制' : '确认粘贴文本'}
 	footer={false}
 	class="max-w-lg"
 	bodyClass="p-0"
+	closable={false}
 >
 	{#if sizeError}
 		<!-- Error state -->
@@ -137,7 +140,7 @@
 	<div class="flex items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
 		<button
 			type="button"
-			onclick={onCancel}
+			onclick={() => { open = false; }}
 			class="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
 		>
 			<X size={14} /> 取消
