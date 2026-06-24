@@ -357,7 +357,7 @@
                             </div>
                             <div class="flex items-center gap-2 text-ink-3">
                               <Calendar size={12} class="shrink-0 text-ink-4" />
-                              <span>{new Date(user.createdAt * 1000).toLocaleDateString()}</span>
+                              <span>{new Date(user.createdAt * 1000).toLocaleString()}</span>
                             </div>
                             <div class="flex items-center gap-2 text-ink-3">
                               <HardDriveIcon size={12} class="shrink-0 text-ink-4" />
