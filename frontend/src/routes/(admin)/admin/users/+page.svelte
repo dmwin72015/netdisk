@@ -207,11 +207,11 @@
 				bind:value={searchQuery}
 				onkeydown={handleKeydown}
 				placeholder={m.admin_search_users()}
-				class="flex h-8 items-center rounded-lg border border-line bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+				class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
 			/>
 		</div>
 		<Select.Root type="single" bind:value={roleFilter} onValueChange={() => { offset = 0; loadUsers(); }}>
-			<Select.Trigger class="flex h-8 items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[130px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none">
+			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[130px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none">
 				<Select.Value placeholder={m.admin_all_roles()} />
 				<ChevronDown size={14} class="text-ink-4" />
 			</Select.Trigger>
@@ -225,7 +225,7 @@
 			</Select.Content>
 		</Select.Root>
 		<Select.Root type="single" bind:value={sortBy} onValueChange={loadUsers}>
-			<Select.Trigger class="flex h-8 items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[150px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none">
+			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[150px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none">
 				<Select.Value />
 				<ChevronDown size={14} class="text-ink-4" />
 			</Select.Trigger>
