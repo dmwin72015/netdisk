@@ -74,7 +74,7 @@
   {onOpenChangeComplete}
   title={file?.name}
   footer={false}
-  size="lg"
+  size="md"
   bodyClass="px-5 py-5"
 >
   {#if file}
