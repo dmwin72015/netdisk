@@ -42,7 +42,10 @@
 
   function formatDateRange(d: Date | null): string {
     if (!d) return "";
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   }
 
   function formatDisplayValue(): string {
@@ -127,21 +130,30 @@
       <!-- Single header that applies to all months -->
       <DateRangePicker.Calendar>
         {#snippet children({ months, weekdays })}
-          <DateRangePicker.Header
-            class="flex items-center justify-between pb-2"
-          >
+          <!-- Custom month headers -->
+          <div class="flex gap-4 pb-2">
+            {#each months as month}
+              <div class="flex-1 text-center">
+                <span class="text-sm font-medium text-ink">
+                  {month.value.month} / {month.value.year}
+                </span>
+              </div>
+            {/each}
+          </div>
+
+          <!-- Shared navigation controls -->
+          <div class="flex items-center justify-between pb-2">
             <DateRangePicker.PrevButton
               class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken"
             >
               <ChevronLeft size={14} />
             </DateRangePicker.PrevButton>
-            <DateRangePicker.Heading class="text-sm font-medium text-ink" />
             <DateRangePicker.NextButton
               class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken"
             >
               <ChevronRight size={14} />
             </DateRangePicker.NextButton>
-          </DateRangePicker.Header>
+          </div>
 
           <!-- Months displayed horizontally -->
           <div class="flex gap-4">
@@ -171,11 +183,12 @@
                             <DateRangePicker.Day
                               class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
                                 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                                data-[selected]:bg-primary data-[selected]:text-white
-                                data-[selection-start]:bg-primary data-[selection-start]:text-white data-[selection-start]:rounded-lg
-                                data-[selection-end]:bg-primary data-[selection-end]:text-white data-[selection-end]:rounded-lg
-                                data-[highlighted]:bg-primary-softer data-[highlighted]:rounded-none
-                                data-[outside-month]:text-ink-4 data-[today]:font-medium data-[today]:text-primary
+                                data-[selected]:bg-primary-softer data-[selected]:text-primary
+                                data-[selection-start]:bg-primary-softer data-[selection-start]:text-primary
+                                data-[selection-end]:bg-primary-softer data-[selection-end]:text-primary
+                                data-[highlighted]:bg-primary-softer
+                                data-[outside-month]:invisible
+                                data-[today]:font-medium data-[today]:text-primary
                                 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
                             >
                               {date.day}
