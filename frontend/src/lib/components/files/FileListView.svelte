@@ -182,6 +182,15 @@
     }
   }
 
+  async function copyFileHash(file: NormalizedFile) {
+    if (!file.fileHash) return;
+    if (await copyToClipboard(file.fileHash)) {
+      toast.success(m.copied());
+    } else {
+      toast.error(m.copy_failed());
+    }
+  }
+
   function handleBatchShare() {
     onBatchShare?.(files.filter((f) => selected.has(f.id)));
   }
@@ -219,6 +228,7 @@
     {onForceDeleteDir}
     onShowDetails={showDetails}
     onCopyLink={copyFileLink}
+    onCopyHash={copyFileHash}
   />
 {:else}
   <FileTable
@@ -242,6 +252,7 @@
     {onForceDeleteDir}
     onShowDetails={showDetails}
     onCopyLink={copyFileLink}
+    onCopyHash={copyFileHash}
     onBatchDownload={handleBatchDownload}
     {onBatchDelete}
     onBatchShare={onBatchShare ? handleBatchShare : undefined}

@@ -15,6 +15,7 @@
     Lock,
     LockOpen,
     Trash,
+    Fingerprint,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
@@ -31,6 +32,7 @@
     onAddToMedia,
     onShowDetails,
     onCopyLink,
+    onCopyHash,
     onShare,
     onSetDirectoryLock,
     onClearDirectoryLock,
@@ -47,6 +49,7 @@
     onAddToMedia?: (file: NormalizedFile) => void;
     onShowDetails?: (file: NormalizedFile) => void;
     onCopyLink?: (file: NormalizedFile) => void;
+    onCopyHash?: (file: NormalizedFile) => void;
     onShare?: (file: NormalizedFile) => void;
     onSetDirectoryLock?: (file: NormalizedFile) => void;
     onClearDirectoryLock?: (file: NormalizedFile) => void;
@@ -107,6 +110,12 @@
         <DropdownBase.Item onSelect={() => onCopyLink(file)}>
           {#snippet icon()}<Link size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}{m.copy_url()}{/snippet}
+        </DropdownBase.Item>
+      {/if}
+      {#if onCopyHash && !file.isDir && file.fileHash}
+        <DropdownBase.Item onSelect={() => onCopyHash(file)}>
+          {#snippet icon()}<Fingerprint size={14} class="text-ink-4" />{/snippet}
+          {#snippet children()}{m.copy_hash()}{/snippet}
         </DropdownBase.Item>
       {/if}
       {#if onShare}

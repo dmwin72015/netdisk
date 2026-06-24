@@ -25,6 +25,7 @@
     onForceDeleteDir,
     onShowDetails,
     onCopyLink,
+    onCopyHash,
   }: {
     files: NormalizedFile[];
     downloadUrlFn: (id: string) => string;
@@ -41,6 +42,7 @@
     onForceDeleteDir?: (file: NormalizedFile) => void;
     onShowDetails: (file: NormalizedFile) => void;
     onCopyLink: (file: NormalizedFile) => void;
+    onCopyHash?: (file: NormalizedFile) => void;
   } = $props();
 
   let failedThumbs = $state<Set<string>>(new Set());
@@ -107,6 +109,7 @@
           {onForceDeleteDir}
           {onShowDetails}
           {onCopyLink}
+          {onCopyHash}
           triggerClass="rounded-lg bg-white/90 p-1 text-ink-4 backdrop-blur transition-colors hover:bg-white hover:text-ink-3"
         />
       </div>

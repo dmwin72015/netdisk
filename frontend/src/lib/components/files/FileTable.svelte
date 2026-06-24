@@ -40,6 +40,7 @@
     onForceDeleteDir,
     onShowDetails,
     onCopyLink,
+    onCopyHash,
     onBatchDownload,
     onBatchDelete,
     onBatchShare,
@@ -66,6 +67,7 @@
     onForceDeleteDir?: (file: NormalizedFile) => void;
     onShowDetails: (file: NormalizedFile) => void;
     onCopyLink: (file: NormalizedFile) => void;
+    onCopyHash?: (file: NormalizedFile) => void;
     onBatchDownload: () => void;
     onBatchDelete?: (ids: string[]) => void;
     onBatchShare?: (files: NormalizedFile[]) => void;
@@ -153,26 +155,26 @@
                   {/if}
                 </button>
               {/if}
-              <span
-                class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-muted"
-              >
-                {#if showThumbnail(f)}
+              {#if showThumbnail(f)}
+                <span
+                  class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-muted"
+                >
                   <LazyThumbnail
                     src={authedThumbnailUrl(f)}
                     containerClass="flex h-full w-full"
                     imgClass="h-full w-full object-cover"
                     onError={() => markThumbnailFailed(f.id)}
                   />
-                {:else}
-                  <MimeIcon
-                    mimeType={f.mimeType}
-                    name={f.name}
-                    isDir={f.isDir}
-                    category={f.fileCategory}
-                    size={18}
-                  />
-                {/if}
-              </span>
+                </span>
+              {:else}
+                <MimeIcon
+                  mimeType={f.mimeType}
+                  name={f.name}
+                  isDir={f.isDir}
+                  category={f.fileCategory}
+                  size={24}
+                />
+              {/if}
               <span class="min-w-0 flex-1 truncate text-ink-2" title={f.name}
                 >{f.name}</span
               >
@@ -215,6 +217,7 @@
                   {onForceDeleteDir}
                   {onShowDetails}
                   {onCopyLink}
+                  {onCopyHash}
                   triggerClass="rounded-md p-1 text-ink-4 hover:bg-surface-sunken hover:text-ink-3"
                 />
               </span>
