@@ -9,6 +9,7 @@
 	import { Select } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 	import Dialog from '$lib/ui/dialog/Dialog.svelte';
+	import DateRangePicker from '$lib/ui/date-range-picker/DateRangePicker.svelte';
 	import { fmtSize } from '$lib/utils/format';
 	import {
 		adminListUsers,
@@ -30,9 +31,8 @@
 	let searchQuery = $state('');
 	let roleFilter = $state('');
 	let sortBy = $state('-created_at');
+	let dateRange = $state<{ start: Date | null; end: Date | null }>({ start: null, end: null });
 
-let dateFrom = $state("");
-let dateTo = $state("");
 	let currentPage = $derived(Math.floor(offset / PAGE_SIZE) + 1);
 	let totalPages = $derived(Math.ceil(total / PAGE_SIZE));
 
@@ -78,7 +78,7 @@ let dateTo = $state("");
 	async function loadUsers() {
 		loading = true;
 		try {
-			const res = await adminListUsers(PAGE_SIZE, offset, searchQuery || undefined, roleFilter || undefined, sortBy, dateFrom || undefined, dateTo || undefined);
+			const res = await adminListUsers(PAGE_SIZE, offset, searchQuery || undefined, roleFilter || undefined, sortBy, dateRange.start || undefined, dateRange.end || undefined);
 			users = res.items;
 			total = res.total;
 		} catch {
@@ -238,21 +238,15 @@ let dateTo = $state("");
 				{/each}
 			</Select.Content>
 		</Select.Root>
-		<div class="flex items-center gap-2">
-			<input
-				type="date"
-				bind:value={dateFrom}
-				onchange={() => { offset = 0; loadUsers(); }}
-				class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 focus:border-primary focus:outline-none min-w-[130px]"
+			<DateRangePicker
+				value={dateRange}
+				onValueChange={(range) => {
+					dateRange = range;
+					offset = 0;
+					loadUsers();
+				}}
+				class="min-w-[240px]"
 			/>
-			<span class="text-ink-4">-</span>
-			<input
-				type="date"
-				bind:value={dateTo}
-				onchange={() => { offset = 0; loadUsers(); }}
-				class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 focus:border-primary focus:outline-none min-w-[130px]"
-			/>
-		</div>
 		<button
 			onclick={handleSearch}
 			class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
