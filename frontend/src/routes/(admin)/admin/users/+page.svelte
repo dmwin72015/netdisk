@@ -295,7 +295,7 @@
 					{#each users as u (u.id)}
 						<tr class="transition-colors hover:bg-surface-sunken">
 							<td class="truncate px-4 py-3 font-medium text-ink">{u.username}</td>
-							<td class="truncate px-4 py-3 text-ink-3">{u.email}</td>
+							<td class="truncate px-4 py-3 text-ink-3" title={u.email}>{u.email}</td>
 							<td class="truncate px-4 py-3 text-xs text-ink-4">{u.registerMethod}</td>
 							<td class="px-4 py-3">
 								<span
