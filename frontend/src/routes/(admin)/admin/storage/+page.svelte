@@ -12,13 +12,13 @@
 	let loading = $state(true);
 
 	const categoryMeta: Record<string, { label: string; icon: typeof HardDrive; color: string }> = {
-		video: { label: 'Video', icon: Film, color: 'text-danger' },
-		audio: { label: 'Audio', icon: Music, color: 'text-success' },
-		image: { label: 'Image', icon: Image, color: 'text-info' },
-		document: { label: 'Document', icon: FileText, color: 'text-primary' },
-		archive: { label: 'Archive', icon: Archive, color: 'text-warning' },
-		other: { label: 'Other', icon: FileQuestion, color: 'text-ink-3' },
-		trash: { label: 'Trash', icon: Trash2, color: 'text-danger' },
+		video: { label: m.category_video(), icon: Film, color: 'text-danger' },
+		audio: { label: m.category_audio(), icon: Music, color: 'text-success' },
+		image: { label: m.category_image(), icon: Image, color: 'text-info' },
+		document: { label: m.category_document(), icon: FileText, color: 'text-primary' },
+		archive: { label: m.category_archive(), icon: Archive, color: 'text-warning' },
+		other: { label: m.category_other(), icon: FileQuestion, color: 'text-ink-3' },
+		trash: { label: m.category_trash(), icon: Trash2, color: 'text-danger' },
 	};
 
 	const sortedCatStats = $derived(
@@ -58,7 +58,7 @@
 <div class="space-y-6">
 	<div>
 		<h1 class="text-2xl font-bold text-ink">{m.admin_storage()}</h1>
-		<p class="mt-1 text-sm text-ink-4">Storage usage breakdown across all users</p>
+		<p class="mt-1 text-sm text-ink-4">{m.admin_storage_breakdown_desc()}</p>
 	</div>
 
 	{#if loading}
@@ -83,7 +83,7 @@
 
 		<!-- Category breakdown -->
 		<div class="rounded-xl border border-line bg-surface p-5">
-			<h2 class="mb-4 text-sm font-semibold text-ink-2">By Category</h2>
+			<h2 class="mb-4 text-sm font-semibold text-ink-2">{m.admin_by_category()}</h2>
 			<div class="space-y-3">
 				{#each sortedCatStats as cat}
 					{@const meta = categoryMeta[cat.category] || { label: cat.category, icon: FileQuestion, color: 'text-ink-3' }}
@@ -119,7 +119,7 @@
 					</div>
 					<div class="flex-1">
 						<div class="flex items-center justify-between text-sm">
-							<span class="font-medium text-ink">Trashed Files</span>
+							<span class="font-medium text-ink">{m.admin_trashed_files()}</span>
 							<span class="text-xs text-ink-4">{trashStat.count} files</span>
 						</div>
 						<p class="text-xs text-ink-4">{fmtSize(trashStat.bytes)}</p>
