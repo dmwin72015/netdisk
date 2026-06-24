@@ -55,6 +55,15 @@
     return placeholderText;
   }
 
+  const MONTH_NAMES = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+
+  function monthLabel(monthNum: number, year: number): string {
+    return `${MONTH_NAMES[monthNum - 1]} ${year}`;
+  }
+
   let internalValue = $state<{
     start: DateValue | undefined;
     end: DateValue | undefined;
@@ -127,38 +136,31 @@
         data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
       sideOffset={4}
     >
-      <!-- Single header that applies to all months -->
       <DateRangePicker.Calendar>
         {#snippet children({ months, weekdays })}
-          <!-- Custom month headers -->
-          <div class="flex gap-4 pb-2">
-            {#each months as month}
-              <div class="flex-1 text-center">
-                <span class="text-sm font-medium text-ink">
-                  {month.value.month} / {month.value.year}
-                </span>
-              </div>
-            {/each}
-          </div>
-
-          <!-- Shared navigation controls -->
-          <div class="flex items-center justify-between pb-2">
-            <DateRangePicker.PrevButton
-              class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken"
-            >
-              <ChevronLeft size={14} />
-            </DateRangePicker.PrevButton>
-            <DateRangePicker.NextButton
-              class="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-surface-sunken"
-            >
-              <ChevronRight size={14} />
-            </DateRangePicker.NextButton>
-          </div>
-
-          <!-- Months displayed horizontally -->
+          <!-- Months displayed horizontally with individual headers and nav -->
           <div class="flex gap-4">
             {#each months as month}
               <div class="flex-1">
+                <!-- Per-panel month title: "Jun 2026" -->
+                <div class="mb-2 text-center text-sm font-medium text-ink">
+                  {monthLabel(month.value.month, month.value.year)}
+                </div>
+
+                <!-- Per-panel navigation: < > -->
+                <div class="mb-2 flex items-center justify-between">
+                  <DateRangePicker.PrevButton
+                    class="inline-flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-surface-sunken text-ink-4"
+                  >
+                    <ChevronLeft size={12} />
+                  </DateRangePicker.PrevButton>
+                  <DateRangePicker.NextButton
+                    class="inline-flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-surface-sunken text-ink-4"
+                  >
+                    <ChevronRight size={12} />
+                  </DateRangePicker.NextButton>
+                </div>
+
                 <DateRangePicker.Grid class="border-collapse">
                   <DateRangePicker.GridHead>
                     <DateRangePicker.GridRow class="flex">
@@ -173,14 +175,7 @@
                   </DateRangePicker.GridHead>
                   <DateRangePicker.GridBody>
                     {#each month.weeks as weekDates}
-                      {@const hasSelectedInWeek = weekDates.some(
-                        (d) =>
-                          internalValue.start &&
-                          internalValue.end &&
-                          d.compare(internalValue.start) >= 0 &&
-                          d.compare(internalValue.end) <= 0,
-                      )}
-                      <DateRangePicker.GridRow class={cn("flex", hasSelectedInWeek && "bg-primary-softer")}>
+                      <DateRangePicker.GridRow class="flex">
                         {#each weekDates as date}
                           <DateRangePicker.Cell
                             {date}
@@ -190,11 +185,11 @@
                             <DateRangePicker.Day
                               class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
                                 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                                data-[selected]:bg-white data-[selected]:text-primary
-                                data-[selection-start]:bg-primary data-[selection-start]:text-white data-[selection-start]:rounded-full
-                                data-[selection-end]:bg-primary data-[selection-end]:text-white data-[selection-end]:rounded-full
-                                data-[highlighted]:bg-primary-softer
-                                data-[outside-month]:invisible
+                                data-[selected]:bg-[#165DFF] data-[selected]:text-white
+                                data-[selection-start]:bg-[#165DFF] data-[selection-start]:text-white
+                                data-[selection-end]:bg-[#165DFF] data-[selection-end]:text-white
+                                data-[highlighted]:bg-[#E6F4FF]
+                                data-[outside-month]:text-ink-4
                                 data-[today]:font-medium data-[today]:text-primary
                                 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
                             >
