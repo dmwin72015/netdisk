@@ -120,7 +120,7 @@
   title={loading ? m.loading() : m.select_files_to_upload()}
   footer={false}
   closable={!loading}
-  class="max-w-lg"
+  size="md"
   bodyClass="p-0"
 >
   {#if loading}

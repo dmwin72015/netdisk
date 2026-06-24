@@ -59,7 +59,7 @@
 	onCancel={onCancel}
 	title={sizeError ? '文本大小超出限制' : '确认粘贴文本'}
 	footer={false}
-	class="max-w-lg"
+	size="md"
 	bodyClass="p-0"
 	closable={false}
 >

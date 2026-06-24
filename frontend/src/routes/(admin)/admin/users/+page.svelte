@@ -381,7 +381,7 @@ let dateTo = $state("");
 </div>
 
 <!-- Create User Dialog -->
-<Dialog bind:open={createOpen} title={m.admin_create_user()} onConfirm={handleCreateUser} confirmText={creating ? m.admin_creating() : m.admin_create_user()} showCancel class="max-w-sm">
+<Dialog bind:open={createOpen} title={m.admin_create_user()} onConfirm={handleCreateUser} confirmText={creating ? m.admin_creating() : m.admin_create_user()} showCancel size="sm">
 	<form autocomplete="off" onsubmit={(e) => e.preventDefault()}>
 		<input type="text" name="prevent_autofill" autocomplete="username" value="" class="hidden" tabindex="-1" aria-hidden="true" />
 		<input type="password" name="prevent_autofill_pw" autocomplete="current-password" value="" class="hidden" tabindex="-1" aria-hidden="true" />
@@ -447,7 +447,7 @@ let dateTo = $state("");
 </Dialog>
 
 <!-- Edit User Dialog -->
-<Dialog bind:open={editOpen} title="Edit User" onConfirm={handleEditUser} confirmText={editing ? 'Saving...' : 'Save'} showCancel class="max-w-sm">
+<Dialog bind:open={editOpen} title="Edit User" onConfirm={handleEditUser} confirmText={editing ? 'Saving...' : 'Save'} showCancel size="sm">
 	{#if editUser}
 		<p class="mb-4 text-sm font-medium text-ink">{editUser.username}</p>
 		<div class="space-y-4">

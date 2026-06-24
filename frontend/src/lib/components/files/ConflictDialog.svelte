@@ -104,7 +104,7 @@
   title={m.upload_conflict_title()}
   closable={true}
   footer={false}
-  class="max-w-sm"
+  size="sm"
 >
   {#if current}
     <div class="space-y-4">

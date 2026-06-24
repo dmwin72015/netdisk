@@ -236,7 +236,7 @@
 	{/if}
 </div>
 
-<Dialog bind:open={showDialog} title={m.admin_config_edit_title()} onCancel={closeEdit} showFooter={false} class="max-w-md">
+<Dialog bind:open={showDialog} title={m.admin_config_edit_title()} onCancel={closeEdit} showFooter={false} size="sm">
 	{#if editingItem}
 		<div class="space-y-4">
 			<div>

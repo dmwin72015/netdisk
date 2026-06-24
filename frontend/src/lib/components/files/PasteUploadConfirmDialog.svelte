@@ -79,7 +79,7 @@
 	onCancel={onCancel}
 	title="确认上传粘贴的文件？"
 	footer={false}
-	class="max-w-lg"
+	size="md"
 	bodyClass="p-0"
 	closable={false}
 >

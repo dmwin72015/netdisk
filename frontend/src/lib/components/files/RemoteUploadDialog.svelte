@@ -47,7 +47,7 @@
  bind:open
  title={done ? '' : m.remote_upload()}
  footer={false}
- class="max-w-md"
+ size="sm"
 >
  {#if done}
  <div class="flex flex-col items-center gap-3 py-6">

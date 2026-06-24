@@ -7,12 +7,30 @@
 		children,
 		class: className = '',
 		style = '',
+		onInteractOutside,
 		...restProps
 	}: {
 		children: Snippet;
 		class?: string;
 		style?: string;
+		onInteractOutside?: (e: PointerEvent) => void;
 	} = $props();
+
+	// Prevent clicks on portaled overlays (toasts, popovers) from being treated
+	// as outside-clicks that close the dialog. svelte-sonner renders into
+	// [data-sonner-toaster]; bits-ui popovers/menus use [data-bits-floating-content-wrapper].
+	function handleInteractOutside(e: PointerEvent) {
+		const target = e.target as Element | null;
+		if (
+			target?.closest(
+				'[data-sonner-toaster],[data-bits-floating-content-wrapper]'
+			)
+		) {
+			e.preventDefault();
+			return;
+		}
+		onInteractOutside?.(e);
+	}
 	</script>
 
 	<Dialog.Portal>
@@ -26,6 +44,7 @@
 				duration-200
 				{className}"
 			{style}
+			onInteractOutside={handleInteractOutside}
 			{...restProps}
 		>
 			{@render children()}

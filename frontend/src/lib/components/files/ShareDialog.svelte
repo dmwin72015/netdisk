@@ -112,7 +112,7 @@
 	}
 </script>
 
-<Dialog bind:open title="分享文件" description={files.length === 1 ? files[0]?.name : `${files.length} 个文件`} footer={false} class="max-w-3xl">
+<Dialog bind:open title="分享文件" description={files.length === 1 ? files[0]?.name : `${files.length} 个文件`} footer={false} size="lg">
 	<div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
 		<div class="space-y-5">
 			{#if files.length > 0}

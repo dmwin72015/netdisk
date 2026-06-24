@@ -4,6 +4,15 @@
   import * as DialogBase from "./base";
   import { cn } from "$lib/utils/cn";
 
+  type DialogSize = "sm" | "md" | "lg" | "xl";
+
+  const sizeWidths: Record<DialogSize, string> = {
+    sm: "w-[380px] xl:w-[400px] 2xl:w-[420px] min-[2200px]:w-[440px]",
+    md: "w-[600px] xl:w-[640px] 2xl:w-[680px] min-[2200px]:w-[720px]",
+    lg: "w-[800px] xl:w-[860px] 2xl:w-[920px] min-[2200px]:w-[1000px]",
+    xl: "w-[1000px] xl:w-[1100px] 2xl:w-[1200px] min-[2200px]:w-[1300px]",
+  };
+
   let {
     open = $bindable(false),
     title,
@@ -31,6 +40,7 @@
     closeButtonClass = "",
     closeIconSize = 18,
     closable = true,
+    size,
     width,
     class: className = "",
   }: {
@@ -60,6 +70,7 @@
     closeButtonClass?: string;
     closeIconSize?: number;
     closable?: boolean;
+    size?: DialogSize;
     width?: string;
     class?: string;
   } = $props();
@@ -69,6 +80,22 @@
   const shouldShowOk = $derived(showConfirm ?? true);
   const resolvedOkText = $derived(okText ?? confirmText ?? "Confirm");
   const resolvedCancelText = $derived(cancelText ?? "Cancel");
+
+  const sizeClass = $derived(
+    size && sizeWidths[size] ? sizeWidths[size] : ""
+  );
+
+  const widthStyle = $derived(
+    width ? `max-width: ${width};` : ""
+  );
+
+  const contentClass = $derived(
+    cn("max-h-[90vh] flex flex-col overflow-hidden", sizeClass, className)
+  );
+
+  const contentInlineStyle = $derived(
+    cn(sizeClass ? "" : "w-full", contentStyle, widthStyle).trim() || undefined
+  );
 
   function handleOpenChangeComplete(isOpen: boolean) {
     onOpenChangeComplete?.(isOpen);
@@ -89,8 +116,8 @@
 
 <DialogBase.Root bind:open {onOpenChange} onOpenChangeComplete={handleOpenChangeComplete}>
   <DialogBase.Content
-    class={cn('max-h-[90vh] flex flex-col overflow-hidden', className)}
-    style={width ? `max-width: ${width}; ${contentStyle}` : contentStyle}
+    class={contentClass}
+    style={contentInlineStyle}
   >
     <div
       class="border-line-soft flex {description
