@@ -106,17 +106,14 @@
 >
   <div class={cn("relative", className)}>
     <!-- Trigger: AntD-style placeholder display -->
-    <button
-      type="button"
+    <DateRangePicker.Trigger
       class="flex h-8 w-full items-center rounded-lg border border-line bg-surface px-3 text-sm text-ink-3 outline-none transition-colors hover:border-line focus:border-primary"
-      {disabled}
-      aria-label={placeholderText}
     >
       <span class={cn(!displayValue ? "text-ink-4" : "text-ink-3")}>
         {displayValue || placeholderText}
       </span>
       <CalendarDays size={14} class="ml-auto shrink-0 text-ink-4" />
-    </button>
+    </DateRangePicker.Trigger>
 
     <!-- Calendar popover: horizontal months -->
     <DateRangePicker.Content
