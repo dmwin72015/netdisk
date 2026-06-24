@@ -82,7 +82,7 @@
 >
 	<div class={cn('relative', className)}>
 		<div
-			class="flex h-8 items-center gap-0.5 rounded-lg border border-line bg-surface-muted px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary"
+			class="flex h-8 items-center gap-0.5 rounded-lg border border-line bg-surface px-3 text-sm text-ink-3 outline-none transition-colors hover:border-line focus-within:border-primary"
 		>
 			{#each ['start', 'end'] as const as type (type)}
 				<DateRangePicker.Input {type}>
