@@ -196,46 +196,54 @@ export async function adminResetSystemConfig(key?: string): Promise<SystemConfig
 	});
 }
 
-export type CleanupUploadTask = {
-	id: number;
-	ownerUserId: number;
-	username: string;
-	status: string;
-	fileSize: number;
-	originalName: string;
-	createdAt: number;
-};
-
-export type CleanupUserFile = {
-	id: number;
-	userId: number;
-	username: string;
-	fileName: string;
-	fileSize: number;
-	physicalFileId?: number;
-	createdAt: number;
-};
-
-export type CleanupPhysicalFile = {
+export type CleanupQueryPhysicalFile = {
 	id: number;
 	fileHash: string;
 	fileSize: number;
 	storagePath: string;
-	refCount?: number;
+	mimeType: string;
+	fileExists: boolean;
 };
 
-export type CleanupFileResult = {
+export type CleanupQueryUserFile = {
+	id: number;
 	slug: string;
-	uploadTasks: CleanupUploadTask[];
-	userFiles: CleanupUserFile[];
-	physicalFiles: CleanupPhysicalFile[];
-	deleted: boolean;
-	message?: string;
+	userId: number;
+	username: string;
+	fileName: string;
+	fileSize: number;
+	createdAt: number;
 };
 
-export async function adminCleanupFile(slug: string, confirm = false): Promise<CleanupFileResult> {
-	return api<CleanupFileResult>('/api/v1/admin/cleanup/file', {
+export type CleanupQueryResult = {
+	physicalFile?: CleanupQueryPhysicalFile;
+	userFiles: CleanupQueryUserFile[];
+	totalUploads: number;
+	uniqueUsers: number;
+};
+
+export type DeleteActionResult = {
+	deleted: boolean;
+	message: string;
+};
+
+export async function adminCleanupQuery(slug: string, hash: string): Promise<CleanupQueryResult> {
+	return api<CleanupQueryResult>('/api/v1/admin/cleanup/query', {
 		method: 'POST',
-		body: JSON.stringify({ slug, confirm }),
+		body: JSON.stringify({ slug, hash }),
+	});
+}
+
+export async function adminCleanupDeleteUserFile(userFileId: number): Promise<DeleteActionResult> {
+	return api<DeleteActionResult>('/api/v1/admin/cleanup/delete-user-file', {
+		method: 'POST',
+		body: JSON.stringify({ userFileId }),
+	});
+}
+
+export async function adminCleanupDeletePhysicalFile(physicalFileId: number): Promise<DeleteActionResult> {
+	return api<DeleteActionResult>('/api/v1/admin/cleanup/delete-physical-file', {
+		method: 'POST',
+		body: JSON.stringify({ physicalFileId }),
 	});
 }

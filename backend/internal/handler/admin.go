@@ -325,19 +325,52 @@ func (h *AdminHandler) ResetSystemConfig(c echo.Context) error {
 	return OK(c, items)
 }
 
-func (h *AdminHandler) CleanupFile(c echo.Context) error {
+func (h *AdminHandler) CleanupQuery(c echo.Context) error {
 	var input struct {
-		Slug    string `json:"slug"`
-		Confirm bool   `json:"confirm"`
+		Slug string `json:"slug"`
+		Hash string `json:"hash"`
 	}
 	if err := c.Bind(&input); err != nil {
 		return model.ErrInvalidInput
 	}
-	if input.Slug == "" {
+	if input.Slug == "" && input.Hash == "" {
 		return model.ErrInvalidInput
 	}
+	result, err := h.svc.CleanupQuery(c.Request().Context(), input.Slug, input.Hash)
+	if err != nil {
+		return err
+	}
+	return OK(c, result)
+}
 
-	result, err := h.svc.CleanupFile(c.Request().Context(), input.Slug, input.Confirm)
+func (h *AdminHandler) CleanupDeleteUserFile(c echo.Context) error {
+	var input struct {
+		UserFileID int64 `json:"userFileId"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if input.UserFileID == 0 {
+		return model.ErrInvalidInput
+	}
+	result, err := h.svc.CleanupDeleteUserFile(c.Request().Context(), input.UserFileID)
+	if err != nil {
+		return err
+	}
+	return OK(c, result)
+}
+
+func (h *AdminHandler) CleanupDeletePhysicalFile(c echo.Context) error {
+	var input struct {
+		PhysicalFileID int64 `json:"physicalFileId"`
+	}
+	if err := c.Bind(&input); err != nil {
+		return model.ErrInvalidInput
+	}
+	if input.PhysicalFileID == 0 {
+		return model.ErrInvalidInput
+	}
+	result, err := h.svc.CleanupDeletePhysicalFile(c.Request().Context(), input.PhysicalFileID)
 	if err != nil {
 		return err
 	}

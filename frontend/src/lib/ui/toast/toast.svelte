@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Toaster } from 'svelte-sonner';
 
-	let { closeButton = false, ...rest }: { closeButton?: boolean; [key: string]: any } = $props();
+	let { closeButton = true, ...rest }: { closeButton?: boolean; [key: string]: any } = $props();
 </script>
 
 <Toaster
