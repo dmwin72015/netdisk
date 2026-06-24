@@ -9,6 +9,7 @@
   import { ChevronLeft, ChevronRight, CalendarDays } from "@lucide/svelte";
   import { cn } from "$lib/utils/cn";
   import * as m from "$lib/paraglide/messages";
+  import { getLocale } from "$lib/paraglide/runtime";
 
   let {
     value = $bindable({ start: null, end: null }),
@@ -55,13 +56,19 @@
     return placeholderText;
   }
 
-  const MONTH_NAMES = [
+  const MONTH_NAMES_EN = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
   ];
+  const MONTH_NAMES_ZH = [
+    "1月", "2月", "3月", "4月", "5月", "6月",
+    "7月", "8月", "9月", "10月", "11月", "12月",
+  ];
+
+  const monthNames = $derived(getLocale() === "zh" ? MONTH_NAMES_ZH : MONTH_NAMES_EN);
 
   function monthLabel(monthNum: number, year: number): string {
-    return `${MONTH_NAMES[monthNum - 1]} ${year}`;
+    return `${monthNames[monthNum - 1]} ${year}`;
   }
 
   let internalValue = $state<{
@@ -101,6 +108,19 @@
   }
 
   let displayValue = $derived(formatDisplayValue());
+
+  function isInRange(date: DateValue): boolean {
+    if (!internalValue.start || !internalValue.end) return false;
+    return date.compare(internalValue.start) > 0 && date.compare(internalValue.end) < 0;
+  }
+
+  function isStart(date: DateValue): boolean {
+    return !!internalValue.start && date.compare(internalValue.start) === 0;
+  }
+
+  function isEnd(date: DateValue): boolean {
+    return !!internalValue.end && date.compare(internalValue.end) === 0;
+  }
 </script>
 
 <DateRangePicker.Root
@@ -142,7 +162,7 @@
           <div class="flex gap-4">
             {#each months as month}
               <div class="flex-1">
-                <!-- Per-panel month title: "Jun 2026" -->
+                <!-- Per-panel month title: "Jun 2026" or "6月 2026" -->
                 <div class="mb-2 text-center text-sm font-medium text-ink">
                   {monthLabel(month.value.month, month.value.year)}
                 </div>
@@ -183,15 +203,17 @@
                             class="p-0.5"
                           >
                             <DateRangePicker.Day
-                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
-                                hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                                data-[selected]:bg-[#165DFF] data-[selected]:text-white
-                                data-[selection-start]:bg-[#165DFF] data-[selection-start]:text-white
-                                data-[selection-end]:bg-[#165DFF] data-[selection-end]:text-white
-                                data-[highlighted]:bg-[#E6F4FF]
-                                data-[outside-month]:text-ink-4
-                                data-[today]:font-medium data-[today]:text-primary
-                                data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
+                              class={cn(
+                                "inline-flex h-8 w-8 items-center justify-center text-sm transition-colors",
+                                (isStart(date) || isEnd(date)) && "bg-[#165DFF] text-white rounded-full",
+                                !isStart(date) && !isEnd(date) && "rounded-lg",
+                                isInRange(date) && !isStart(date) && !isEnd(date) && "bg-[#E6F4FF]",
+                                !isStart(date) && !isEnd(date) && !isInRange(date) && "hover:bg-surface-sunken",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                                "data-[outside-month]:text-ink-4",
+                                "data-[today]:font-medium data-[today]:text-primary",
+                                "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
+                              )}
                             >
                               {date.day}
                             </DateRangePicker.Day>
