@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Folder, Copy } from "@lucide/svelte";
+  import { Copy } from "@lucide/svelte";
+  import { toast } from "svelte-sonner";
   import { fmtSize, fmtTime, copyToClipboard } from "$lib/utils/format";
   import type { NormalizedFile } from "$lib/types/file";
   import * as m from "$lib/paraglide/messages";
@@ -80,11 +81,13 @@
     <div>
       <div class="mb-6 flex h-30 items-center justify-center">
         {#if file.isDir}
-          <div
-            class="text-primary flex h-[84px] w-[100px] items-center justify-center rounded-lg bg-primary-soft"
-          >
-            <Folder size={42} strokeWidth={1.5} />
-          </div>
+          <MimeIcon
+            mimeType={file.mimeType}
+            name={file.name}
+            isDir={true}
+            category={file.fileCategory}
+            size={88}
+          />
         {:else if isImageFile(file)}
           <img
             src={authedFileUrl(file, downloadUrlFn)}
