@@ -18,6 +18,7 @@
     clearDirectoryLock,
     unlockDirectory,
     forceDeleteDir,
+    getFolderSummary,
     type FileItem,
   } from "$lib/api/files";
   import { ApiError } from "$lib/api/client";
@@ -30,7 +31,7 @@
   import ShareDialog from "$lib/components/files/ShareDialog.svelte";
   import FolderUploadDialog from "$lib/components/files/FolderUploadDialog.svelte";
   import RemoteUploadDialog from "$lib/components/files/RemoteUploadDialog.svelte";
-import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
+  import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
   import ConflictDialog from "$lib/components/files/ConflictDialog.svelte";
   import type {
     NameConflictInfo,
@@ -312,27 +313,8 @@ import TextUploadDialog from "$lib/components/files/TextUploadDialog.svelte";
   }
 
   async function loadFolderSummary(slug: string) {
-    const pageSize = 100;
-    let pageNum = 1;
-    let loaded = 0;
-    let total = 0;
-    const summary = { fileCount: 0, folderCount: 0, size: 0 };
-
-    do {
-      const data = await listFiles(slug, pageNum, pageSize);
-      total = data.total;
-      loaded += data.files.length;
-      for (const file of data.files) {
-        if (file.isDir) summary.folderCount += 1;
-        else {
-          summary.fileCount += 1;
-          summary.size += file.fileSize;
-        }
-      }
-      pageNum += 1;
-    } while (loaded < total);
-
-    return summary;
+    const data = await getFolderSummary(slug);
+    return { fileCount: data.fileCount, folderCount: data.folderCount, size: data.totalSize };
   }
 
   // --- Create directory ---

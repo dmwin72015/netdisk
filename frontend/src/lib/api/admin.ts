@@ -43,6 +43,7 @@ export type AdminFile = {
 	fileSize: number;
 	mimeType: string;
 	fileCategory: string;
+	fileHash: string;
 	isTrashed: boolean;
 	isStarred: boolean;
 	createdAt: number;
@@ -77,7 +78,9 @@ export async function adminListUsers(
 	offset = 0,
 	search?: string,
 	role?: string,
-	sort?: string
+	sort?: string,
+	createdAfter?: string,
+	createdBefore?: string
 ): Promise<AdminUserList> {
 	const params = new URLSearchParams();
 	params.set('limit', String(limit));
@@ -85,6 +88,8 @@ export async function adminListUsers(
 	if (search) params.set('search', search);
 	if (role) params.set('role', role);
 	if (sort) params.set('sort', sort);
+	if (createdAfter) params.set('created_after', createdAfter);
+	if (createdBefore) params.set('created_before', createdBefore);
 	return api<AdminUserList>(`/api/v1/admin/users?${params}`);
 }
 

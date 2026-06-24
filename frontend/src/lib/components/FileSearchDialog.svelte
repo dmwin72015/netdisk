@@ -154,7 +154,7 @@ import * as m from '$lib/paraglide/messages';
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <svelte:window onkeydown={handleKeydown} />
 
-<Dialog.Root bind:open onOpenChange={(v) => { if (!v) closeDialog(); }}>
+<Dialog.Root bind:open onOpenChangeComplete={(v) => { if (!v) closeDialog(); }}>
 	<Dialog.Overlay
 		class="fixed inset-0 z-50 bg-overlay backdrop-blur-sm
 			data-[state=open]:animate-in data-[state=closed]:animate-out

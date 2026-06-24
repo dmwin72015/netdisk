@@ -303,7 +303,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<Dialog.Root bind:open onOpenChange={(v) => { if (!v) onClose?.(); }}>
+<Dialog.Root bind:open onOpenChangeComplete={(v) => { if (!v) onClose?.(); }}>
 	<Dialog.Overlay
 		class="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm
 			data-[state=open]:animate-in data-[state=closed]:animate-out

@@ -114,6 +114,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	files.DELETE("/:slug/lock", h.Files.ClearDirectoryLock)
 	files.POST("/:slug/unlock", h.Files.UnlockDirectory)
 	files.GET("/:slug/download", h.Files.DownloadFile)
+	files.GET("/:slug/summary", h.Files.GetFolderSummary)
 
 	// Share routes
 	shares := authed.Group("/shares")

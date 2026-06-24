@@ -17,6 +17,8 @@ export function normalizeFileItem(f: FileItem): NormalizedFile {
 		systemKind: f.systemKind,
 		createdAt: f.createdAt,
 		updatedAt: f.updatedAt,
+		hashAlgo: f.hashAlgo,
+		fileHash: f.fileHash,
 	};
 }
 

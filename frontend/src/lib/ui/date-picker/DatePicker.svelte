@@ -2,6 +2,7 @@
 	import { DatePicker } from 'bits-ui';
 	import { CalendarDate, parseDate, today, getLocalTimeZone, type DateValue } from '@internationalized/date';
 	import { ChevronLeft, ChevronRight, CalendarDays } from '@lucide/svelte';
+	import { cn } from '$lib/utils/cn';
 	import * as m from '$lib/paraglide/messages';
 
 	let {
@@ -10,12 +11,14 @@
 		disabled = false,
 		placeholderText = m.select_date(),
 		onValueChange,
+		class: className = '',
 	}: {
 		value?: Date | null;
 		placeholder?: Date | null;
 		disabled?: boolean;
 		placeholderText?: string;
 		onValueChange?: (date: Date | null) => void;
+		class?: string;
 	} = $props();
 
 	const tz = getLocalTimeZone();
@@ -63,7 +66,7 @@
 	{disabled}
 	closeOnDateSelect={true}
 >
-	<div class="relative">
+	<div class={cn('relative', className)}>
 		<DatePicker.Input
 			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-muted px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary"
 			onclick={openCalendar}

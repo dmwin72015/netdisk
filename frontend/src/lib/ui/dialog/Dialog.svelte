@@ -13,6 +13,7 @@
     confirmText,
     onOpenChange,
     onOpenChangeComplete,
+    afterOpenChange,
     onOk,
     onCancel,
     onConfirm,
@@ -30,6 +31,7 @@
     closeButtonClass = "",
     closeIconSize = 18,
     closable = true,
+    width,
     class: className = "",
   }: {
     open?: boolean;
@@ -40,6 +42,7 @@
     confirmText?: string;
     onOpenChange?: (open: boolean) => void;
     onOpenChangeComplete?: (open: boolean) => void;
+    afterOpenChange?: (open: boolean) => void;
     onOk?: () => void;
     onCancel?: () => void;
     onConfirm?: () => void;
@@ -57,6 +60,7 @@
     closeButtonClass?: string;
     closeIconSize?: number;
     closable?: boolean;
+    width?: string;
     class?: string;
   } = $props();
 
@@ -65,6 +69,11 @@
   const shouldShowOk = $derived(showConfirm ?? true);
   const resolvedOkText = $derived(okText ?? confirmText ?? "Confirm");
   const resolvedCancelText = $derived(cancelText ?? "Cancel");
+
+  function handleOpenChangeComplete(isOpen: boolean) {
+    onOpenChangeComplete?.(isOpen);
+    afterOpenChange?.(isOpen);
+  }
 
   function handleConfirm() {
     onOk?.();
@@ -78,10 +87,10 @@
   }
 </script>
 
-<DialogBase.Root bind:open {onOpenChange} {onOpenChangeComplete}>
+<DialogBase.Root bind:open {onOpenChange} onOpenChangeComplete={handleOpenChangeComplete}>
   <DialogBase.Content
     class={cn('max-h-[90vh] flex flex-col overflow-hidden', className)}
-    style={contentStyle}
+    style={width ? `max-width: ${width}; ${contentStyle}` : contentStyle}
   >
     <div
       class="border-line-soft flex {description

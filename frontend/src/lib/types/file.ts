@@ -12,4 +12,6 @@ export interface NormalizedFile {
 	systemKind?: string;
 	createdAt: string;
 	updatedAt: string;
+	hashAlgo?: string;
+	fileHash?: string;
 }

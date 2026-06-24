@@ -520,6 +520,21 @@ func (h *FilesHandler) ClearDirectoryLock(c echo.Context) error {
 	return OK(c, map[string]string{"message": "directory unlocked"})
 }
 
+func (h *FilesHandler) GetFolderSummary(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	slug := c.Param("slug")
+	summary, err := h.svc.GetFolderSummary(c.Request().Context(), userID, slug)
+	if err != nil {
+		return err
+	}
+
+	return OK(c, summary)
+}
+
 func (h *FilesHandler) UnlockDirectory(c echo.Context) error {
 	userID, err := requireUserID(c)
 	if err != nil {

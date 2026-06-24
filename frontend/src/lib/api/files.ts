@@ -15,6 +15,8 @@ export type FileItem = {
 	parentName?: string;
 	createdAt: string;
 	updatedAt: string;
+	hashAlgo?: string;
+	fileHash?: string;
 };
 
 export type ConflictResponse = {
@@ -184,4 +186,14 @@ export function downloadUrl(slug: string) {
 
 export async function getBreadcrumb(slug: string) {
 	return api<BreadcrumbItem[]>(`/api/v1/files/${slug}/breadcrumb`);
+}
+
+export type FolderSummary = {
+	fileCount: number;
+	folderCount: number;
+	totalSize: number;
+};
+
+export async function getFolderSummary(slug: string) {
+	return api<FolderSummary>(`/api/v1/files/${slug}/summary`);
 }

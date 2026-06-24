@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -73,6 +74,7 @@ type AdminFileItem struct {
 	FileSize     int64  `json:"fileSize"`
 	MimeType     string `json:"mimeType"`
 	FileCategory string `json:"fileCategory"`
+	FileHash     string `json:"fileHash"`
 	IsTrashed    bool   `json:"isTrashed"`
 	IsStarred    bool   `json:"isStarred"`
 	CreatedAt    int64  `json:"createdAt"`
@@ -138,11 +140,13 @@ func (s *AdminService) DashboardStats(ctx context.Context) (*AdminDashboardStats
 }
 
 type AdminListUsersParams struct {
-	Limit  int
-	Offset int
-	Search string
-	Role   string
-	Sort   string
+	Limit        int
+	Offset       int
+	Search       string
+	Role         string
+	Sort         string
+	CreatedAfter *time.Time
+	CreatedBefore *time.Time
 }
 
 func (s *AdminService) ListUsers(ctx context.Context, params AdminListUsersParams) ([]AdminUserItem, int, error) {
@@ -158,6 +162,16 @@ func (s *AdminService) ListUsers(ctx context.Context, params AdminListUsersParam
 	if params.Role != "" {
 		where += fmt.Sprintf(" AND u.role = $%d", argIdx)
 		args = append(args, params.Role)
+		argIdx++
+	}
+	if params.CreatedAfter != nil {
+		where += fmt.Sprintf(" AND u.created_at >= $%d", argIdx)
+		args = append(args, params.CreatedAfter)
+		argIdx++
+	}
+	if params.CreatedBefore != nil {
+		where += fmt.Sprintf(" AND u.created_at <= $%d", argIdx)
+		args = append(args, params.CreatedBefore)
 		argIdx++
 	}
 
@@ -458,11 +472,12 @@ func (s *AdminService) ListFiles(ctx context.Context, params AdminListFilesParam
 	q := fmt.Sprintf(`
 		SELECT uf.id, uf.slug, uf.user_id, u.username, uf.file_name, uf.is_dir,
 		       uf.file_size, COALESCE(uf.mime_type, ''), COALESCE(uf.file_category, ''),
-		       uf.is_trashed, uf.is_starred,
+		       COALESCE(pf.file_hash, ''), uf.is_trashed, uf.is_starred,
 		       EXTRACT(EPOCH FROM uf.created_at)::bigint,
 		       EXTRACT(EPOCH FROM uf.updated_at)::bigint
 		FROM user_files uf
 		JOIN users u ON u.id = uf.user_id
+		LEFT JOIN physical_files pf ON pf.id = uf.physical_file_id
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
@@ -482,7 +497,7 @@ func (s *AdminService) ListFiles(ctx context.Context, params AdminListFilesParam
 		if err := rows.Scan(
 			&fileID, &item.Slug, &userID, &item.Username,
 			&item.FileName, &item.IsDir, &item.FileSize,
-			&item.MimeType, &item.FileCategory,
+			&item.MimeType, &item.FileCategory, &item.FileHash,
 			&item.IsTrashed, &item.IsStarred,
 			&item.CreatedAt, &item.UpdatedAt,
 		); err != nil {

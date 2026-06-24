@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -53,6 +54,22 @@ func (h *AdminHandler) ListUsers(c echo.Context) error {
 		Search: c.QueryParam("search"),
 		Role:   c.QueryParam("role"),
 		Sort:   c.QueryParam("sort"),
+	}
+
+	if after := c.QueryParam("created_after"); after != "" {
+		if t, err := time.Parse(time.RFC3339, after); err == nil {
+			params.CreatedAfter = &t
+		} else if t, err := time.Parse("2006-01-02", after); err == nil {
+			params.CreatedAfter = &t
+		}
+	}
+	if before := c.QueryParam("created_before"); before != "" {
+		if t, err := time.Parse(time.RFC3339, before); err == nil {
+			params.CreatedBefore = &t
+		} else if t, err := time.Parse("2006-01-02", before); err == nil {
+			endOfDay := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+			params.CreatedBefore = &endOfDay
+		}
 	}
 
 	items, total, err := h.svc.ListUsers(c.Request().Context(), params)

@@ -138,9 +138,12 @@ func BuildListFilesQuery(p ListFilesParams) (sql string, args []any, countSql st
 		"f.is_system", "f.system_kind", "f.lock_password_hash",
 		"f.created_at", "f.updated_at", "f.parent_slug",
 		"p.file_name AS parent_name",
+		"pf.hash_algo",
+		"pf.file_hash",
 	).
 		From("user_files f").
 		LeftJoin("user_files p ON f.parent_id = p.id").
+		LeftJoin("physical_files pf ON pf.id = f.physical_file_id").
 		Where(where).
 		OrderBy(orderBy).
 		Limit(uint64(p.PageSize)).

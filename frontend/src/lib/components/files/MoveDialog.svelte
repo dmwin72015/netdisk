@@ -133,18 +133,14 @@
 		}
 	}
 
-	function handleOpenChange(v: boolean) {
-		if (!v && !submitting) {
-			open = false;
-			onClose();
-		}
+	function handleClose(v: boolean) {
+		if (!v) onClose();
 	}
 </script>
 
 <Dialog
 	bind:open
-	onOpenChange={handleOpenChange}
-	onCancel={onClose}
+	onOpenChangeComplete={handleClose}
 	title={m.select_move_target()}
 	description={m.move_target_hint()}
 	footer={false}

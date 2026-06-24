@@ -38,7 +38,7 @@
 		}
 	});
 
-	function handleOpenChange(value: boolean) {
+	function handleClose(value: boolean) {
 		if (!value) onCancel();
 	}
 
@@ -57,8 +57,7 @@
 
 <Dialog
 	bind:open
-	onOpenChange={handleOpenChange}
-	onCancel={onCancel}
+	onOpenChangeComplete={handleClose}
 	title={sizeError ? '文本大小超出限制' : '确认粘贴文本'}
 	footer={false}
 	class="max-w-lg"

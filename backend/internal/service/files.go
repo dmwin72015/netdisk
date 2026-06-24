@@ -52,6 +52,8 @@ type FileItem struct {
 	ParentName   *string `json:"parentName,omitempty"`
 	CreatedAt    string  `json:"createdAt"`
 	UpdatedAt    string  `json:"updatedAt"`
+	HashAlgo     *string `json:"hashAlgo,omitempty"`
+	FileHash     *string `json:"fileHash,omitempty"`
 }
 
 type SystemDirOptions struct {
@@ -1306,6 +1308,12 @@ func fileRowsToItems(files []db.FileRow) []FileItem {
 		if f.ParentName.Valid {
 			item.ParentName = &f.ParentName.String
 		}
+		if f.HashAlgo.Valid {
+			item.HashAlgo = &f.HashAlgo.String
+		}
+		if f.FileHash.Valid {
+			item.FileHash = &f.FileHash.String
+		}
 		items = append(items, item)
 	}
 	return items
@@ -1379,6 +1387,43 @@ func safeFilename(name string) string {
 
 func contentDisposition(filename string) string {
 	return fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, safeFilename(filename), filename)
+}
+
+type FolderSummary struct {
+	FileCount   int64 `json:"fileCount"`
+	FolderCount int64 `json:"folderCount"`
+	TotalSize   int64 `json:"totalSize"`
+}
+
+func (s *FilesService) GetFolderSummary(ctx context.Context, userID int64, slug string) (*FolderSummary, error) {
+	f, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+		Slug:   slug,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrNotFound
+		}
+		return nil, fmt.Errorf("get folder: %w", err)
+	}
+	if !f.IsDir {
+		return nil, model.ErrInvalidInput
+	}
+
+	var summary FolderSummary
+	err = s.pg.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE is_dir = false) AS file_count,
+			COUNT(*) FILTER (WHERE is_dir = true) AS folder_count,
+			COALESCE(SUM(file_size) FILTER (WHERE is_dir = false), 0) AS total_size
+		FROM user_files
+		WHERE parent_id = $1 AND is_trashed = false
+	`, f.ID).Scan(&summary.FileCount, &summary.FolderCount, &summary.TotalSize)
+	if err != nil {
+		return nil, fmt.Errorf("query folder summary: %w", err)
+	}
+
+	return &summary, nil
 }
 
 func detectMime(path string) string {

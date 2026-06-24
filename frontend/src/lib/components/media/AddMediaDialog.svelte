@@ -94,18 +94,14 @@
 		}
 	}
 
-	function handleOpenChange(v: boolean) {
-		if (!v) {
-			open = false;
-			onClose();
-		}
+	function handleClose(v: boolean) {
+		if (!v) onClose();
 	}
 </script>
 
 <Dialog
 	bind:open
-	onOpenChange={handleOpenChange}
-	onCancel={onClose}
+	onOpenChangeComplete={handleClose}
 	title={m.select_videos()}
 	footer={false}
 	class="h-[70vh]"

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { DropdownBase } from "$lib/ui/dropdown";
   import {
-    MoreHorizontal,
+    Ellipsis,
     Star,
     Eye,
     Download,
@@ -56,9 +56,18 @@
 
   let isVideo = $derived(file.mimeType?.startsWith("video/") ?? false);
 
+  let hasAboveItems = $derived(
+    (onStar && !file.isSystem) ||
+      !file.isDir ||
+      !!onShowDetails ||
+      (isVideo && !!onAddToMedia)
+  );
+
+  let showSeparator = $derived(hasAboveItems && !file.isSystem);
+
   function downloadFile() {
     const url = authedUrl(downloadUrlFn(file.id));
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = file.name;
     a.click();
@@ -70,13 +79,19 @@
   <DropdownBase.Trigger
     class="rounded-md p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3 {triggerClass}"
   >
-    <MoreHorizontal size={16} />
+    <Ellipsis size={16} />
   </DropdownBase.Trigger>
   <DropdownBase.Content sideOffset={4} align="end">
     {#if onStar && !file.isSystem}
       <DropdownBase.Item onSelect={() => onStar(file.id, file.isStarred)}>
-        {#snippet icon()}<Star size={14} class={file.isStarred ? "text-warning" : "text-ink-4"} fill={file.isStarred ? "currentColor" : "none"} />{/snippet}
-        {#snippet children()}{file.isStarred ? m.unstar_file() : m.star_file()}{/snippet}
+        {#snippet icon()}<Star
+            size={14}
+            class={file.isStarred ? "text-warning" : "text-ink-4"}
+            fill={file.isStarred ? "currentColor" : "none"}
+          />{/snippet}
+        {#snippet children()}{file.isStarred
+            ? m.unstar_file()
+            : m.star_file()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isDir}
@@ -113,7 +128,9 @@
         {#snippet children()}{m.add_to_media_library()}{/snippet}
       </DropdownBase.Item>
     {/if}
-    <DropdownBase.Separator />
+    {#if showSeparator}
+      <DropdownBase.Separator />
+    {/if}
     {#if !file.isSystem}
       <DropdownBase.Item onSelect={() => onRename(file.id, file.name)}>
         {#snippet icon()}<Pencil size={14} class="text-ink-4" />{/snippet}
@@ -140,13 +157,19 @@
       {/if}
     {/if}
     {#if file.isDir && !file.isSystem && onForceDeleteDir}
-      <DropdownBase.Item variant="destructive" onSelect={() => onForceDeleteDir(file)}>
+      <DropdownBase.Item
+        variant="destructive"
+        onSelect={() => onForceDeleteDir(file)}
+      >
         {#snippet icon()}<Trash size={14} class="text-danger" />{/snippet}
         {#snippet children()}强制删除{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isSystem}
-      <DropdownBase.Item variant="destructive" onSelect={() => onDelete(file.id, file.name)}>
+      <DropdownBase.Item
+        variant="destructive"
+        onSelect={() => onDelete(file.id, file.name)}
+      >
         {#snippet icon()}<Trash2 size={14} class="text-danger" />{/snippet}
         {#snippet children()}{m.delete_label()}{/snippet}
       </DropdownBase.Item>

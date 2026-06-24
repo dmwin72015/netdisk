@@ -93,14 +93,14 @@
     return `${prefix} (${n})${ext}`;
   }
 
-  function handleOpenChange(v: boolean) {
+  function handleClose(v: boolean) {
     if (!v) onCancel();
   }
 </script>
 
 <Dialog
   bind:open
-  onOpenChange={handleOpenChange}
+  onOpenChangeComplete={handleClose}
   title={m.upload_conflict_title()}
   closable={true}
   footer={false}

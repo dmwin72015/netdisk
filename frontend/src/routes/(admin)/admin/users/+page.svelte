@@ -31,6 +31,8 @@
 	let roleFilter = $state('');
 	let sortBy = $state('-created_at');
 
+let dateFrom = $state("");
+let dateTo = $state("");
 	let currentPage = $derived(Math.floor(offset / PAGE_SIZE) + 1);
 	let totalPages = $derived(Math.ceil(total / PAGE_SIZE));
 
@@ -76,7 +78,7 @@
 	async function loadUsers() {
 		loading = true;
 		try {
-			const res = await adminListUsers(PAGE_SIZE, offset, searchQuery || undefined, roleFilter || undefined, sortBy);
+			const res = await adminListUsers(PAGE_SIZE, offset, searchQuery || undefined, roleFilter || undefined, sortBy, dateFrom || undefined, dateTo || undefined);
 			users = res.items;
 			total = res.total;
 		} catch {
@@ -209,7 +211,7 @@
 			/>
 		</div>
 		<Select.Root type="single" bind:value={roleFilter} onValueChange={() => { offset = 0; loadUsers(); }}>
-			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[130px] data-[placeholder]:text-ink-4">
+			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[130px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none">
 				<Select.Value placeholder={m.admin_all_roles()} />
 				<ChevronDown size={14} class="text-ink-4" />
 			</Select.Trigger>
@@ -223,7 +225,7 @@
 			</Select.Content>
 		</Select.Root>
 		<Select.Root type="single" bind:value={sortBy} onValueChange={loadUsers}>
-			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[150px] data-[placeholder]:text-ink-4">
+			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[150px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none">
 				<Select.Value />
 				<ChevronDown size={14} class="text-ink-4" />
 			</Select.Trigger>
@@ -236,6 +238,21 @@
 				{/each}
 			</Select.Content>
 		</Select.Root>
+		<div class="flex items-center gap-2">
+			<input
+				type="date"
+				bind:value={dateFrom}
+				onchange={() => { offset = 0; loadUsers(); }}
+				class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 focus:border-primary focus:outline-none min-w-[130px]"
+			/>
+			<span class="text-ink-4">-</span>
+			<input
+				type="date"
+				bind:value={dateTo}
+				onchange={() => { offset = 0; loadUsers(); }}
+				class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 focus:border-primary focus:outline-none min-w-[130px]"
+			/>
+		</div>
 		<button
 			onclick={handleSearch}
 			class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
@@ -247,9 +264,18 @@
 	</div>
 
 	<!-- User table -->
-	<div class="overflow-hidden rounded-xl border border-line">
-		<table class="w-full text-left text-sm">
-			<thead class="border-b border-line bg-surface-sunken text-xs text-ink-4">
+	<div class="overflow-hidden rounded-xl border border-line bg-surface">
+		<table class="w-full table-fixed text-left text-sm">
+		<colgroup>
+		  <col style="width: 140px" />
+		  <col style="width: 200px" />
+		  <col style="width: 120px" />
+		  <col style="width: 90px" />
+		  <col style="width: 150px" />
+		  <col style="width: 160px" />
+		  <col style="width: 100px" />
+		</colgroup>
+			<thead class="border-b border-line bg-surface-sunken text-xs text-ink-3">
 				<tr>
 					<th class="px-4 py-3 font-medium">{m.username()}</th>
 					<th class="px-4 py-3 font-medium">{m.email()}</th>
@@ -273,10 +299,10 @@
 					</tr>
 				{:else}
 					{#each users as u (u.id)}
-						<tr class="transition-colors hover:bg-surface-muted">
-							<td class="px-4 py-3 font-medium text-ink">{u.username}</td>
-							<td class="px-4 py-3 text-ink-3">{u.email}</td>
-							<td class="px-4 py-3 text-xs text-ink-4">{u.registerMethod}</td>
+						<tr class="transition-colors hover:bg-surface-sunken">
+							<td class="truncate px-4 py-3 font-medium text-ink">{u.username}</td>
+							<td class="truncate px-4 py-3 text-ink-3">{u.email}</td>
+							<td class="truncate px-4 py-3 text-xs text-ink-4">{u.registerMethod}</td>
 							<td class="px-4 py-3">
 								<span
 									class="rounded px-2 py-0.5 text-xs font-medium {u.role === 'admin'
@@ -284,14 +310,14 @@
 										: 'bg-surface-sunken text-ink-3'}"
 								>{u.role}</span>
 							</td>
-							<td class="px-4 py-3 min-w-[140px]">
+							<td class="px-4 py-3">
 								{#if u.totalBytes > 0}
 									{@const pct = Math.round((u.usedBytes / u.totalBytes) * 100)}
 									<div class="mb-1 flex items-center justify-between text-xs">
 										<span class="text-ink-3">{fmtSize(u.usedBytes)} / {fmtSize(u.totalBytes)}</span>
 										<span class="text-ink-4">{pct}%</span>
 									</div>
-									<div class="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+									<div class="h-1.5 overflow-hidden rounded-full bg-line">
 										<div
 											class="h-full rounded-full transition-all {pct > 90 ? 'bg-danger' : pct > 70 ? 'bg-warning' : 'bg-primary'}"
 											style="width: {pct}%"
@@ -336,7 +362,7 @@
 	{#if totalPages > 1}
 		<div class="flex items-center justify-center gap-2">
 			<button
-				class="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-4 transition-colors hover:bg-surface-sunken disabled:opacity-40"
+				class="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-2 transition-colors hover:border-ink-2 hover:bg-surface hover:text-ink disabled:opacity-40"
 				disabled={currentPage <= 1}
 				onclick={() => goPage(currentPage - 1)}
 			>
@@ -344,7 +370,7 @@
 			</button>
 			<span class="text-sm text-ink-4">{currentPage} / {totalPages}</span>
 			<button
-				class="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-4 transition-colors hover:bg-surface-sunken disabled:opacity-40"
+				class="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-2 transition-colors hover:border-ink-2 hover:bg-surface hover:text-ink disabled:opacity-40"
 				disabled={currentPage >= totalPages}
 				onclick={() => goPage(currentPage + 1)}
 			>

@@ -109,15 +109,14 @@
     return map[ext] || null;
   }
 
-  function handleOpenChange(v: boolean) {
+  function handleClose(v: boolean) {
     if (!v && !loading) onCancel();
   }
 </script>
 
 <Dialog
   bind:open
-  onOpenChange={handleOpenChange}
-  {onCancel}
+  onOpenChangeComplete={handleClose}
   title={loading ? m.loading() : m.select_files_to_upload()}
   footer={false}
   closable={!loading}

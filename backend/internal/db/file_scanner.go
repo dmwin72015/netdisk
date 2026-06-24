@@ -22,6 +22,8 @@ type FileRow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
 	ParentSlug       pgtype.Text        `json:"parentSlug"`
 	ParentName       pgtype.Text        `json:"parentName"`
+	HashAlgo         pgtype.Text        `json:"hashAlgo"`
+	FileHash         pgtype.Text        `json:"fileHash"`
 }
 
 // ScanFileRows collects all rows from pgx.Rows into []FileRow.
@@ -44,6 +46,8 @@ func ScanFileRows(rows pgx.Rows) ([]FileRow, error) {
 			&f.UpdatedAt,
 			&f.ParentSlug,
 			&f.ParentName,
+			&f.HashAlgo,
+			&f.FileHash,
 		)
 		return f, err
 	})
