@@ -173,7 +173,14 @@
                   </DateRangePicker.GridHead>
                   <DateRangePicker.GridBody>
                     {#each month.weeks as weekDates}
-                      <DateRangePicker.GridRow class="flex">
+                      {@const hasSelectedInWeek = weekDates.some(
+                        (d) =>
+                          internalValue.start &&
+                          internalValue.end &&
+                          d.compare(internalValue.start) >= 0 &&
+                          d.compare(internalValue.end) <= 0,
+                      )}
+                      <DateRangePicker.GridRow class={cn("flex", hasSelectedInWeek && "bg-primary-softer")}>
                         {#each weekDates as date}
                           <DateRangePicker.Cell
                             {date}
@@ -183,9 +190,9 @@
                             <DateRangePicker.Day
                               class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
                                 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                                data-[selected]:bg-primary-softer data-[selected]:text-primary
-                                data-[selection-start]:bg-primary-softer data-[selection-start]:text-primary
-                                data-[selection-end]:bg-primary-softer data-[selection-end]:text-primary
+                                data-[selected]:bg-white data-[selected]:text-primary
+                                data-[selection-start]:bg-primary data-[selection-start]:text-white data-[selection-start]:rounded-full
+                                data-[selection-end]:bg-primary data-[selection-end]:text-white data-[selection-end]:rounded-full
                                 data-[highlighted]:bg-primary-softer
                                 data-[outside-month]:invisible
                                 data-[today]:font-medium data-[today]:text-primary
