@@ -5,8 +5,14 @@
   import { FileQuestionMark } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import { fileManager } from "$lib/services/fileManager.svelte";
+  import { getContext } from "svelte";
+  import type { createUploadManager } from "$lib/upload-manager.svelte";
   import * as m from "$lib/paraglide/messages";
   import { goto } from "$app/navigation";
+
+  type UploadManager = ReturnType<typeof createUploadManager>;
+
+  const upload = getContext<UploadManager>("upload");
 
   let {
     onBatchShare,
@@ -47,13 +53,11 @@
     </button>
   </div>
 {:else}
-  {#if fileManager.currentSlug}
-    <Breadcrumb
-      items={fileManager.crumbs}
-      onNavigate={(id) => navigateToDir(id)}
-      onHome={navigateHome}
-    />
-  {/if}
+  <Breadcrumb
+    items={fileManager.crumbs}
+    onNavigate={(id) => navigateToDir(id)}
+    onHome={navigateHome}
+  />
 
   <FilesToolbar
     {onUploadFiles}
@@ -61,13 +65,13 @@
     {onUploadFromURL}
     {onUploadText}
   />
+  <input type="file" multiple class="hidden" onchange={upload.onPick} />
   <input
     type="file"
     multiple
+    webkitdirectory
     class="hidden"
-    onchange={(e) => {
-      /* handled by upload prop in layout */
-    }}
+    onchange={upload.onPickFolder}
   />
 
   <div class="relative">

@@ -52,24 +52,10 @@ class FileManager {
   // --- Internal ---
   private refreshId = 0;
   private loadingRequestId = 0;
-  private normalizedCache = new Map<string, NormalizedFile>();
 
   /** Normalized files. Use this in components. */
   get normalizedFiles(): NormalizedFile[] {
-    const next = new Map<string, NormalizedFile>();
-    const result: NormalizedFile[] = [];
-
-    for (const f of this.files) {
-      let nf = this.normalizedCache.get(f.slug);
-      if (!nf) {
-        nf = normalizeFileItem(f);
-      }
-      next.set(f.slug, nf);
-      result.push(nf);
-    }
-
-    this.normalizedCache = next;
-    return result;
+    return this.files.map((f) => normalizeFileItem(f));
   }
 
   /** Whether all selectable (non-system) files are selected. */
@@ -102,14 +88,14 @@ class FileManager {
     void this.refresh(true);
   }
 
-  async navigateToDir(slug: string): Promise<"navigated" | "unlocked" | "blocked"> {
+  async navigateToDir(
+    slug: string,
+  ): Promise<"navigated" | "unlocked" | "blocked"> {
     const file = this.normalizedFiles.find((item) => item.id === slug);
     if (file && lockManager.isEffectivelyLocked(file)) {
       try {
         await lockManager.unlock(slug, file.name);
         toast.success("目录已解锁");
-        // Refresh the current directory to show updated lock status
-        void this.refresh(false);
         return "unlocked";
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "目录密码错误");
@@ -151,6 +137,7 @@ class FileManager {
       if (id !== this.refreshId && !force) return;
       this.files = data.files;
       this.total = data.total;
+      lockManager.syncFromFiles(data.files);
     } catch (e) {
       if (id !== this.refreshId && !force) return;
       if (e instanceof ApiError && e.status === 404) {
@@ -161,10 +148,7 @@ class FileManager {
         this.currentSlug
       ) {
         try {
-          await lockManager.unlock(
-            this.currentSlug,
-            this.crumbs.at(-1)?.name,
-          );
+          await lockManager.unlock(this.currentSlug, this.crumbs.at(-1)?.name);
           toast.success("目录已解锁");
           void this.refresh(showLoading, force);
         } catch {
@@ -253,14 +237,14 @@ class FileManager {
   async batchRemove(ids: string[]) {
     const lockedNames = ids
       .map((id) => this.normalizedFiles.find((f) => f.id === id))
-      .filter((f): f is NormalizedFile => !!f && lockManager.isEffectivelyLocked(f))
+      .filter(
+        (f): f is NormalizedFile => !!f && lockManager.isEffectivelyLocked(f),
+      )
       .map((f) => f.name);
-    const unlockedIds = ids.filter(
-      (id) => {
-        const f = this.normalizedFiles.find((f) => f.id === id);
-        return !f || !lockManager.isEffectivelyLocked(f);
-      },
-    );
+    const unlockedIds = ids.filter((id) => {
+      const f = this.normalizedFiles.find((f) => f.id === id);
+      return !f || !lockManager.isEffectivelyLocked(f);
+    });
     if (unlockedIds.length === 0) {
       toast.error("所有选中的目录均已加锁");
       return;
@@ -321,14 +305,14 @@ class FileManager {
   async move(ids: string[], targetParentSlug: string) {
     const lockedNames = ids
       .map((id) => this.normalizedFiles.find((f) => f.id === id))
-      .filter((f): f is NormalizedFile => !!f && lockManager.isEffectivelyLocked(f))
+      .filter(
+        (f): f is NormalizedFile => !!f && lockManager.isEffectivelyLocked(f),
+      )
       .map((f) => f.name);
-    const unlockedIds = ids.filter(
-      (id) => {
-        const f = this.normalizedFiles.find((f) => f.id === id);
-        return !f || !lockManager.isEffectivelyLocked(f);
-      },
-    );
+    const unlockedIds = ids.filter((id) => {
+      const f = this.normalizedFiles.find((f) => f.id === id);
+      return !f || !lockManager.isEffectivelyLocked(f);
+    });
     if (unlockedIds.length === 0) {
       toast.error("所有选中的目录均已加锁，无法移动");
       return;

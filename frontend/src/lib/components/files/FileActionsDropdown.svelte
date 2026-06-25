@@ -15,7 +15,7 @@
     Lock,
     LockOpen,
     Trash,
-    Fingerprint,
+    FingerprintPattern,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import { fileManager } from "$lib/services/fileManager.svelte";
@@ -45,7 +45,7 @@
   let isVideo = $derived(file.mimeType?.startsWith("video/") ?? false);
 
   let hasAboveItems = $derived(
-    !file.isSystem || !file.isDir || !!onShowDetails || (isVideo && true)
+    !file.isSystem || !file.isDir || !!onShowDetails || (isVideo && true),
   );
 
   let showSeparator = $derived(hasAboveItems && !file.isSystem);
@@ -68,7 +68,9 @@
   </DropdownBase.Trigger>
   <DropdownBase.Content sideOffset={4} align="end">
     {#if !file.isSystem}
-      <DropdownBase.Item onSelect={() => fileManager.toggleStar(file.id, file.isStarred)}>
+      <DropdownBase.Item
+        onSelect={() => fileManager.toggleStar(file.id, file.isStarred)}
+      >
         {#snippet icon()}<Star
             size={14}
             class={file.isStarred ? "text-warning" : "text-ink-4"}
@@ -96,7 +98,9 @@
       {/if}
       {#if onCopyHash && file.fileHash}
         <DropdownBase.Item onSelect={() => onCopyHash!(file)}>
-          {#snippet icon()}<Fingerprint size={14} class="text-ink-4" />{/snippet}
+          {#snippet icon()}
+            <FingerprintPattern size={14} class="text-ink-4" />
+          {/snippet}
           {#snippet children()}{m.copy_hash()}{/snippet}
         </DropdownBase.Item>
       {/if}
@@ -123,7 +127,9 @@
       <DropdownBase.Separator />
     {/if}
     {#if !file.isSystem && !lockManager.isEffectivelyLocked(file)}
-      <DropdownBase.Item onSelect={() => fileManager.rename(file.id, file.name)}>
+      <DropdownBase.Item
+        onSelect={() => fileManager.rename(file.id, file.name)}
+      >
         {#snippet icon()}<Pencil size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.rename()}{/snippet}
       </DropdownBase.Item>

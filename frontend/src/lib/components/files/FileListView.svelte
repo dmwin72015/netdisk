@@ -157,7 +157,7 @@
   }
 </script>
 
-<div class="relative min-h-[150px]">
+<div class="relative min-h-37.5">
   {#if loading}
     <div
       class="absolute inset-0 z-10 flex items-center justify-center"

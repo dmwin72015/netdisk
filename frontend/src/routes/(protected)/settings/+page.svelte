@@ -15,9 +15,16 @@
   import { Eye, Upload, FileWarning, Lock, FileJson } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
   import * as m from "$lib/paraglide/messages";
+  import { lockManager } from "$lib/services/lockManager.svelte";
 
   let importInput: HTMLInputElement | undefined = $state();
   let importing = $state(false);
+
+  $effect(() => {
+    const ttl = getDirectoryUnlockTtlHours();
+    void ttl;
+    lockManager.recheckExpiration();
+  });
 
   const ttlOptions = [
     { value: 1, label: "1 小时" },

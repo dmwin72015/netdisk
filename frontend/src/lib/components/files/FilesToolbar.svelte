@@ -14,7 +14,10 @@
   } from "@lucide/svelte";
   import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
   import { Popover } from "$lib/ui/popover";
-  import { fileManager, type SortField } from "$lib/services/fileManager.svelte";
+  import {
+    fileManager,
+    type SortField,
+  } from "$lib/services/fileManager.svelte";
   import * as m from "$lib/paraglide/messages";
 
   const sortOptions: { field: SortField; label: () => string }[] = [
@@ -63,7 +66,9 @@
         <span class="flex items-center gap-1.5">
           <ArrowUpDown size={14} />
           <span class="hidden sm:inline"
-            >{sortOptions.find((o) => o.field === fileManager.sortBy.current)?.label()}</span
+            >{sortOptions
+              .find((o) => o.field === fileManager.sortBy.current)
+              ?.label()}</span
           >
         </span>
         {#if fileManager.sortDir.current === "ASC"}
@@ -75,8 +80,10 @@
 
       {#each sortOptions as opt (opt.field)}
         <DropdownBase.Item onSelect={() => fileManager.setSort(opt.field)}>
-          <span class={fileManager.sortBy.current === opt.field ? "font-medium text-ink" : ""}
-            >{opt.label()}</span
+          <span
+            class={fileManager.sortBy.current === opt.field
+              ? "font-medium text-ink"
+              : ""}>{opt.label()}</span
           >
           {#if fileManager.sortBy.current === opt.field}
             {#if fileManager.sortDir.current === "ASC"}

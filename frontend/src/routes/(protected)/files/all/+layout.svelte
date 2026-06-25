@@ -74,7 +74,7 @@
   }
 
   async function navigateToDir(slug: string) {
-    const status = fileManager.navigateToDir(slug);
+    const status = await fileManager.navigateToDir(slug);
     if (status === "navigated") {
       await goto("/files/all/" + slug);
     }
@@ -85,7 +85,6 @@
   <div class="space-y-4 rounded-xl border border-line bg-white p-4 relative">
     <FileBrowserContent
       {onBatchShare}
-      onNavigateDir={navigateToDir}
       onUploadFiles={() => {
         const input = document.querySelector<HTMLInputElement>(
           'input[type="file"][multiple]',
@@ -133,7 +132,10 @@
   }}
 />
 
-<RemoteUploadDialog bind:open={remoteUploadOpen} parentSlug={fileManager.currentSlug} />
+<RemoteUploadDialog
+  bind:open={remoteUploadOpen}
+  parentSlug={fileManager.currentSlug}
+/>
 
 <TextUploadDialog
   bind:open={textUploadOpen}

@@ -85,7 +85,6 @@
     }
   }
 
-  $inspect(lockManager.unlockedSlugs);
 </script>
 
 <div
@@ -183,7 +182,7 @@
                 </span>
               {/if}
               {#if f.hasPassword}
-                {#if lockManager.isUnlocked(f.slug)}
+                {#if !lockManager.isEffectivelyLocked(f)}
                   <LockOpen size={12} class="shrink-0 text-success" />
                 {:else}
                   <Lock size={12} class="shrink-0 text-ink-4" />
