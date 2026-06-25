@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import * as m from '$lib/paraglide/messages';
 	import AppDialog from '$lib/components/AppDialog.svelte';
+	import PinInputDialog from '$lib/components/PinInputDialog.svelte';
 	import { Toast } from '$lib/ui/toast';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
@@ -32,4 +33,5 @@
 </div>
 
 <AppDialog />
+<PinInputDialog />
 <Toast />

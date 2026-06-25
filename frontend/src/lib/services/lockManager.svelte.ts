@@ -9,7 +9,7 @@ import {
   unlockDirectory,
 } from "$lib/api/files";
 import { settingsManager } from "./settingsManager.svelte";
-import { promptInput } from "$lib/dialog";
+import { promptInput, pinInput } from "$lib/dialog";
 
 const LS_UNLOCKED_DIRS = "nd.files.unlockedDirs";
 
@@ -54,11 +54,11 @@ class LockManager {
 
   /** Prompt for password and temporarily unlock a directory. */
   async unlock(slug: string, name?: string): Promise<boolean> {
-    const password = await promptInput(
+    const password = await pinInput(
       "目录密码",
-      `请输入${name ? `「${name}」` : "目录"}的密码`,
-      undefined,
-      128,
+      {
+        message: `请输入${name ? `「${name}」` : "目录"}的密码`,
+      },
     );
     if (!password) return false;
     try {
@@ -78,11 +78,11 @@ class LockManager {
 
   /** Set a lock password on a directory. */
   async lock(file: NormalizedFile): Promise<void> {
-    const password = await promptInput(
+    const password = await pinInput(
       "设置目录密码",
-      `请输入「${file.name}」的目录密码（至少 4 位）`,
-      undefined,
-      128,
+      {
+        message: `请输入「${file.name}」的目录密码（4 位数字）`,
+      },
     );
     if (!password) return;
     await setDirectoryLock(file.id, password);
@@ -94,11 +94,11 @@ class LockManager {
 
   /** Clear the lock password on a directory. */
   async clearLock(file: NormalizedFile): Promise<void> {
-    const password = await promptInput(
+    const password = await pinInput(
       "取消目录密码",
-      `请输入「${file.name}」的目录密码`,
-      undefined,
-      128,
+      {
+        message: `请输入「${file.name}」的目录密码`,
+      },
     );
     if (!password) return;
     await clearDirectoryLock(file.id, password);

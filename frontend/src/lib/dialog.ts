@@ -1,4 +1,5 @@
 import { openConfirm, openPrompt } from './dialog-state.svelte';
+import { openPin } from '$lib/dialog-pin.svelte';
 import * as m from '$lib/paraglide/messages';
 
 export async function confirmDelete(message: string): Promise<boolean> {
@@ -19,6 +20,15 @@ export async function promptInput(title: string, placeholder: string, defaultVal
 		inputPlaceholder: placeholder,
 		defaultValue,
 		maxLength
+	});
+}
+
+export async function pinInput(title: string, options?: { message?: string; confirmText?: string; cancelText?: string }): Promise<string | null> {
+	return openPin({
+		title,
+		message: options?.message,
+		confirmText: options?.confirmText,
+		cancelText: options?.cancelText
 	});
 }
 
