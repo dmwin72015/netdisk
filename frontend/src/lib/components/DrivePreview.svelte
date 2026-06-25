@@ -217,8 +217,8 @@
   title={name}
   description={fmtSize(size)}
   footer={false}
-  class="w-[70vw]! max-w-[70vw]! max-sm:w-[calc(100vw-1rem)]! max-sm:max-w-[calc(100vw-1rem)]!"
   bodyClass="p-0"
+  size="lg"
 >
   {#snippet headerExtra()}
     <button

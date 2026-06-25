@@ -10,12 +10,13 @@
  restoreAll,
  type FileItem,
  } from "$lib/api/files";
- import { Trash2, RotateCcw, LoaderCircle, FolderPlus, CircleAlert } from "@lucide/svelte";
+  import { Trash2, RotateCcw, LoaderCircle, CircleAlert } from "@lucide/svelte";
  import { toast } from "svelte-sonner";
  import MimeIcon from "$lib/components/MimeIcon.svelte";
  import { confirmDelete, confirmAction } from "$lib/dialog";
- import * as m from "$lib/paraglide/messages";
- import { fmtSize, fmtTime } from "$lib/utils/format";
+  import * as m from "$lib/paraglide/messages";
+  import emptyTrashSvg from "$lib/assets/empty-states/empty-trash.svg";
+  import { fmtSize, fmtTime } from "$lib/utils/format";
 
  let files = $state<FileItem[]>([]);
  let total = $state(0);
@@ -143,8 +144,8 @@
  <div
  class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center"
  >
- <FolderPlus size={40} class="mb-3 text-ink-4" />
- <p class="text-sm text-ink-4">{m.trash_empty()}</p>
+  <img src={emptyTrashSvg} class="mb-2 w-32 h-32" alt="" />
+  <p class="text-sm text-ink-4">{m.trash_empty()}</p>
  </div>
  {:else}
  <div

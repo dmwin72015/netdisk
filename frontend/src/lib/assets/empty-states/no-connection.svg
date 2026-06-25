@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+      <!-- Soft background circle -->
+      <circle cx="100" cy="100" r="85" fill="#F5F7FA"/>
+
+      <!-- Cloud shape (disconnected) -->
+      <path d="M70 115 C58 115 50 107 50 97 C50 87 58 80 68 81 C70 68 82 60 95 60 C110 60 122 70 124 83 C135 83 145 91 145 101 C145 111 137 118 127 118 L70 118 Z"
+        fill="white" stroke="#8A99A8" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- Disconnection slash -->
+      <path d="M65 135 L135 50" stroke="#FF6B6B" stroke-width="3.5" stroke-linecap="round"/>
+
+      <!-- Small signal waves (broken) -->
+      <path d="M82 98 C82 90 88 84 95 84" fill="none" stroke="#C0C8D0" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M108 95 C108 102 102 108 95 108" fill="none" stroke="#C0C8D0" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+
+      <!-- Exclamation mark -->
+      <circle cx="100" cy="100" r="3" fill="#FF6B6B"/>
+      <path d="M100 90 L100 80" stroke="#FF6B6B" stroke-width="2.5" stroke-linecap="round"/>
+
+      <!-- Floating dots -->
+      <circle cx="50" cy="55" r="2" fill="#DDE3EA"/>
+      <circle cx="150" cy="60" r="2.5" fill="#DDE3EA"/>
+    </svg>

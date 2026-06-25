@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { LoaderCircle, Film, Check, Search, Folder } from '@lucide/svelte';
+	import { LoaderCircle, Check, Search, Folder } from '@lucide/svelte';
 	import { listFiles, type FileItem } from '$lib/api/files';
 	import { addToLibrary } from '$lib/api/media';
 	import { fmtSize } from '$lib/utils/format';
 	import { Dialog } from '$lib/ui/dialog';
 	import * as m from '$lib/paraglide/messages';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 
 	let {
 		open = $bindable(false),
@@ -133,7 +134,7 @@
 				</div>
 			{:else if filteredVideos.length === 0}
 				<div class="flex flex-col items-center justify-center py-16 text-center">
-					<Film size={40} class="mb-3 text-ink-4" />
+					<img src={noFilesSvg} class="mb-2 w-28 h-28" alt="" />
 					<p class="text-sm text-ink-4">{searchQuery.trim() ? m.no_videos_found() : m.no_videos_found()}</p>
 				</div>
 			{:else}

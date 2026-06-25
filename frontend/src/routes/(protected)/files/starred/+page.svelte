@@ -2,9 +2,11 @@
 	import { onMount } from 'svelte';
 	import { user, authReady } from '$lib/stores/auth';
 	import { listStarred, setStarred, downloadUrl, type FileItem } from '$lib/api/files';
-	import { Star, Download, Eye, LoaderCircle, FolderPlus } from '@lucide/svelte';
+	import { Star, Download, Eye, LoaderCircle } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import * as m from '$lib/paraglide/messages';
+	import noFavoritesSvg from '$lib/assets/empty-states/no-favorites.svg';
+	import { confirmAction } from '$lib/dialog';
 	import { fmtSize, fmtTime, authedUrl } from '$lib/utils/format';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import DrivePreview from '$lib/components/DrivePreview.svelte';
@@ -12,6 +14,7 @@
 	let files = $state<FileItem[]>([]);
 	let total = $state(0);
 	let loading = $state(true);
+	let unstarringAll = $state(false);
 	let previewFile = $state<{ slug: string; name: string; mimeType: string; size: number } | null>(null);
 
 	function onPreviewComplete(open: boolean) {
@@ -32,13 +35,39 @@
 		}
 	}
 
-	async function unstar(slug: string) {
+	async function unstar(f: FileItem) {
 		try {
-			await setStarred(slug, false);
-			files = files.filter(f => f.slug !== slug);
+			await setStarred(f.slug, false);
+			if (f.isDir && f.hasPassword) {
+				toast.info(m.starred_target_locked());
+			}
+			files = files.filter(item => item.slug !== f.slug);
 			total--;
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : m.unstar_failed());
+		}
+	}
+
+	async function handleUnstarAll() {
+		const confirmed = await confirmAction(
+			m.starred_unstar_all_confirm_title(),
+			m.starred_unstar_all_confirm_desc(),
+			m.starred_unstar_all(),
+		);
+		if (!confirmed) return;
+
+		unstarringAll = true;
+		try {
+			const results = await Promise.allSettled(files.map(f => setStarred(f.slug, false)));
+			const failed = results.filter(r => r.status === 'rejected').length;
+			if (failed > 0) {
+				toast.error(m.unstar_failed() + ` (${failed})`);
+			}
+			await refresh();
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : m.unstar_failed());
+		} finally {
+			unstarringAll = false;
 		}
 	}
 
@@ -52,10 +81,25 @@
 
 {#if $authReady && $user}
 	<div class="space-y-4">
-		<div class="flex items-center gap-2">
-			<Star size={20} class="text-warning" fill="currentColor" />
-			<h1 class="text-lg font-semibold text-ink">{m.starred_title()}</h1>
-			<span class="text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<Star size={20} class="text-warning" fill="currentColor" />
+				<h1 class="text-lg font-semibold text-ink">{m.starred_title()}</h1>
+				<span class="text-sm text-ink-4">{m.total_items({ total: String(total) })}</span>
+			</div>
+			{#if files.length > 0}
+				<button
+					type="button"
+					onclick={handleUnstarAll}
+					disabled={unstarringAll}
+					class="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-muted"
+				>
+					{#if unstarringAll}
+						<LoaderCircle size={14} class="animate-spin" />
+					{/if}
+					{m.starred_unstar_all()}
+				</button>
+			{/if}
 		</div>
 
 		{#if loading}
@@ -64,7 +108,7 @@
 			</div>
 		{:else if files.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
-				<FolderPlus size={40} class="mb-3 text-ink-4" />
+				<img src={noFavoritesSvg} class="mb-2 w-32 h-32" alt="" />
 				<p class="text-sm text-ink-4">{m.starred_empty()}</p>
 			</div>
 		{:else}
@@ -95,7 +139,7 @@
 								</td>
 								<td class="px-4 py-2.5 text-right">
 									<div class="flex items-center justify-end">
-										<button type="button" onclick={() => unstar(f.slug)} class="rounded-md p-1.5 text-warning transition-colors hover:bg-warning-soft" title={m.remove_star()}>
+										<button type="button" onclick={() => unstar(f)} class="rounded-md p-1.5 text-warning transition-colors hover:bg-warning-soft" title={m.remove_star()}>
 											<Star size={15} fill="currentColor" />
 										</button>
 										{#if !f.isDir}

@@ -2,8 +2,9 @@
 	import { onMount } from 'svelte';
 	import { user, authReady } from '$lib/stores/auth';
 	import * as m from '$lib/paraglide/messages';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 	import { toast } from 'svelte-sonner';
-	import { Folder as AlbumIcon, Image as ImageIcon, LoaderCircle, Trash2, Plus } from '@lucide/svelte';
+	import { Folder as AlbumIcon, LoaderCircle, Trash2, Plus } from '@lucide/svelte';
 	import { listAlbums, deleteAlbum, type Album } from '$lib/api/albums';
 	import AlbumCreateDialog from '$lib/components/AlbumCreateDialog.svelte';
 
@@ -66,7 +67,7 @@
 			</div>
 		{:else if albums.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
-				<ImageIcon size={40} class="mb-3 text-ink-4" />
+				<img src={noFilesSvg} class="mb-2 w-32 h-32" alt="" />
 				<p class="text-sm text-ink-4">{m.albums_empty()}</p>
 			</div>
 		{:else}

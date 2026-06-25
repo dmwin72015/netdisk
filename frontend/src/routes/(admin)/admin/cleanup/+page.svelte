@@ -42,7 +42,6 @@
   let pendingDeleteUserFile = $state<CleanupQueryUserFile | null>(null);
 
   // User detail popover
-  let userPopoverOpen = $state<Record<number, boolean>>({});
   let userDetailLoading = $state<Record<number, boolean>>({});
   let userDetailCache = $state<Record<number, AdminUser>>({});
 
@@ -106,9 +105,8 @@
     }
   }
 
-  function handleUserPopoverOpenChange(userId: number, open: boolean) {
-    userPopoverOpen[userId] = open;
-    if (open) {
+  function handleUserPopoverOpen(userId: number) {
+    if (!userDetailCache[userId]) {
       void fetchUserDetail(userId);
     }
   }
@@ -318,11 +316,10 @@
                   <td class="px-5 py-3 text-ink">{uf.fileName}</td>
                   <td class="px-5 py-3 text-ink-3">
                     <Popover
-                      open={userPopoverOpen[uf.userId] ?? false}
-                      onOpenChange={(o) => handleUserPopoverOpenChange(uf.userId, o)}
+                      onOpenChange={(o) => o && handleUserPopoverOpen(uf.userId)}
                       side="right"
                       sideOffset={8}
-                      align="start"
+                      align="end"
                       triggerClass="cursor-pointer hover:text-ink transition-colors"
                       contentClass="w-72 rounded-xl border border-line bg-white shadow-dialog p-4"
                     >
@@ -377,8 +374,8 @@
                     </Popover>
                   </td>
                   <td class="px-5 py-3 text-ink-2">{fmtSize(uf.fileSize)}</td>
-                  <td class="px-5 py-3 text-ink-3 text-xs">
-                    {new Date(uf.createdAt * 1000).toLocaleDateString()}
+                  <td class="px-5 py-3 text-ink-3 text-xs whitespace-nowrap">
+                    {new Date(uf.createdAt * 1000).toISOString().slice(0, 19).replace('T', ' ')}
                   </td>
                   <td class="px-5 py-3 whitespace-nowrap">
                     <button

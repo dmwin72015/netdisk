@@ -18,58 +18,40 @@
     Fingerprint,
   } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
+  import { fileManager } from "$lib/services/fileManager.svelte";
+  import { lockManager } from "$lib/services/lockManager.svelte";
+  import { previewManager } from "$lib/services/previewManager.svelte";
   import * as m from "$lib/paraglide/messages";
   import { authedUrl } from "$lib/utils/format";
 
   let {
     file,
-    downloadUrlFn,
-    onStar,
-    onPreview,
-    onRename,
-    onDelete,
     onMove,
-    onAddToMedia,
     onShowDetails,
     onCopyLink,
     onCopyHash,
     onShare,
-    onSetDirectoryLock,
-    onClearDirectoryLock,
-    onForceDeleteDir,
     triggerClass = "",
   }: {
     file: NormalizedFile;
-    downloadUrlFn: (id: string) => string;
-    onStar?: (id: string, starred: boolean) => void;
-    onPreview: (file: NormalizedFile) => void;
-    onRename: (id: string, name: string) => void;
-    onDelete: (id: string, name: string) => void;
     onMove?: (file: NormalizedFile) => void;
-    onAddToMedia?: (file: NormalizedFile) => void;
     onShowDetails?: (file: NormalizedFile) => void;
     onCopyLink?: (file: NormalizedFile) => void;
     onCopyHash?: (file: NormalizedFile) => void;
     onShare?: (file: NormalizedFile) => void;
-    onSetDirectoryLock?: (file: NormalizedFile) => void;
-    onClearDirectoryLock?: (file: NormalizedFile) => void;
-    onForceDeleteDir?: (file: NormalizedFile) => void;
     triggerClass?: string;
   } = $props();
 
   let isVideo = $derived(file.mimeType?.startsWith("video/") ?? false);
 
   let hasAboveItems = $derived(
-    (onStar && !file.isSystem) ||
-      !file.isDir ||
-      !!onShowDetails ||
-      (isVideo && !!onAddToMedia)
+    !file.isSystem || !file.isDir || !!onShowDetails || (isVideo && true)
   );
 
   let showSeparator = $derived(hasAboveItems && !file.isSystem);
 
   function downloadFile() {
-    const url = authedUrl(downloadUrlFn(file.id));
+    const url = authedUrl(fileManager.getDownloadUrl(file.id));
     const a = document.createElement("a");
     a.href = url;
     a.download = file.name;
@@ -85,8 +67,8 @@
     <Ellipsis size={16} />
   </DropdownBase.Trigger>
   <DropdownBase.Content sideOffset={4} align="end">
-    {#if onStar && !file.isSystem}
-      <DropdownBase.Item onSelect={() => onStar(file.id, file.isStarred)}>
+    {#if !file.isSystem}
+      <DropdownBase.Item onSelect={() => fileManager.toggleStar(file.id, file.isStarred)}>
         {#snippet icon()}<Star
             size={14}
             class={file.isStarred ? "text-warning" : "text-ink-4"}
@@ -98,7 +80,7 @@
       </DropdownBase.Item>
     {/if}
     {#if !file.isDir}
-      <DropdownBase.Item onSelect={() => onPreview(file)}>
+      <DropdownBase.Item onSelect={() => previewManager.open(file)}>
         {#snippet icon()}<Eye size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.preview()}{/snippet}
       </DropdownBase.Item>
@@ -112,8 +94,8 @@
           {#snippet children()}{m.copy_url()}{/snippet}
         </DropdownBase.Item>
       {/if}
-      {#if onCopyHash && !file.isDir && file.fileHash}
-        <DropdownBase.Item onSelect={() => onCopyHash(file)}>
+      {#if onCopyHash && file.fileHash}
+        <DropdownBase.Item onSelect={() => onCopyHash!(file)}>
           {#snippet icon()}<Fingerprint size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}{m.copy_hash()}{/snippet}
         </DropdownBase.Item>
@@ -125,14 +107,14 @@
         </DropdownBase.Item>
       {/if}
     {/if}
-    {#if onShowDetails}
+    {#if onShowDetails && !lockManager.isEffectivelyLocked(file)}
       <DropdownBase.Item onSelect={() => onShowDetails(file)}>
         {#snippet icon()}<Info size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.view_details()}{/snippet}
       </DropdownBase.Item>
     {/if}
-    {#if isVideo && onAddToMedia}
-      <DropdownBase.Item onSelect={() => onAddToMedia(file)}>
+    {#if isVideo}
+      <DropdownBase.Item onSelect={() => fileManager.addToMedia(file)}>
         {#snippet icon()}<Film size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.add_to_media_library()}{/snippet}
       </DropdownBase.Item>
@@ -140,44 +122,44 @@
     {#if showSeparator}
       <DropdownBase.Separator />
     {/if}
-    {#if !file.isSystem}
-      <DropdownBase.Item onSelect={() => onRename(file.id, file.name)}>
+    {#if !file.isSystem && !lockManager.isEffectivelyLocked(file)}
+      <DropdownBase.Item onSelect={() => fileManager.rename(file.id, file.name)}>
         {#snippet icon()}<Pencil size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.rename()}{/snippet}
       </DropdownBase.Item>
     {/if}
-    {#if onMove && !file.isSystem}
+    {#if onMove && !file.isSystem && !lockManager.isEffectivelyLocked(file)}
       <DropdownBase.Item onSelect={() => onMove(file)}>
         {#snippet icon()}<FolderInput size={14} class="text-ink-4" />{/snippet}
         {#snippet children()}{m.move_to()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if file.isDir && !file.isSystem}
-      {#if file.isLocked && onClearDirectoryLock}
-        <DropdownBase.Item onSelect={() => onClearDirectoryLock(file)}>
+      {#if file.hasPassword}
+        <DropdownBase.Item onSelect={() => lockManager.clearLock(file)}>
           {#snippet icon()}<LockOpen size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}取消目录密码{/snippet}
         </DropdownBase.Item>
-      {:else if onSetDirectoryLock}
-        <DropdownBase.Item onSelect={() => onSetDirectoryLock(file)}>
+      {:else}
+        <DropdownBase.Item onSelect={() => lockManager.lock(file)}>
           {#snippet icon()}<Lock size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}设置目录密码{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}
-    {#if file.isDir && !file.isSystem && onForceDeleteDir}
+    {#if file.isDir && !file.isSystem && !lockManager.isEffectivelyLocked(file)}
       <DropdownBase.Item
         variant="destructive"
-        onSelect={() => onForceDeleteDir(file)}
+        onSelect={() => fileManager.forceRemoveDir(file)}
       >
         {#snippet icon()}<Trash size={14} class="text-danger" />{/snippet}
         {#snippet children()}强制删除{/snippet}
       </DropdownBase.Item>
     {/if}
-    {#if !file.isSystem}
+    {#if !file.isSystem && !lockManager.isEffectivelyLocked(file)}
       <DropdownBase.Item
         variant="destructive"
-        onSelect={() => onDelete(file.id, file.name)}
+        onSelect={() => fileManager.remove(file.id, file.name)}
       >
         {#snippet icon()}<Trash2 size={14} class="text-danger" />{/snippet}
         {#snippet children()}{m.delete_label()}{/snippet}

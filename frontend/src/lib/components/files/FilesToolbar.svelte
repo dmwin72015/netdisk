@@ -14,14 +14,8 @@
   } from "@lucide/svelte";
   import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
   import { Popover } from "$lib/ui/popover";
+  import { fileManager, type SortField } from "$lib/services/fileManager.svelte";
   import * as m from "$lib/paraglide/messages";
-
-  export type SortField =
-    | "file_name"
-    | "file_size"
-    | "created_at"
-    | "updated_at";
-  export type ViewMode = "list" | "grid";
 
   const sortOptions: { field: SortField; label: () => string }[] = [
     { field: "file_name", label: () => m.sort_name() },
@@ -31,25 +25,13 @@
   ];
 
   let {
-    sortBy,
-    sortDir,
-    viewMode,
-    onSort,
-    onViewModeChange,
     onUploadFiles,
     onUploadFolder,
-    onCreateDir,
     onUploadFromURL,
     onUploadText,
   }: {
-    sortBy: SortField;
-    sortDir: "ASC" | "DESC";
-    viewMode: ViewMode;
-    onSort: (field: SortField) => void;
-    onViewModeChange: (mode: ViewMode) => void;
     onUploadFiles: () => void;
     onUploadFolder: () => void;
-    onCreateDir: () => void;
     onUploadFromURL?: () => void;
     onUploadText?: () => void;
   } = $props();
@@ -81,10 +63,10 @@
         <span class="flex items-center gap-1.5">
           <ArrowUpDown size={14} />
           <span class="hidden sm:inline"
-            >{sortOptions.find((o) => o.field === sortBy)?.label()}</span
+            >{sortOptions.find((o) => o.field === fileManager.sortBy.current)?.label()}</span
           >
         </span>
-        {#if sortDir === "ASC"}
+        {#if fileManager.sortDir.current === "ASC"}
           <ArrowUp size={14} class="text-primary" />
         {:else}
           <ArrowDown size={14} class="text-primary" />
@@ -92,12 +74,12 @@
       {/snippet}
 
       {#each sortOptions as opt (opt.field)}
-        <DropdownBase.Item onSelect={() => onSort(opt.field)}>
-          <span class={sortBy === opt.field ? "font-medium text-ink" : ""}
+        <DropdownBase.Item onSelect={() => fileManager.setSort(opt.field)}>
+          <span class={fileManager.sortBy.current === opt.field ? "font-medium text-ink" : ""}
             >{opt.label()}</span
           >
-          {#if sortBy === opt.field}
-            {#if sortDir === "ASC"}
+          {#if fileManager.sortBy.current === opt.field}
+            {#if fileManager.sortDir.current === "ASC"}
               <ArrowUp size={14} class="ml-auto text-primary" />
             {:else}
               <ArrowDown size={14} class="ml-auto text-primary" />
@@ -110,8 +92,8 @@
     <div class="flex overflow-hidden rounded-lg border border-line">
       <button
         type="button"
-        onclick={() => onViewModeChange("list")}
-        class="p-1.5 transition-colors {viewMode === 'list'
+        onclick={() => fileManager.setViewMode("list")}
+        class="p-1.5 transition-colors {fileManager.viewMode.current === 'list'
           ? 'bg-primary-soft text-primary'
           : 'bg-white text-ink-4 hover:bg-surface-muted hover:text-ink-3'}"
       >
@@ -119,8 +101,8 @@
       </button>
       <button
         type="button"
-        onclick={() => onViewModeChange("grid")}
-        class="p-1.5 transition-colors {viewMode === 'grid'
+        onclick={() => fileManager.setViewMode("grid")}
+        class="p-1.5 transition-colors {fileManager.viewMode.current === 'grid'
           ? 'bg-primary-soft text-primary'
           : 'bg-white text-ink-4 hover:bg-surface-muted hover:text-ink-3'}"
       >
@@ -216,7 +198,7 @@
               class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-green-50 hover:text-green-600"
               onclick={() => {
                 showUploadMenu = false;
-                onCreateDir();
+                fileManager.createDir();
               }}
             >
               <FolderPlus size={15} class="text-green-500" />

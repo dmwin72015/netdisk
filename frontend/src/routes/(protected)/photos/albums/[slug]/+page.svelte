@@ -3,8 +3,9 @@
 	import { page } from '$app/stores';
 	import { user, authReady } from '$lib/stores/auth';
 	import * as m from '$lib/paraglide/messages';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 	import { toast } from 'svelte-sonner';
-	import { Image as ImageIcon, LoaderCircle, ArrowLeft, Trash2 } from '@lucide/svelte';
+	import { LoaderCircle, ArrowLeft, Trash2 } from '@lucide/svelte';
 	import { authedUrl } from '$lib/utils/format';
 	import { getAlbum, removePhotoFromAlbum, type AlbumDetail } from '$lib/api/albums';
 	import { thumbnailUrl } from '$lib/api/photos';
@@ -82,7 +83,7 @@
 			</div>
 		{:else if album && album.photos.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
-				<ImageIcon size={40} class="mb-3 text-ink-4" />
+				<img src={noFilesSvg} class="mb-2 w-32 h-32" alt="" />
 				<p class="text-sm text-ink-4">{m.photos_empty()}</p>
 			</div>
 		{:else if album}

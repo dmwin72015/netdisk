@@ -4,7 +4,7 @@ export type FileItem = {
 	slug: string;
 	fileName: string;
 	isDir: boolean;
-	isLocked: boolean;
+	hasPassword: boolean;
 	fileSize: number;
 	mimeType: string | null;
 	fileCategory: string;

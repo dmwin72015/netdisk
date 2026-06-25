@@ -41,7 +41,7 @@ type FileItem struct {
 	Slug         string  `json:"slug"`
 	FileName     string  `json:"fileName"`
 	IsDir        bool    `json:"isDir"`
-	IsLocked     bool    `json:"isLocked"`
+	HasPassword  bool    `json:"hasPassword"`
 	FileSize     int64   `json:"fileSize"`
 	MimeType     *string `json:"mimeType"`
 	FileCategory string  `json:"fileCategory"`
@@ -288,9 +288,20 @@ func (s *FilesService) ListUserFiles(ctx context.Context, params db.ListFilesPar
 		return nil, 0, fmt.Errorf("scan files: %w", err)
 	}
 	if params.IgnoreParentID || params.IsTrashed {
+		before := len(fileRows)
 		fileRows, err = s.filterVisibleRows(ctx, params.UserID, sid, fileRows)
 		if err != nil {
 			return nil, 0, err
+		}
+		// Adjust total to account for rows filtered out by directory locks.
+		// This is an approximation — we subtract only the rows filtered from
+		// the current page, which keeps the count closer to reality than the
+		// raw SQL COUNT that includes locked files.
+		if before > 0 && len(fileRows) < before {
+			total -= before - len(fileRows)
+			if total < 0 {
+				total = 0
+			}
 		}
 	}
 
@@ -1288,7 +1299,7 @@ func fileRowsToItems(files []db.FileRow) []FileItem {
 			Slug:         f.Slug,
 			FileName:     f.FileName,
 			IsDir:        f.IsDir,
-			IsLocked:     f.LockPasswordHash.Valid && f.LockPasswordHash.String != "",
+			HasPassword:  f.LockPasswordHash.Valid && f.LockPasswordHash.String != "",
 			FileSize:     f.FileSize,
 			FileCategory: f.FileCategory,
 			IsStarred:    f.IsStarred,
@@ -1352,7 +1363,7 @@ func fileToItem(f sqlc.UserFile) FileItem {
 		Slug:         f.Slug,
 		FileName:     f.FileName,
 		IsDir:        f.IsDir,
-		IsLocked:     f.LockPasswordHash.Valid && f.LockPasswordHash.String != "",
+		HasPassword:  f.LockPasswordHash.Valid && f.LockPasswordHash.String != "",
 		FileSize:     f.FileSize,
 		FileCategory: f.FileCategory,
 		IsStarred:    f.IsStarred,

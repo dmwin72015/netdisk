@@ -3,6 +3,7 @@
   import { X } from "@lucide/svelte";
   import * as DialogBase from "./base";
   import { cn } from "$lib/utils/cn";
+  import { isDefined } from "$lib/utils/valid";
 
   type DialogSize = "sm" | "md" | "lg" | "xl";
 
@@ -12,6 +13,7 @@
     lg: "w-[800px] xl:w-[860px] 2xl:w-[920px] min-[2200px]:w-[1000px]",
     xl: "w-[1000px] xl:w-[1100px] 2xl:w-[1200px] min-[2200px]:w-[1300px]",
   };
+  const DEFAULT_SIZE: DialogSize = "sm";
 
   let {
     open = $bindable(false),
@@ -71,7 +73,7 @@
     closeIconSize?: number;
     closable?: boolean;
     size?: DialogSize;
-    width?: string;
+    width?: string | number;
     class?: string;
   } = $props();
 
@@ -81,20 +83,20 @@
   const resolvedOkText = $derived(okText ?? confirmText ?? "Confirm");
   const resolvedCancelText = $derived(cancelText ?? "Cancel");
 
-  const sizeClass = $derived(
-    size && sizeWidths[size] ? sizeWidths[size] : ""
+  const sizeClass = $derived(width ? "" : sizeWidths[size ?? DEFAULT_SIZE]);
+
+  const contentClass = $derived(
+    cn("max-h-[90vh] flex flex-col overflow-hidden", sizeClass, className),
   );
 
   const widthStyle = $derived(
-    width ? `max-width: ${width};` : ""
-  );
-
-  const contentClass = $derived(
-    cn("max-h-[90vh] flex flex-col overflow-hidden", sizeClass, className)
+    isDefined(width)
+      ? `width: ${typeof width === "number" ? `${width}px` : width};`
+      : "",
   );
 
   const contentInlineStyle = $derived(
-    cn(sizeClass ? "" : "w-full", contentStyle, widthStyle).trim() || undefined
+    [contentStyle, widthStyle].filter(Boolean).join(" ").trim() || undefined,
   );
 
   function handleOpenChangeComplete(isOpen: boolean) {
@@ -114,11 +116,12 @@
   }
 </script>
 
-<DialogBase.Root bind:open {onOpenChange} onOpenChangeComplete={handleOpenChangeComplete}>
-  <DialogBase.Content
-    class={contentClass}
-    style={contentInlineStyle}
-  >
+<DialogBase.Root
+  bind:open
+  {onOpenChange}
+  onOpenChangeComplete={handleOpenChangeComplete}
+>
+  <DialogBase.Content class={contentClass} style={contentInlineStyle}>
     <div
       class="border-line-soft flex {description
         ? 'items-start'

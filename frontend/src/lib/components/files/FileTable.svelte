@@ -3,6 +3,7 @@
     Check,
     Star,
     Lock,
+    LockOpen,
     Download,
     Trash2,
     X,
@@ -12,67 +13,43 @@
   import { fade, fly } from "svelte/transition";
   import { fmtSize, fmtTime } from "$lib/utils/format";
   import type { NormalizedFile } from "$lib/types/file";
+  import { fileManager } from "$lib/services/fileManager.svelte";
+  import { lockManager } from "$lib/services/lockManager.svelte";
+  import { previewManager } from "$lib/services/previewManager.svelte";
   import * as m from "$lib/paraglide/messages";
   import MimeIcon from "$lib/components/MimeIcon.svelte";
   import { Tooltip } from "$lib/ui/tooltip";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
   import LazyThumbnail from "./LazyThumbnail.svelte";
-  import { isImageFile, canPreview, authedThumbnailUrl } from "$lib/utils/file-helpers";
+  import {
+    isImageFile,
+    canPreview,
+    authedThumbnailUrl,
+  } from "$lib/utils/file-helpers";
+  import { toast } from "svelte-sonner";
 
   let {
     files,
-    selected,
-    onToggleSelect,
-    onToggleSelectAll,
-    hasSelection,
-    allSelected,
-    downloadUrlFn,
     onNavigateDir,
-    onPreview,
-    onStar,
-    onRename,
-    onDelete,
     onMoveFile,
-    onAddToMedia,
-    onShare,
-    onSetDirectoryLock,
-    onClearDirectoryLock,
-    onForceDeleteDir,
     onShowDetails,
     onCopyLink,
     onCopyHash,
+    onShare,
     onBatchDownload,
-    onBatchDelete,
     onBatchShare,
     onBatchMove,
-    onCloseSelection,
   }: {
     files: NormalizedFile[];
-    selected: Set<string>;
-    onToggleSelect: (id: string) => void;
-    onToggleSelectAll: () => void;
-    hasSelection: boolean;
-    allSelected: boolean;
-    downloadUrlFn: (id: string) => string;
-    onNavigateDir: (id: string) => void;
-    onPreview: (file: NormalizedFile) => void;
-    onStar?: (id: string, starred: boolean) => void;
-    onRename: (id: string, name: string) => void;
-    onDelete: (id: string, name: string) => void;
+    onNavigateDir: (slug: string) => void;
     onMoveFile?: (file: NormalizedFile) => void;
-    onAddToMedia?: (file: NormalizedFile) => void;
-    onShare?: (file: NormalizedFile) => void;
-    onSetDirectoryLock?: (file: NormalizedFile) => void;
-    onClearDirectoryLock?: (file: NormalizedFile) => void;
-    onForceDeleteDir?: (file: NormalizedFile) => void;
     onShowDetails: (file: NormalizedFile) => void;
     onCopyLink: (file: NormalizedFile) => void;
     onCopyHash?: (file: NormalizedFile) => void;
+    onShare?: (file: NormalizedFile) => void;
     onBatchDownload: () => void;
-    onBatchDelete?: (ids: string[]) => void;
     onBatchShare?: (files: NormalizedFile[]) => void;
     onBatchMove?: () => void;
-    onCloseSelection: () => void;
   } = $props();
 
   let failedThumbs = $state<Set<string>>(new Set());
@@ -85,6 +62,30 @@
     failedThumbs.add(fileId);
     failedThumbs = new Set(failedThumbs);
   }
+
+  function handleBatchDelete() {
+    const selected = fileManager.selectedIds;
+    const locked = Array.from(selected).filter((id) => {
+      const f = files.find((f) => f.id === id);
+      return f && lockManager.isEffectivelyLocked(f);
+    });
+    const ids = Array.from(selected).filter((id) => {
+      const f = files.find((f) => f.id === id);
+      return !f || !lockManager.isEffectivelyLocked(f);
+    });
+    if (locked.length > 0) toast.info(`已跳过 ${locked.length} 个加锁目录`);
+    if (ids.length > 0) fileManager.batchRemove(ids);
+  }
+
+  function handelClick(f: NormalizedFile) {
+    if (f.isDir) {
+      onNavigateDir(f.slug);
+    } else {
+      canPreview(f) ? previewManager.open(f) : void 0;
+    }
+  }
+
+  $inspect(lockManager.unlockedSlugs);
 </script>
 
 <div
@@ -98,12 +99,12 @@
           <div class="flex items-center gap-2">
             <button
               type="button"
-              onclick={onToggleSelectAll}
-              class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors {allSelected
+              onclick={() => fileManager.toggleSelectAll()}
+              class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors {fileManager.allSelected
                 ? 'border-primary bg-primary text-white'
                 : 'border-line hover:border-primary'}"
             >
-              {#if allSelected}
+              {#if fileManager.allSelected}
                 <Check size={10} />
               {/if}
             </button>
@@ -123,17 +124,13 @@
     </thead>
     <tbody>
       {#each files as f, i (f.id)}
-        {@const isSelected = selected.has(f.id)}
+        {@const isSelected = fileManager.selectedIds.has(f.id)}
         <tr
           class="group border-b border-line-soft transition-colors last:border-0 hover:bg-surface-muted/80 {f.isDir ||
           canPreview(f)
             ? 'cursor-pointer'
             : ''} {isSelected ? 'bg-primary-soft/50' : ''}"
-          onclick={f.isDir
-            ? () => onNavigateDir(f.id)
-            : canPreview(f)
-              ? () => onPreview(f)
-              : undefined}
+          onclick={() => handelClick(f)}
         >
           <td class="px-2 py-2.5">
             <div class="flex items-center gap-2.5">
@@ -144,7 +141,7 @@
                   type="button"
                   onclick={(e) => {
                     e.stopPropagation();
-                    onToggleSelect(f.id);
+                    fileManager.toggleSelect(f.id);
                   }}
                   class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-opacity {isSelected
                     ? 'border-primary bg-primary text-white opacity-100'
@@ -185,8 +182,12 @@
                   {m.system_badge()}
                 </span>
               {/if}
-              {#if f.isLocked}
-                <Lock size={12} class="shrink-0 text-ink-4" />
+              {#if f.hasPassword}
+                {#if lockManager.isUnlocked(f.slug)}
+                  <LockOpen size={12} class="shrink-0 text-success" />
+                {:else}
+                  <Lock size={12} class="shrink-0 text-ink-4" />
+                {/if}
               {/if}
               {#if f.isStarred}
                 <Star
@@ -204,20 +205,11 @@
               >
                 <FileActionsDropdown
                   file={f}
-                  {downloadUrlFn}
-                  {onStar}
-                  {onPreview}
-                  {onRename}
-                  {onDelete}
                   onMove={onMoveFile}
-                  {onAddToMedia}
-                  {onShare}
-                  {onSetDirectoryLock}
-                  {onClearDirectoryLock}
-                  {onForceDeleteDir}
                   {onShowDetails}
                   {onCopyLink}
                   {onCopyHash}
+                  {onShare}
                   triggerClass="rounded-md p-1 text-ink-4 hover:bg-surface-sunken hover:text-ink-3"
                 />
               </span>
@@ -242,7 +234,7 @@
   </table>
 </div>
 
-{#if hasSelection}
+{#if fileManager.hasSelection}
   <div
     class="fixed bottom-6 left-1/2 z-50 max-w-[calc(100vw-1rem)] -translate-x-1/2"
   >
@@ -251,7 +243,9 @@
       transition:fly={{ y: 16, duration: 180, opacity: 0 }}
     >
       <span class="shrink-0 px-3 text-sm font-medium text-ink-2"
-        >{m.selected_count({ count: String(selected.size) })}</span
+        >{m.selected_count({
+          count: String(fileManager.selectedIds.size),
+        })}</span
       >
       <div class="h-7 w-px shrink-0 bg-surface-sunken"></div>
       <div class="flex items-center gap-1">
@@ -266,16 +260,6 @@
         >
           <Download size={16} />
         </Tooltip>
-        {#if onStar}
-          <Tooltip
-            content={m.star_file()}
-            delayDuration={200}
-            triggerProps={{ "aria-label": m.star_file() }}
-            triggerClass="h-8 w-8 rounded-full text-ink-3 transition-colors hover:bg-warning-soft hover:text-warning"
-          >
-            <Star size={16} />
-          </Tooltip>
-        {/if}
         {#if onBatchMove}
           <Tooltip
             content={m.move_to()}
@@ -295,7 +279,10 @@
             delayDuration={200}
             triggerProps={{
               "aria-label": "分享",
-              onclick: () => onBatchShare?.(files.filter((f) => selected.has(f.id))),
+              onclick: () =>
+                onBatchShare?.(
+                  files.filter((f) => fileManager.selectedIds.has(f.id)),
+                ),
             }}
             triggerClass="h-8 w-8 rounded-full text-ink-3 transition-colors hover:bg-primary-soft hover:text-primary"
           >
@@ -307,7 +294,7 @@
           delayDuration={200}
           triggerProps={{
             "aria-label": m.delete_label(),
-            onclick: () => onBatchDelete?.(Array.from(selected)),
+            onclick: handleBatchDelete,
           }}
           triggerClass="h-8 w-8 rounded-full text-ink-3 transition-colors hover:bg-danger-soft hover:text-danger"
         >
@@ -319,7 +306,7 @@
           delayDuration={200}
           triggerProps={{
             "aria-label": m.close(),
-            onclick: onCloseSelection,
+            onclick: () => fileManager.clearSelection(),
           }}
           triggerClass="h-8 w-8 shrink-0 rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
         >

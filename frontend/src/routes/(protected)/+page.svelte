@@ -4,9 +4,10 @@
 	import { listRecentFiles, type FileItem } from '$lib/api/files';
 	import { listUploadTasks, type UploadTaskItem } from '$lib/api/upload-tasks';
 	import { fmtSize, fmtTime } from '$lib/utils/format';
-	import { Folder, Film, Star, Trash2, LoaderCircle, File, CircleAlert, RefreshCw, Upload, Clock } from '@lucide/svelte';
+	import { Folder, Film, Star, Trash2, LoaderCircle, CircleAlert, RefreshCw, Upload, Clock } from '@lucide/svelte';
 	import MimeIcon from '$lib/components/MimeIcon.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 
 	let recentFiles = $state<FileItem[]>([]);
 	let loading = $state(true);
@@ -172,7 +173,7 @@
 				</div>
 			{:else if recentFiles.length === 0}
 				<div class="border-line text-ink-3 flex flex-col items-center justify-center rounded-lg border border-dashed py-14 text-center">
-					<File size={28} class="text-ink-4 mb-2.5" strokeWidth={1.5} />
+					<img src={noFilesSvg} class="mb-2 w-28 h-28" alt="" />
 					<p class="text-sm">{m.home_no_files()}</p>
 				</div>
 			{:else}

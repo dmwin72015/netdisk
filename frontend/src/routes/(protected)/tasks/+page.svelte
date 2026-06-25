@@ -11,6 +11,7 @@
 	import Popover from '$lib/ui/popover/Popover.svelte';
 	import Tooltip from '$lib/ui/tooltip/Tooltip.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 	import { fmtSize, fmtTime, copyToClipboard } from '$lib/utils/format';
 
 	let tasks = $state<UploadTaskItem[]>([]);
@@ -241,7 +242,7 @@
 			</div>
 		{:else if tasks.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
-				<ListRestart size={40} class="mb-3 text-ink-4" />
+				<img src={noFilesSvg} class="mb-2 w-32 h-32" alt="" />
 				<p class="text-sm text-ink-4">{m.no_tasks()}</p>
 			</div>
 		{:else}

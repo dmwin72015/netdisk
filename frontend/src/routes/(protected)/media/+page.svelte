@@ -14,7 +14,7 @@
 		type AddToLibraryResponse,
 		type MediaItem
 	} from '$lib/api/media';
-	import { Film, Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown, Check, X, Pencil } from '@lucide/svelte';
+	import { Trash2, LoaderCircle, Play, CircleAlert, Clock, Plus, Upload, ChevronDown, Check, X, Pencil } from '@lucide/svelte';
 	import { fly } from 'svelte/transition';
 	import { toast } from 'svelte-sonner';
 	import { confirmAction, confirmDelete, promptInput } from '$lib/dialog';
@@ -25,6 +25,7 @@
 	import type { createUploadManager as UploadMgrFn } from '$lib/upload-manager.svelte';
 	type UploadManager = ReturnType<typeof UploadMgrFn>;
 	import * as m from '$lib/paraglide/messages';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 
 	let items = $state<MediaItem[]>([]);
 	let total = $state(0);
@@ -331,7 +332,7 @@
 			</div>
 		{:else if items.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center">
-				<Film size={40} class="mb-3 text-ink-4" />
+				<img src={noFilesSvg} class="mb-2 w-32 h-32" alt="" />
 				<p class="text-sm text-ink-4">{m.media_empty()}</p>
 				<p class="mt-1 text-xs text-ink-4">{m.media_help()}</p>
 			</div>

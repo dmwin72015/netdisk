@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+      <!-- Soft background circle -->
+      <circle cx="100" cy="100" r="85" fill="#F5F7FA"/>
+
+      <!-- Document/result area (empty) -->
+      <rect x="50" y="55" width="70" height="85" rx="6"
+        fill="white" stroke="#C0C8D0" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- Empty result lines (faded) -->
+      <path d="M62 72 L108 72" stroke="#E8ECF0" stroke-width="3" stroke-linecap="round"/>
+      <path d="M62 85 L98 85" stroke="#E8ECF0" stroke-width="3" stroke-linecap="round"/>
+      <path d="M62 98 L105 98" stroke="#E8ECF0" stroke-width="3" stroke-linecap="round"/>
+      <path d="M62 111 L92 111" stroke="#E8ECF0" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- Large magnifying glass overlapping -->
+      <!-- Glass circle -->
+      <circle cx="135" cy="135" r="28"
+        fill="white" stroke="#5B8DEF" stroke-width="3.5"/>
+      <!-- Inner highlight -->
+      <circle cx="135" cy="135" r="28" fill="none" stroke="#ADC4F5" stroke-width="1.5" opacity="0.5"/>
+
+      <!-- Question mark inside glass -->
+      <path d="M128 128 C128 122 132 119 136 119 C140 119 143 122 143 126 C143 130 140 131 137 133 L137 137"
+        fill="none" stroke="#5B8DEF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="137" cy="143" r="2" fill="#5B8DEF"/>
+
+      <!-- Glass handle -->
+      <path d="M155 155 L170 170" stroke="#5B8DEF" stroke-width="4.5" stroke-linecap="round"/>
+
+      <!-- Small sparkles -->
+      <path d="M45 90 L45 96 M42 93 L48 93" stroke="#DDE3EA" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="160" cy="70" r="2.5" fill="#DDE3EA"/>
+    </svg>

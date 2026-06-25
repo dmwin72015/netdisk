@@ -2,10 +2,11 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { Ban, CalendarClock, ChevronDown, Copy, File, Globe, LoaderCircle, Lock, Share2, Trash2 } from '@lucide/svelte';
+	import { Ban, CalendarClock, ChevronDown, Copy, File, Globe, LoaderCircle, Lock, Trash2 } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import { toast } from 'svelte-sonner';
 	import { cancelShare, deleteShare, listShares, updateShare, type ShareItem } from '$lib/api/shares';
+	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 	import { copyToClipboard, clipboardUnavailableReason, fmtSize, fmtTime } from '$lib/utils/format';
 	import AlertDialog from '$lib/ui/alert-dialog/AlertDialog.svelte';
 
@@ -202,7 +203,7 @@
 			</div>
 		{:else if shares.length === 0}
 			<div class="flex flex-col items-center justify-center px-6 py-24 text-center">
-				<Share2 size={48} class="mb-4 text-ink-4" />
+				<img src={noFilesSvg} class="mb-3 w-32 h-32" alt="" />
 				<p class="text-sm text-ink-3">暂无分享记录</p>
 			</div>
 		{:else}

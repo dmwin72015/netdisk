@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+      <!-- Soft background circle -->
+      <circle cx="100" cy="100" r="85" fill="#F5F7FA"/>
+
+      <!-- Open folder back panel -->
+      <path d="M55 75 L55 150 C55 154 57 156 61 156 L139 156 C143 156 145 154 145 150 L145 75"
+        fill="none" stroke="#C0C8D0" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- Folder front lip (tab) -->
+      <path d="M55 75 C55 71 57 69 61 69 L88 69 L95 78 L139 78 C143 78 145 80 145 84 L145 88"
+        fill="white" stroke="#8A99A8" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+      <!-- Folder interior shadow line -->
+      <path d="M55 88 L145 88" stroke="#DDE3EA" stroke-width="1.5" stroke-linecap="round"/>
+
+      <!-- Empty space indication: small plant/seedling growing from folder -->
+      <!-- Stem -->
+      <path d="M100 150 L100 120" stroke="#8BC34A" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Left leaf -->
+      <path d="M100 130 C92 128 86 122 86 114 C94 114 100 120 100 130"
+        fill="#C8E6A0" stroke="#8BC34A" stroke-width="2" stroke-linejoin="round"/>
+      <!-- Right leaf -->
+      <path d="M100 124 C108 122 114 116 114 108 C106 108 100 114 100 124"
+        fill="#C8E6A0" stroke="#8BC34A" stroke-width="2" stroke-linejoin="round"/>
+      <!-- Top sprout -->
+      <circle cx="100" cy="117" r="3.5" fill="#8BC34A"/>
+
+      <!-- Floating dots (whimsical empty feeling) -->
+      <circle cx="68" cy="52" r="3" fill="#DDE3EA"/>
+      <circle cx="130" cy="48" r="2.5" fill="#DDE3EA"/>
+      <circle cx="145" cy="110" r="2" fill="#DDE3EA"/>
+      <circle cx="50" cy="100" r="2" fill="#DDE3EA"/>
+
+      <!-- Small dashed circle (decorative) -->
+      <circle cx="100" cy="65" r="12" fill="none" stroke="#DDE3EA" stroke-width="1.5" stroke-dasharray="3 3"/>
+    </svg>

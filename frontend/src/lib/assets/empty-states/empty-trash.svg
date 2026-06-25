@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+      <!-- Soft background circle -->
+      <circle cx="100" cy="100" r="85" fill="#F5F7FA"/>
+
+      <!-- Trash bin body -->
+      <!-- Bin top opening (ellipse for 3D effect) -->
+      <ellipse cx="100" cy="70" rx="38" ry="10"
+        fill="white" stroke="#8A99A8" stroke-width="2.5"/>
+
+      <!-- Interior shadow -->
+      <ellipse cx="100" cy="70" rx="32" ry="7"
+        fill="#F5F7FA" stroke="#DDE3EA" stroke-width="1.5"/>
+
+      <!-- Bin body (trapezoid) -->
+      <path d="M62 70 L68 140 C68 144 71 147 75 147 L125 147 C129 147 132 144 132 140 L138 70"
+        fill="white" stroke="#8A99A8" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- Vertical ridge lines on bin -->
+      <path d="M80 75 L82 142" stroke="#E8ECF0" stroke-width="2" stroke-linecap="round"/>
+      <path d="M100 75 L100 142" stroke="#E8ECF0" stroke-width="2" stroke-linecap="round"/>
+      <path d="M120 75 L118 142" stroke="#E8ECF0" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- Bin lid handle -->
+      <path d="M85 60 C85 52 88 48 92 48 L108 48 C112 48 115 52 115 60"
+        fill="none" stroke="#8A99A8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Clean sparkle/checkmark (showing it's clean & empty) -->
+      <!-- Sparkle 1 -->
+      <path d="M145 45 L147 50 L152 52 L147 54 L145 59 L143 54 L138 52 L143 50 Z"
+        fill="#8BC34A" opacity="0.8"/>
+      <!-- Sparkle 2 (small) -->
+      <path d="M50 50 L51 53 L54 54 L51 55 L50 58 L49 55 L46 54 L49 53 Z"
+        fill="#C8E6A0"/>
+
+      <!-- Small checkmark badge -->
+      <circle cx="100" cy="120" r="14" fill="white" stroke="#8BC34A" stroke-width="2.5"/>
+      <path d="M94 120 L98 124 L107 115" fill="none" stroke="#8BC34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Floating dots -->
+      <circle cx="55" cy="95" r="2.5" fill="#DDE3EA"/>
+      <circle cx="148" cy="100" r="2" fill="#DDE3EA"/>
+      <circle cx="40" cy="130" r="2" fill="#DDE3EA"/>
+    </svg>

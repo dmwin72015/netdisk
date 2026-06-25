@@ -1,48 +1,37 @@
 <script lang="ts">
-  import { Lock } from "@lucide/svelte";
+  import { Lock, LockOpen } from "@lucide/svelte";
   import { fade } from "svelte/transition";
   import { fmtSize } from "$lib/utils/format";
   import type { NormalizedFile } from "$lib/types/file";
+  import { fileManager } from "$lib/services/fileManager.svelte";
+  import { lockManager } from "$lib/services/lockManager.svelte";
+  import { previewManager } from "$lib/services/previewManager.svelte";
   import * as m from "$lib/paraglide/messages";
   import MimeIcon from "$lib/components/MimeIcon.svelte";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
   import LazyThumbnail from "./LazyThumbnail.svelte";
-  import { isImageFile, canPreview, authedThumbnailUrl } from "$lib/utils/file-helpers";
+  import {
+    isImageFile,
+    canPreview,
+    authedThumbnailUrl,
+  } from "$lib/utils/file-helpers";
 
   let {
     files,
-    downloadUrlFn,
     onNavigateDir,
-    onPreview,
-    onStar,
-    onRename,
-    onDelete,
     onMoveFile,
-    onAddToMedia,
-    onShare,
-    onSetDirectoryLock,
-    onClearDirectoryLock,
-    onForceDeleteDir,
     onShowDetails,
     onCopyLink,
     onCopyHash,
+    onShare,
   }: {
     files: NormalizedFile[];
-    downloadUrlFn: (id: string) => string;
-    onNavigateDir: (id: string) => void;
-    onPreview: (file: NormalizedFile) => void;
-    onStar?: (id: string, starred: boolean) => void;
-    onRename: (id: string, name: string) => void;
-    onDelete: (id: string, name: string) => void;
+    onNavigateDir: (slug: string) => void;
     onMoveFile?: (file: NormalizedFile) => void;
-    onAddToMedia?: (file: NormalizedFile) => void;
-    onShare?: (file: NormalizedFile) => void;
-    onSetDirectoryLock?: (file: NormalizedFile) => void;
-    onClearDirectoryLock?: (file: NormalizedFile) => void;
-    onForceDeleteDir?: (file: NormalizedFile) => void;
     onShowDetails: (file: NormalizedFile) => void;
     onCopyLink: (file: NormalizedFile) => void;
     onCopyHash?: (file: NormalizedFile) => void;
+    onShare?: (file: NormalizedFile) => void;
   } = $props();
 
   let failedThumbs = $state<Set<string>>(new Set());
@@ -72,7 +61,7 @@
       onclick={f.isDir
         ? () => onNavigateDir(f.id)
         : !f.isDir && canPreview(f)
-          ? () => onPreview(f)
+          ? () => previewManager.open(f)
           : undefined}
       onkeydown={(e) => {
         if (
@@ -81,7 +70,7 @@
         ) {
           e.preventDefault();
           if (f.isDir) onNavigateDir(f.id);
-          else if (canPreview(f)) onPreview(f);
+          else if (canPreview(f)) previewManager.open(f);
         }
       }}
     >
@@ -96,20 +85,11 @@
       >
         <FileActionsDropdown
           file={f}
-          {downloadUrlFn}
-          {onStar}
-          {onPreview}
-          {onRename}
-          {onDelete}
           onMove={onMoveFile}
-          {onAddToMedia}
-          {onShare}
-          {onSetDirectoryLock}
-          {onClearDirectoryLock}
-          {onForceDeleteDir}
           {onShowDetails}
           {onCopyLink}
           {onCopyHash}
+          {onShare}
           triggerClass="rounded-lg bg-white/90 p-1 text-ink-4 backdrop-blur transition-colors hover:bg-white hover:text-ink-3"
         />
       </div>
@@ -143,9 +123,12 @@
             {m.system_badge()}
           </span>
         {/if}
-        {#if f.isLocked}
-          <Lock size={12} class="shrink-0 text-ink-4" />
-        {/if}
+        {#if f.hasPassword}
+          {#if lockManager.isUnlocked(f.slug)}
+            <LockOpen size={12} class="shrink-0 text-success" />
+          {:else}
+            <Lock size={12} class="shrink-0 text-ink-4" />
+          {/if}{/if}
       </div>
       <p class="mt-0.5 text-xs text-ink-4">
         {f.isDir ? "" : fmtSize(f.size)}

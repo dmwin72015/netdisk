@@ -194,9 +194,9 @@
 		<table class="w-full table-fixed text-left text-sm">
 			<thead class="border-b border-line bg-surface-sunken text-xs text-ink-4">
 				<tr>
-					<th class="w-[320px] px-4 py-3 font-medium">{m.col_filename()}</th>
-					<th class="w-[140px] px-4 py-3 font-medium">{m.admin_owner()}</th>
-					<th class="px-4 py-3 font-medium">{m.col_type()}</th>
+					<th class="px-4 py-3 font-medium">{m.col_filename()}</th>
+					<th class="w-[220px] px-4 py-3 font-medium">{m.admin_owner()}</th>
+					<th class="w-[220px] px-4 py-3 font-medium">{m.col_type()}</th>
 					<th class="w-[100px] px-4 py-3 font-medium">{m.col_size()}</th>
 					<th class="w-[170px] px-4 py-3 font-medium">{m.admin_uploaded()}</th>
 					<th class="w-[120px] px-4 py-3 font-medium">{m.status()}</th>
@@ -207,7 +207,7 @@
 				{#if loading}
 					<tr>
 						<td colspan="7" class="px-4 py-12 text-center text-ink-4">
-							<LoaderCircle size={20} class="mx-auto animate-spin" />
+							<LoaderCircle size={24} class="mx-auto animate-spin" />
 						</td>
 					</tr>
 				{:else if files.length === 0}
@@ -224,7 +224,7 @@
 										name={f.fileName}
 										isDir={f.isDir}
 										category={f.fileCategory}
-										size={18}
+										size={24}
 										class="shrink-0"
 									/>
 									<span class="min-w-0 truncate font-medium text-ink" title={f.fileName}>{f.fileName}</span>

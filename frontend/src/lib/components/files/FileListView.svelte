@@ -1,8 +1,12 @@
 <script lang="ts">
-  import { LoaderCircle, FolderPlus } from "@lucide/svelte";
+  import { LoaderCircle } from "@lucide/svelte";
   import { fade } from "svelte/transition";
   import type { NormalizedFile } from "$lib/types/file";
+  import { fileManager } from "$lib/services/fileManager.svelte";
+  import { lockManager } from "$lib/services/lockManager.svelte";
+  import { settingsManager } from "$lib/services/settingsManager.svelte";
   import * as m from "$lib/paraglide/messages";
+  import noFilesSvg from "$lib/assets/empty-states/no-files.svg";
   import { getAccessToken } from "$lib/api/client";
   import { toast } from "svelte-sonner";
   import { authedUrl } from "$lib/utils/format";
@@ -12,61 +16,21 @@
   import FileDetailDialog from "./FileDetailDialog.svelte";
   import MoveDialog from "./MoveDialog.svelte";
 
-  type FolderSummary = {
-    fileCount: number;
-    folderCount: number;
-    size: number;
-  };
-
   let {
     files,
-    viewMode,
     loading,
-    directoryId = "",
-    currentPath = [],
-    includeSystemDirs = true,
     emptyMessage,
-    downloadUrlFn,
     onNavigateDir,
-    onStar,
-    onPreview,
-    onRename,
-    onDelete,
-    onBatchDelete,
     onBatchShare,
-    onMove,
-    onAddToMedia,
-    onShare,
-    onSetDirectoryLock,
-    onClearDirectoryLock,
-    onForceDeleteDir,
-    loadFolderSummary,
   }: {
     files: NormalizedFile[];
-    viewMode: "list" | "grid";
     loading: boolean;
-    directoryId?: string;
-    currentPath?: { id: string; name: string }[];
-    includeSystemDirs?: boolean;
     emptyMessage: string;
-    downloadUrlFn: (id: string) => string;
-    onNavigateDir: (id: string) => void;
-    onStar?: (id: string, starred: boolean) => void;
-    onPreview: (file: NormalizedFile) => void;
-    onRename: (id: string, name: string) => void;
-    onDelete: (id: string, name: string) => void;
-    onBatchDelete?: (ids: string[]) => void;
+    onNavigateDir: (slug: string) => void;
     onBatchShare?: (files: NormalizedFile[]) => void;
-    onMove?: (ids: string[], targetSlug: string) => Promise<void>;
-    onAddToMedia?: (file: NormalizedFile) => void;
-    onShare?: (file: NormalizedFile) => void;
-    onSetDirectoryLock?: (file: NormalizedFile) => void;
-    onClearDirectoryLock?: (file: NormalizedFile) => void;
-    onForceDeleteDir?: (file: NormalizedFile) => void;
-    loadFolderSummary?: (id: string) => Promise<FolderSummary>;
   } = $props();
 
-  let selected = $state<Set<string>>(new Set());
+  // --- Local UI state (dialogs) ---
   let detailFile = $state<NormalizedFile | null>(null);
   let detailOpen = $state(false);
   let detailSummary = $state<{
@@ -78,38 +42,25 @@
   let moveOpen = $state(false);
   let moveTargets = $state<NormalizedFile[]>([]);
 
-  let selectableFiles = $derived(files.filter((file) => !file.isSystem));
-  let allSelected = $derived(
-    selectableFiles.length > 0 &&
-      selectableFiles.every((f) => selected.has(f.id)),
-  );
-  let hasSelection = $derived(selected.size > 0);
   let moveExcludedIds = $derived(
     moveTargets.filter((file) => file.isDir).map((file) => file.id),
   );
 
-  function toggleSelect(id: string) {
-    const file = files.find((item) => item.id === id);
-    if (file?.isSystem) return;
-    if (selected.has(id)) selected.delete(id);
-    else selected.add(id);
-    selected = new Set(selected);
-  }
-
-  function toggleSelectAll() {
-    if (allSelected) selected = new Set();
-    else selected = new Set(selectableFiles.map((f) => f.id));
-  }
-
+  // --- Detail dialog ---
   function showDetails(file: NormalizedFile) {
+    if (file.isDir && lockManager.isEffectivelyLocked(file)) {
+      toast.error("目录已加锁，无法查看详情");
+      return;
+    }
     detailFile = file;
     detailOpen = true;
     detailSummary = null;
-    detailSummaryLoading = Boolean(file.isDir && loadFolderSummary);
+    detailSummaryLoading = file.isDir;
 
-    if (file.isDir && loadFolderSummary) {
+    if (file.isDir) {
       const fileId = file.id;
-      loadFolderSummary(fileId)
+      fileManager
+        .loadFolderSummary(fileId)
         .then((summary) => {
           if (detailFile?.id === fileId) detailSummary = summary;
         })
@@ -122,28 +73,17 @@
     }
   }
 
-  function handleBatchDownload() {
-    const selectedFiles = files.filter((f) => selected.has(f.id) && !f.isDir);
-    for (const f of selectedFiles) {
-      const url = authedUrl(downloadUrlFn(f.id));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = f.name;
-      a.click();
-      a.remove();
-    }
-  }
-
   function handleDetailOpenChangeComplete(open: boolean) {
-    if (!open) {
-      detailFile = null;
-    }
+    if (!open) detailFile = null;
   }
 
+  // --- Move dialog ---
   function openMoveDialog(targetFiles: NormalizedFile[]) {
-    if (!onMove || targetFiles.length === 0) return;
-    moveTargets = targetFiles.filter((file) => !file.isSystem);
-    if (moveTargets.length === 0) return;
+    const valid = targetFiles.filter(
+      (file) => !file.isSystem && !lockManager.isEffectivelyLocked(file),
+    );
+    if (valid.length === 0) return;
+    moveTargets = valid;
     moveOpen = true;
   }
 
@@ -152,7 +92,9 @@
   }
 
   function openSelectedMoveDialog() {
-    openMoveDialog(files.filter((file) => selected.has(file.id)));
+    openMoveDialog(
+      files.filter((file) => fileManager.selectedIds.has(file.id)),
+    );
   }
 
   function handleMoveClose() {
@@ -161,18 +103,41 @@
   }
 
   async function confirmMove(targetParentSlug: string) {
-    if (!onMove || moveTargets.length === 0) return;
-    await onMove(
+    if (moveTargets.length === 0) return;
+    await fileManager.move(
       moveTargets.map((file) => file.id),
       targetParentSlug,
     );
-    selected = new Set();
+    fileManager.clearSelection();
     moveOpen = false;
     moveTargets = [];
   }
 
+  // --- Batch actions ---
+  function handleBatchDownload() {
+    const selectedFiles = files.filter(
+      (f) => fileManager.selectedIds.has(f.id) && !f.isDir,
+    );
+    for (const f of selectedFiles) {
+      const url = authedUrl(fileManager.getDownloadUrl(f.id));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = f.name;
+      a.click();
+      a.remove();
+    }
+  }
+
+  function handleBatchShare() {
+    onBatchShare?.(files.filter((f) => fileManager.selectedIds.has(f.id)));
+  }
+
+  // --- Copy helpers ---
   async function copyFileLink(file: NormalizedFile) {
-    const url = new URL(downloadUrlFn(file.id), window.location.origin);
+    const url = new URL(
+      fileManager.getDownloadUrl(file.id),
+      window.location.origin,
+    );
     const token = getAccessToken();
     if (token) url.searchParams.set("access_token", token);
     if (await copyToClipboard(url.toString())) {
@@ -190,83 +155,61 @@
       toast.error(m.copy_failed());
     }
   }
-
-  function handleBatchShare() {
-    onBatchShare?.(files.filter((f) => selected.has(f.id)));
-  }
 </script>
 
-{#if loading}
-  <div
-    class="flex items-center justify-center py-16"
-    transition:fade={{ duration: 150 }}
-  >
-    <LoaderCircle size={24} class="animate-spin text-ink-4" />
-  </div>
-{:else if files.length === 0}
-  <div
-    class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center"
-    in:fade={{ duration: 150 }}
-  >
-    <FolderPlus size={40} class="mb-3 text-ink-4" />
-    <p class="text-sm text-ink-4">{emptyMessage}</p>
-  </div>
-{:else if viewMode === "grid"}
-  <FileGrid
-    {files}
-    {downloadUrlFn}
-    {onNavigateDir}
-    {onPreview}
-    {onStar}
-    {onRename}
-    {onDelete}
-    onMoveFile={onMove ? openSingleMoveDialog : undefined}
-    {onAddToMedia}
-    {onShare}
-    {onSetDirectoryLock}
-    {onClearDirectoryLock}
-    {onForceDeleteDir}
-    onShowDetails={showDetails}
-    onCopyLink={copyFileLink}
-    onCopyHash={copyFileHash}
-  />
-{:else}
-  <FileTable
-    {files}
-    {selected}
-    {onNavigateDir}
-    {onPreview}
-    {onStar}
-    {onRename}
-    {onDelete}
-    onToggleSelect={toggleSelect}
-    onToggleSelectAll={toggleSelectAll}
-    {hasSelection}
-    {allSelected}
-    {downloadUrlFn}
-    onMoveFile={onMove ? openSingleMoveDialog : undefined}
-    {onAddToMedia}
-    {onShare}
-    {onSetDirectoryLock}
-    {onClearDirectoryLock}
-    {onForceDeleteDir}
-    onShowDetails={showDetails}
-    onCopyLink={copyFileLink}
-    onCopyHash={copyFileHash}
-    onBatchDownload={handleBatchDownload}
-    {onBatchDelete}
-    onBatchShare={onBatchShare ? handleBatchShare : undefined}
-    onBatchMove={onMove ? openSelectedMoveDialog : undefined}
-    onCloseSelection={() => {
-      selected = new Set();
-    }}
-  />
-{/if}
+<div class="relative min-h-[150px]">
+  {#if loading}
+    <div
+      class="absolute inset-0 z-10 flex items-center justify-center"
+      transition:fade={{ duration: 150 }}
+    >
+      <LoaderCircle size={24} class="animate-spin text-ink-4" />
+    </div>
+  {/if}
+
+  {#if !loading && files.length === 0}
+    <div
+      class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center"
+      in:fade={{ duration: 150 }}
+    >
+      <img src={noFilesSvg} class="mb-2 w-32 h-32" alt="" />
+      <p class="text-sm text-ink-4">{emptyMessage}</p>
+    </div>
+  {:else if files.length > 0}
+    {#if fileManager.viewMode.current === "grid"}
+      <FileGrid
+        {files}
+        {onNavigateDir}
+        onMoveFile={openSingleMoveDialog}
+        onShowDetails={showDetails}
+        onCopyLink={copyFileLink}
+        onCopyHash={copyFileHash}
+        onShare={onBatchShare
+          ? (f) => {
+              onBatchShare([f]);
+            }
+          : undefined}
+      />
+    {:else}
+      <FileTable
+        {files}
+        {onNavigateDir}
+        onMoveFile={openSingleMoveDialog}
+        onShowDetails={showDetails}
+        onCopyLink={copyFileLink}
+        onCopyHash={copyFileHash}
+        onBatchDownload={handleBatchDownload}
+        onBatchShare={onBatchShare ? handleBatchShare : undefined}
+        onBatchMove={openSelectedMoveDialog}
+      />
+    {/if}
+  {/if}
+</div>
 
 <MoveDialog
   bind:open={moveOpen}
   excludedIds={moveExcludedIds}
-  {includeSystemDirs}
+  includeSystemDirs={settingsManager.showSystemDirs}
   onClose={handleMoveClose}
   onConfirm={confirmMove}
 />
@@ -274,8 +217,8 @@
 <FileDetailDialog
   bind:open={detailOpen}
   file={detailFile}
-  {currentPath}
-  {downloadUrlFn}
+  currentPath={fileManager.crumbs}
+  downloadUrlFn={fileManager.getDownloadUrl}
   summary={detailSummary}
   summaryLoading={detailSummaryLoading}
   onOpenChangeComplete={handleDetailOpenChangeComplete}

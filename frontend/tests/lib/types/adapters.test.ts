@@ -12,7 +12,7 @@ describe('normalizeFileItem', () => {
 		slug: 'file-abc',
 		fileName: 'photo.jpg',
 		isDir: false,
-		isLocked: false,
+		hasPassword: false,
 		fileSize: 1024,
 		mimeType: 'image/jpeg',
 		fileCategory: 'image',
@@ -26,9 +26,10 @@ describe('normalizeFileItem', () => {
 		const result = normalizeFileItem(fileItem);
 		const expected: NormalizedFile = {
 			id: 'file-abc',
+			slug: 'file-abc',
 			name: 'photo.jpg',
 			isDir: false,
-			isLocked: false,
+			hasPassword: false,
 			size: 1024,
 			mimeType: 'image/jpeg',
 			fileCategory: 'image',

@@ -3,7 +3,8 @@ export interface NormalizedFile {
 	slug: string;
 	name: string;
 	isDir: boolean;
-	isLocked: boolean;
+	/** Directory has a password set (server-side, persistent). */
+	hasPassword: boolean;
 	size: number;
 	mimeType: string | null;
 	fileCategory: string;
