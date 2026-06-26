@@ -17,9 +17,13 @@
 		}
 	});
 
+	function onOpenAutoFocus(e: Event) {
+		e.preventDefault();
+	}
+
 	function onOpenComplete(isOpen: boolean) {
 		if (isOpen) {
-			requestAnimationFrame(() => focusFirstEmpty());
+			focusFirstEmpty();
 		}
 	}
 
@@ -138,6 +142,7 @@
 		description={pending?.opts.message}
 		showConfirm={false}
 		showCancel={false}
+		{onOpenAutoFocus}
 		onOpenChangeComplete={onOpenComplete}
 	>
 		{#snippet children()}

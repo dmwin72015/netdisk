@@ -4,18 +4,11 @@
 
 	let {
 		open = $bindable(false),
-		onOpenChange,
-		onOpenChangeComplete,
 		children,
 		...restProps
-	}: {
-		open?: boolean;
-		onOpenChange?: (open: boolean) => void;
-		onOpenChangeComplete?: (open: boolean) => void;
-		children: Snippet;
-	} = $props();
-	</script>
+	}: Dialog.RootProps & { children: Snippet } = $props();
+</script>
 
-	<Dialog.Root bind:open {onOpenChange} {onOpenChangeComplete} {...restProps}>
-		{@render children()}
-	</Dialog.Root>
+<Dialog.Root bind:open {...restProps}>
+	{@render children()}
+</Dialog.Root>

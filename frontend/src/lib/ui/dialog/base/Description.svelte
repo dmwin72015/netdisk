@@ -4,14 +4,17 @@
 	import { cn } from '$lib/utils/cn';
 
 	let {
+		ref = $bindable(null),
 		children,
 		class: className = '',
-	}: {
-		children: Snippet;
-		class?: string;
-	} = $props();
+		...restProps
+	}: Dialog.DescriptionProps & { children: Snippet; class?: string } = $props();
 </script>
 
-<Dialog.Description class={cn('text-xs text-ink-3', className)}>
+<Dialog.Description
+	bind:ref
+	class={cn('text-xs text-ink-3', className)}
+	{...restProps}
+>
 	{@render children()}
 </Dialog.Description>
