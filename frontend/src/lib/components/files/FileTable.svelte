@@ -27,6 +27,7 @@
     authedThumbnailUrl,
   } from "$lib/utils/file-helpers";
   import { toast } from "svelte-sonner";
+  import { confirmAction } from "$lib/dialog";
 
   let {
     files,
@@ -73,7 +74,8 @@
       const f = files.find((f) => f.id === id);
       return !f || !lockManager.isEffectivelyLocked(f);
     });
-    if (locked.length > 0) toast.info(m.skipped_locked_dirs({ count: String(locked.length) }));
+    if (locked.length > 0)
+      toast.info(m.skipped_locked_dirs({ count: String(locked.length) }));
     if (ids.length > 0) fileManager.batchRemove(ids);
   }
 
@@ -85,6 +87,18 @@
     }
   }
 
+  async function toggleLock(f: NormalizedFile) {
+    if (lockManager.isEffectivelyLocked(f)) {
+      try {
+        await lockManager.unlock(f.slug, f.name);
+      } catch {
+        toast.error(m.dir_password_wrong());
+      }
+    } else {
+      const ok = await confirmAction(m.dir_password(), m.dir_relock_confirm({ name: f.name }), m.confirm());
+      if (ok) lockManager.relock(f.slug);
+    }
+  }
 </script>
 
 <div
@@ -182,11 +196,21 @@
                 </span>
               {/if}
               {#if f.hasPassword}
-                {#if !lockManager.isEffectivelyLocked(f)}
-                  <LockOpen size={12} class="shrink-0 text-success" />
-                {:else}
-                  <Lock size={12} class="shrink-0 text-ink-4" />
-                {/if}
+                <button
+                  type="button"
+                  class="shrink-0 rounded-md p-1.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    toggleLock(f);
+                  }}
+                  aria-label={lockManager.isEffectivelyLocked(f) ? m.dir_password() : m.dir_unlocked()}
+                >
+                  {#if lockManager.isEffectivelyLocked(f)}
+                    <Lock size={14} />
+                  {:else}
+                    <LockOpen size={14} class="text-success" />
+                  {/if}
+                </button>
               {/if}
               {#if f.isStarred}
                 <Star

@@ -117,7 +117,7 @@
 					type="text"
 					bind:value={searchQuery}
 					placeholder={m.search_files()}
-					class="w-full rounded-lg border border-line bg-surface-muted py-2 pl-9 pr-3 text-sm text-ink-2 outline-none transition-colors placeholder:text-ink-4 focus:border-primary focus:bg-white"
+					class="w-full rounded-lg border border-line bg-surface-muted py-2 pl-9 pr-3 text-sm text-ink-2 outline-none transition-colors placeholder:text-ink-4 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
 				/>
 			</div>
 		</div>

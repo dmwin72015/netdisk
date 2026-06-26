@@ -10,6 +10,7 @@ import {
 } from "$lib/api/files";
 import { settingsManager } from "./settingsManager.svelte";
 import { promptInput, pinInput } from "$lib/dialog";
+import { toast } from "svelte-sonner";
 	import * as m from "$lib/paraglide/messages";
 
 const LS_UNLOCKED_DIRS = "nd.files.unlockedDirs";
@@ -86,10 +87,15 @@ const password = await pinInput(
        },
      );
     if (!password) return;
-    await setDirectoryLock(file.id, password);
+    await setDirectoryLock(file.slug, password);
+    toast.success(m.dir_lock_set());
     this.lockedSlugs.add(file.slug);
-    this.unlockedSlugs.add(file.slug);
-    this.persistedUnlocks.set(file.slug, Date.now());
+  }
+
+  /** Re-lock a temporarily unlocked directory (no PIN needed). */
+  relock(slug: string) {
+    this.unlockedSlugs.delete(slug);
+    this.persistedUnlocks.delete(slug);
     this.persistUnlocks();
   }
 
@@ -102,7 +108,13 @@ const password = await pinInput(
        },
      );
     if (!password) return;
-    await clearDirectoryLock(file.id, password);
+    try {
+      await clearDirectoryLock(file.slug, password);
+    } catch {
+      toast.error(m.dir_password_wrong());
+      return;
+    }
+    toast.success(m.dir_lock_cleared());
     this.lockedSlugs.delete(file.slug);
     this.unlockedSlugs.delete(file.slug);
     this.persistedUnlocks.delete(file.slug);

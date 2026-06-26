@@ -18,6 +18,7 @@
   let fileName = $state("");
   let submitting = $state(false);
   let done = $state(false);
+  let urlInput: HTMLInputElement | undefined = $state();
 
   $effect(() => {
     if (open) {
@@ -27,6 +28,11 @@
       done = false;
     }
   });
+
+  function onOpenAutoFocus(e: Event) {
+    e.preventDefault();
+    requestAnimationFrame(() => urlInput?.focus());
+  }
 
   async function handleSubmit() {
     if (!url.trim()) return;
@@ -52,6 +58,7 @@
   title={done ? "" : m.remote_upload()}
   footer={false}
   size="md"
+  {onOpenAutoFocus}
 >
   {#if done}
     <div class="flex flex-col items-center gap-3 py-6">
@@ -90,8 +97,9 @@
         id="url-input"
         type="url"
         bind:value={url}
+        bind:this={urlInput}
         placeholder={m.remote_upload_url_placeholder()}
-        class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+        class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
       />
     </div>
 
@@ -103,7 +111,7 @@
         id="filename-input"
         type="text"
         bind:value={fileName}
-        class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+        class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
       />
     </div>
 

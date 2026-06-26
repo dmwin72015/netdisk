@@ -24,11 +24,11 @@ func NewAuthHandler(svc *service.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(c echo.Context) error {
 	var input service.RegisterInput
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	user, err := h.svc.Register(c.Request().Context(), input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return Created(c, user)
 }
@@ -36,11 +36,11 @@ func (h *AuthHandler) Register(c echo.Context) error {
 func (h *AuthHandler) Login(c echo.Context) error {
 	var input service.LoginInput
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	user, tokens, err := h.svc.Login(c.Request().Context(), input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]any{
 		"user":   user,
@@ -51,11 +51,11 @@ func (h *AuthHandler) Login(c echo.Context) error {
 func (h *AuthHandler) Refresh(c echo.Context) error {
 	var input service.RefreshInput
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	tokens, err := h.svc.Refresh(c.Request().Context(), input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, tokens)
 }
@@ -63,12 +63,12 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 func (h *AuthHandler) Logout(c echo.Context) error {
 	var input service.LogoutInput
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	userID, _ := requireUserID(c)
 	sessionID := middleware.SessionID(c)
 	if err := h.svc.Logout(c.Request().Context(), input.RefreshToken, userID, sessionID); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "logged out"})
 }
@@ -83,7 +83,7 @@ func (h *AuthHandler) OAuthUnlink(c echo.Context) error {
 		if errors.Is(err, model.ErrForbidden) {
 			return echo.NewHTTPError(http.StatusForbidden, "cannot unlink the only login method. Please bind an email address first")
 		}
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "unlinked"})
 }
@@ -92,7 +92,7 @@ func (h *AuthHandler) OAuthRedirect(c echo.Context) error {
 	provider := c.Param("provider")
 	authURL, err := h.svc.OAuthAuthorize(c.Request().Context(), provider)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return c.Redirect(http.StatusFound, authURL)
 }
@@ -105,7 +105,7 @@ func (h *AuthHandler) OAuthBind(c echo.Context) error {
 	}
 	authURL, err := h.svc.OAuthAuthorizeForBind(c.Request().Context(), provider, userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return c.Redirect(http.StatusFound, authURL)
 }
@@ -116,7 +116,7 @@ func (h *AuthHandler) OAuthCallback(c echo.Context) error {
 	state := c.QueryParam("state")
 
 	if code == "" || state == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	result, err := h.svc.OAuthCallback(c.Request().Context(), provider, code, state)
@@ -178,7 +178,7 @@ func (h *AuthHandler) OAuthCallback(c echo.Context) error {
 func (h *AuthHandler) OAuthBindConfirmReplace(c echo.Context) error {
 	token := c.QueryParam("token")
 	if token == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	userID, err := requireUserID(c)
@@ -194,7 +194,7 @@ func (h *AuthHandler) OAuthBindConfirmReplace(c echo.Context) error {
 		if errors.Is(err, model.ErrUnauthorized) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "replace token expired or invalid")
 		}
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -208,7 +208,7 @@ func (h *AuthHandler) OAuthBindConfirmReplace(c echo.Context) error {
 func (h *AuthHandler) OAuthEmailConfirm(c echo.Context) error {
 	confirmToken := c.QueryParam("token")
 	if confirmToken == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	tokens, err := h.svc.ConfirmEmailOAuthLink(c.Request().Context(), confirmToken)
@@ -216,7 +216,7 @@ func (h *AuthHandler) OAuthEmailConfirm(c echo.Context) error {
 		if errors.Is(err, model.ErrUnauthorized) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "confirm token expired or invalid")
 		}
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, tokens)

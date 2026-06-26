@@ -169,7 +169,7 @@
             type="text"
             bind:value={slug}
             placeholder={m.admin_cleanup_slug_placeholder()}
-            class="w-full rounded-lg border border-line bg-surface-sunken pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+            class="w-full rounded-lg border border-line bg-surface-sunken pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             onkeydown={(e) => e.key === "Enter" && handleQuery()}
           />
         {:else}
@@ -177,7 +177,7 @@
             type="text"
             bind:value={hash}
             placeholder={m.admin_cleanup_hash_placeholder()}
-            class="w-full rounded-lg border border-line bg-surface-sunken pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+            class="w-full rounded-lg border border-line bg-surface-sunken pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             onkeydown={(e) => e.key === "Enter" && handleQuery()}
           />
         {/if}

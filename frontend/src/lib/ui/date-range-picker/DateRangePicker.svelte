@@ -151,7 +151,7 @@
   <div class={cn("relative", className)}>
     <!-- Trigger: AntD-style placeholder display -->
     <DateRangePicker.Trigger
-      class="flex h-8 w-full items-center rounded-lg border border-line bg-surface px-3 text-sm text-ink-3 outline-none transition-colors hover:border-line focus:border-primary"
+      class="flex h-8 w-full items-center rounded-lg border border-line bg-surface px-3 text-sm text-ink-3 outline-none transition-colors hover:border-line focus:border-primary focus:ring-2 focus:ring-primary/20"
     >
       <span class={cn(!displayValue ? "text-ink-4" : "text-ink-3")}>
         {displayValue || effectivePlaceholder}

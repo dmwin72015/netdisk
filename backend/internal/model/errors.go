@@ -25,6 +25,7 @@ const (
 	ErrCodeUnsupportedImage = 2010
 	ErrCodeSystemFileLocked = 2011
 	ErrCodeDirectoryLocked  = 2012
+	ErrCodeWrongPassword    = 2013
 
 	// Upload
 	ErrCodeChallengeExpired  = 3001
@@ -52,4 +53,15 @@ var (
 	ErrUnsupportedImage     = errors.New("only JPEG, PNG and WebP are supported")
 	ErrSystemFileLocked     = errors.New("system file cannot be modified")
 	ErrDirectoryLocked      = errors.New("directory is locked")
+	ErrWrongPassword        = errors.New("wrong password")
 )
+
+// BusinessError wraps a sentinel error so the error handler can distinguish
+// business-logic failures (returned as HTTP 200 + errCode) from infrastructure
+// errors (returned as HTTP 4xx/5xx).
+type BusinessError struct {
+	Err error
+}
+
+func (e *BusinessError) Error() string { return e.Err.Error() }
+func (e *BusinessError) Unwrap() error { return e.Err }

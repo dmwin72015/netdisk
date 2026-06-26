@@ -119,7 +119,7 @@
 								onkeydown={handleKeydown}
 								placeholder={pending?.opts.inputPlaceholder ?? ''}
 								maxlength={pending?.opts.maxLength}
-								class="mt-4 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+								class="mt-4 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 							/>
 							<div class="mt-5 flex justify-end gap-2">
 								<Dialog.Close

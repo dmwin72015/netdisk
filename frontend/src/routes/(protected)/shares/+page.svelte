@@ -302,7 +302,7 @@
 								</button>
 							</div>
 							{#if choice === 'custom'}
-								<input type="datetime-local" value={customExpiries[share.slug] ?? ''} oninput={(event) => setCustomExpiry(share.slug, (event.currentTarget as HTMLInputElement).value)} disabled={isDisabled} class="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50" />
+								<input type="datetime-local" value={customExpiries[share.slug] ?? ''} oninput={(event) => setCustomExpiry(share.slug, (event.currentTarget as HTMLInputElement).value)} disabled={isDisabled} class="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50" />
 							{/if}
 
 							<button type="button" onclick={() => confirmCancel(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-danger bg-white px-3 text-sm text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">

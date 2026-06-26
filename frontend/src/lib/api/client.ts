@@ -190,6 +190,11 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
 	}
 	if (contentType.includes('application/json')) {
 		const body = await res.json();
+		// Business error: HTTP 200 with non-zero code
+		if (body?.code && body.code !== 0) {
+			console.error(`[api:${reqId}] ✗ ${method} ${path} → business error code=${body.code} "${body.error}"`);
+			throw new ApiError(body.error || 'Business error', 200, body.code);
+		}
 		console.debug(`[api:${reqId}] ✓ ${method} ${path} → ${res.status}`, body);
 		return (body?.data ?? body) as T;
 	}

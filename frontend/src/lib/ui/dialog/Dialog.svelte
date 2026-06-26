@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import { X } from "@lucide/svelte";
   import * as DialogBase from "./base";
+  import Spinner from "$lib/ui/spinner/Spinner.svelte";
   import { cn } from "$lib/utils/cn";
   import { isDefined } from "$lib/utils/valid";
 
@@ -50,7 +51,7 @@
     onOpenAutoFocus?: (e: Event) => void;
     onCloseAutoFocus?: (e: Event) => void;
     onCancel?: () => void;
-    onConfirm?: () => void;
+    onConfirm?: () => void | Promise<void>;
     children?: Snippet;
     headerExtra?: Snippet;
     footer?: boolean;
@@ -75,6 +76,29 @@
     : "";
 
   const contentInlineStyle = [contentStyle, widthStyle].filter(Boolean).join(" ").trim() || undefined;
+
+  let confirming = false;
+
+  async function handleConfirm() {
+    if (!onConfirm) {
+      open = false;
+      return;
+    }
+    const result = onConfirm();
+    if (result instanceof Promise) {
+      confirming = true;
+      try {
+        await result;
+        open = false;
+      } catch {
+        // keep dialog open on failure
+      } finally {
+        confirming = false;
+      }
+    } else {
+      open = false;
+    }
+  }
 </script>
 
 <DialogBase.Root
@@ -101,8 +125,9 @@
       {/if}
       {#if closable}
         <DialogBase.Close
-          class="text-ink-4 hover:bg-surface-sunken hover:text-ink rounded-md p-1.5 transition-colors duration-150"
+          class="text-ink-4 hover:bg-surface-sunken hover:text-ink rounded-md p-1.5 transition-colors duration-150 disabled:opacity-50"
           aria-label="Close"
+          disabled={confirming}
           onclick={onCancel}
         >
           <X size={18} strokeWidth={1.75} />
@@ -120,7 +145,8 @@
       <DialogBase.Footer class="border-line-soft border-t px-5 py-3">
         {#if showCancel}
           <DialogBase.Close
-            class="text-ink-2 hover:bg-surface-sunken hover:text-ink inline-flex h-8 items-center justify-center rounded-md px-3 text-sm transition-colors duration-150"
+            class="text-ink-2 hover:bg-surface-sunken hover:text-ink inline-flex h-8 items-center justify-center rounded-md px-3 text-sm transition-colors duration-150 disabled:opacity-50"
+            disabled={confirming}
             onclick={onCancel}
           >
             {cancelText}
@@ -129,9 +155,13 @@
         {#if showConfirm}
           <button
             type="button"
-            class="bg-primary hover:bg-primary-hover active:bg-primary-active text-primary-on inline-flex h-8 items-center justify-center rounded-md px-3.5 text-sm font-medium transition-colors duration-150"
-            onclick={() => { onConfirm?.(); open = false; }}
+            class="bg-primary hover:bg-primary-hover active:bg-primary-active text-primary-on inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3.5 text-sm font-medium transition-colors duration-150 disabled:opacity-50"
+            disabled={confirming}
+            onclick={handleConfirm}
           >
+            {#if confirming}
+              <Spinner size={14} strokeWidth={2.5} />
+            {/if}
             {confirmText}
           </button>
         {/if}

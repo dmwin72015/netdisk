@@ -142,12 +142,12 @@
     {/if}
     {#if file.isDir && !file.isSystem}
       {#if file.hasPassword}
-        <DropdownBase.Item onSelect={() => lockManager.clearLock(file)}>
+        <DropdownBase.Item onSelect={async () => { await lockManager.clearLock(file); fileManager.refresh(); }}>
           {#snippet icon()}<LockOpen size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}{m.clear_dir_password()}{/snippet}
         </DropdownBase.Item>
       {:else}
-        <DropdownBase.Item onSelect={() => lockManager.lock(file)}>
+        <DropdownBase.Item onSelect={async () => { await lockManager.lock(file); fileManager.refresh(); }}>
           {#snippet icon()}<Lock size={14} class="text-ink-4" />{/snippet}
           {#snippet children()}{m.set_dir_password()}{/snippet}
         </DropdownBase.Item>

@@ -75,7 +75,7 @@
 
   async function navigateToDir(slug: string) {
     const status = await fileManager.navigateToDir(slug);
-    if (status === "navigated") {
+    if (status === "navigated" || status === "unlocked") {
       await goto("/files/all/" + slug);
     }
   }

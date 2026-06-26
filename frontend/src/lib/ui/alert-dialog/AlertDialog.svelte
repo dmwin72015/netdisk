@@ -24,7 +24,7 @@
 		contentClass?: string;
 	} = $props();
 
-	let controller = $derived(createAlertDialogController(onConfirm, onCancel, () => (open = false)));
+	let confirmed = false;
 
 	const actionClass = $derived(
 		variant === 'destructive'
@@ -33,11 +33,18 @@
 	);
 
 	function handleConfirm() {
-		controller.handleConfirm();
+		confirmed = true;
+		onConfirm?.();
+		open = false;
 	}
 
 	function handleOpenChange(v: boolean) {
-		controller.handleOpenChange(v);
+		if (!v) {
+			if (!confirmed) {
+				onCancel?.();
+			}
+			confirmed = false;
+		}
 	}
 </script>
 

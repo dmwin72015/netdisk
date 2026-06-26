@@ -134,7 +134,7 @@
 						bind:value={nickname}
 						placeholder={username}
 						maxlength={100}
-						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary outline-none"
+						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
 					/>
 				</div>
 				<div>
@@ -145,7 +145,7 @@
 						placeholder={m.bio_placeholder()}
 						rows={3}
 						maxlength={500}
-						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary outline-none resize-none"
+						class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-none"
 					></textarea>
 				</div>
 

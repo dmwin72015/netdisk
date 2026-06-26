@@ -30,7 +30,7 @@
 			info = await getPublicShare(slug);
 			verified = !info.hasPassword;
 		} catch (error) {
-			if (error instanceof ApiError && error.status === 404) {
+			if (error instanceof ApiError && error.errCode === 1001) {
 				errorMessage = m.share_not_found();
 			} else {
 				errorMessage = m.share_load_failed();
@@ -115,7 +115,7 @@
 							bind:value={passwordCode}
 							maxlength="16"
 							placeholder={m.share_enter_password()}
-							class="h-11 w-full rounded-xl border border-line px-4 text-center text-sm tracking-widest outline-none focus:border-primary"
+							class="h-11 w-full rounded-xl border border-line px-4 text-center text-sm tracking-widest outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 						/>
 						<button type="submit" disabled={verifying} class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60">
 							{#if verifying}<LoaderCircle size={16} class="animate-spin" />{/if}

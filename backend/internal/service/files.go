@@ -147,7 +147,7 @@ func (s *FilesService) ClearDirectoryLock(ctx context.Context, userID int64, ses
 			return model.ErrInvalidInput
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(dir.LockPasswordHash.String), []byte(password)); err != nil {
-			return model.ErrUnauthorized
+			return model.ErrWrongPassword
 		}
 	}
 	_, err = s.pg.Exec(ctx, `
@@ -197,7 +197,7 @@ func (s *FilesService) UnlockDirectory(ctx context.Context, userID int64, sessio
 		return model.ErrInvalidInput
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
-		return model.ErrUnauthorized
+		return model.ErrWrongPassword
 	}
 
 	expiresAt, permanent := directoryUnlockExpiry(ttlHours)

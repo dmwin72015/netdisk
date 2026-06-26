@@ -23,7 +23,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 func requireUserID(c echo.Context) (int64, error) {
 	id, ok := middleware.UserID(c)
 	if !ok {
-		return 0, model.ErrUnauthorized
+		return 0, echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
 	return id, nil
 }
@@ -35,7 +35,7 @@ func (h *UserHandler) GetMe(c echo.Context) error {
 	}
 	me, err := h.svc.GetMe(c.Request().Context(), userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, me)
 }
@@ -47,7 +47,7 @@ func (h *UserHandler) GetStorageBreakdown(c echo.Context) error {
 	}
 	stats, err := h.svc.GetStorageBreakdown(c.Request().Context(), userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]any{"categories": stats})
 }
@@ -64,11 +64,11 @@ func (h *UserHandler) UpdateProfile(c echo.Context) error {
 		AvatarURL   string `json:"avatarUrl"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.UpdateProfile(c.Request().Context(), userID, input.DisplayName, input.Bio, input.AvatarURL); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "profile updated"})
 }
@@ -84,11 +84,11 @@ func (h *UserHandler) ChangePassword(c echo.Context) error {
 		NewPassword string `json:"newPassword"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.ChangePassword(c.Request().Context(), userID, input.OldPassword, input.NewPassword); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "password changed"})
 }
@@ -100,7 +100,7 @@ func (h *UserHandler) GetSettings(c echo.Context) error {
 	}
 	settings, err := h.svc.GetSettings(c.Request().Context(), userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, settings)
 }
@@ -112,11 +112,11 @@ func (h *UserHandler) UpdateSettings(c echo.Context) error {
 	}
 	var input service.UserSettings
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	settings, err := h.svc.SaveSettings(c.Request().Context(), userID, input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, settings)
 }
@@ -129,12 +129,12 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		return model.ErrFileRequired
+		return BizError(model.ErrFileRequired)
 	}
 
 	f, err := file.Open()
 	if err != nil {
-		return model.ErrInternal
+		return BizError(model.ErrInternal)
 	}
 	defer f.Close()
 
@@ -142,22 +142,22 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 	buf := make([]byte, 512)
 	n, err := f.Read(buf)
 	if err != nil && err != io.EOF {
-		return model.ErrInternal
+		return BizError(model.ErrInternal)
 	}
 
 	contentType := http.DetectContentType(buf[:n])
 	if contentType != "image/jpeg" && contentType != "image/png" && contentType != "image/webp" {
-		return model.ErrUnsupportedImage
+		return BizError(model.ErrUnsupportedImage)
 	}
 
 	// Seek back to start
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return model.ErrInternal
+		return BizError(model.ErrInternal)
 	}
 
 	url, err := h.svc.UploadAvatar(c.Request().Context(), userID, f, contentType)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"avatar_url": url})
@@ -174,7 +174,7 @@ func (h *UserHandler) ListTransactions(c echo.Context) error {
 
 	txs, total, err := h.svc.ListTransactions(c.Request().Context(), userID, page, pageSize)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{

@@ -19,12 +19,7 @@
 
 	function onOpenAutoFocus(e: Event) {
 		e.preventDefault();
-	}
-
-	function onOpenComplete(isOpen: boolean) {
-		if (isOpen) {
-			focusFirstEmpty();
-		}
+		requestAnimationFrame(() => focusFirstEmpty());
 	}
 
 	function cleanup() {
@@ -143,7 +138,6 @@
 		showConfirm={false}
 		showCancel={false}
 		{onOpenAutoFocus}
-		onOpenChangeComplete={onOpenComplete}
 	>
 		{#snippet children()}
 			<div bind:this={contentEl}>
@@ -156,7 +150,7 @@
 					{#each { length: 4 } as _, i}
 						<input
 							bind:this={inputs[i]}
-							type="text"
+							type="password"
 							inputmode="numeric"
 							pattern="[0-9]"
 							maxlength="1"
@@ -169,7 +163,7 @@
 									inputs[i].select();
 								}
 							}}
-							class="h-12 w-10 rounded-lg border border-line bg-white text-center text-lg font-mono font-medium text-ink outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-soft"
+							class="h-12 w-10 rounded-lg border border-line bg-white text-center text-lg font-mono font-medium text-ink outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary/20"
 							aria-label="Digit {i + 1}"
 						/>
 					{/each}

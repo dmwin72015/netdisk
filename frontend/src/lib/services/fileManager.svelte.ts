@@ -142,11 +142,11 @@ toast.success(m.dir_unlocked());
       lockManager.syncFromFiles(data.files);
     } catch (e) {
       if (id !== this.refreshId && !force) return;
-      if (e instanceof ApiError && e.status === 404) {
+      if (e instanceof ApiError && e.errCode === 1001) {
         this.notFound = true;
       } else if (
         e instanceof ApiError &&
-        e.status === 423 &&
+        e.errCode === 2012 &&
         this.currentSlug
       ) {
         let unlocked: boolean;

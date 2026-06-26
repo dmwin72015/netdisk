@@ -53,7 +53,7 @@ func (h *ShareHandler) CreateShare(c echo.Context) error {
 
 	var request createShareRequest
 	if err := c.Bind(&request); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	expiresAt, err := parseOptionalShareTime(request.ExpiresAt)
 	if err != nil {
@@ -66,7 +66,7 @@ func (h *ShareHandler) CreateShare(c echo.Context) error {
 		ExpiresAt:    expiresAt,
 	})
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return Created(c, share)
 }
@@ -88,7 +88,7 @@ func (h *ShareHandler) ListShares(c echo.Context) error {
 
 	shares, total, err := h.svc.ListShares(c.Request().Context(), userID, pageSize, (page-1)*pageSize)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]any{"shares": shares, "total": total})
 }
@@ -101,7 +101,7 @@ func (h *ShareHandler) UpdateShare(c echo.Context) error {
 
 	var request updateShareRequest
 	if err := c.Bind(&request); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	expiresAt, err := parseOptionalShareTime(request.ExpiresAt)
 	if err != nil {
@@ -115,7 +115,7 @@ func (h *ShareHandler) UpdateShare(c echo.Context) error {
 		ExpiresAtSet:    request.ExpiresAtSet,
 	})
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, share)
 }
@@ -129,13 +129,13 @@ func (h *ShareHandler) CancelShare(c echo.Context) error {
 	slug := c.Param("slug")
 	if c.QueryParam("permanent") == "1" {
 		if err := h.svc.DeleteShare(c.Request().Context(), userID, slug); err != nil {
-			return err
+			return BizError(err)
 		}
 		return OK(c, map[string]string{"message": "share deleted"})
 	}
 
 	if err := h.svc.CancelShare(c.Request().Context(), userID, slug); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "share canceled"})
 }
@@ -143,7 +143,7 @@ func (h *ShareHandler) CancelShare(c echo.Context) error {
 func (h *ShareHandler) GetPublicShare(c echo.Context) error {
 	info, err := h.svc.GetPublicInfo(c.Request().Context(), c.Param("slug"))
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, info)
 }
@@ -151,11 +151,11 @@ func (h *ShareHandler) GetPublicShare(c echo.Context) error {
 func (h *ShareHandler) VerifyPublicShare(c echo.Context) error {
 	var request verifyShareRequest
 	if err := c.Bind(&request); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	info, err := h.svc.VerifyPublicPassword(c.Request().Context(), c.Param("slug"), request.PasswordCode)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, info)
 }
@@ -165,7 +165,7 @@ func (h *ShareHandler) ServePublicFile(c echo.Context) error {
 	fileSlug := c.QueryParam("fileSlug")
 	res, err := h.svc.OpenSharedFile(c.Request().Context(), c.Param("slug"), passwordCode, fileSlug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	defer res.File.Close()
 
@@ -198,7 +198,7 @@ func parseOptionalShareTime(value *string) (*time.Time, error) {
 	}
 	parsed, err := time.Parse(time.RFC3339, trimmed)
 	if err != nil {
-		return nil, model.ErrInvalidInput
+		return nil, BizError(model.ErrInvalidInput)
 	}
 	return &parsed, nil
 }
@@ -213,7 +213,7 @@ func (r *updateShareRequest) UnmarshalJSON(data []byte) error {
 		if string(value) != "null" {
 			var passwordCode string
 			if err := json.Unmarshal(value, &passwordCode); err != nil {
-				return err
+				return BizError(err)
 			}
 			r.PasswordCode = &passwordCode
 		}
@@ -223,7 +223,7 @@ func (r *updateShareRequest) UnmarshalJSON(data []byte) error {
 		if string(value) != "null" {
 			var expiresAt string
 			if err := json.Unmarshal(value, &expiresAt); err != nil {
-				return err
+				return BizError(err)
 			}
 			r.ExpiresAt = &expiresAt
 		}

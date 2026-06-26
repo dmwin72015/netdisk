@@ -62,7 +62,7 @@
 					id="album-title"
 					type="text"
 					bind:value={title}
-					class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+					class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
 					placeholder={m.albums_title_placeholder()}
 				/>
 			</div>
@@ -72,7 +72,7 @@
 					id="album-desc"
 					bind:value={description}
 					rows={3}
-					class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+					class="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
 					placeholder={m.albums_desc_placeholder()}
 				></textarea>
 			</div>

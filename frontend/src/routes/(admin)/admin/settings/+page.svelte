@@ -246,7 +246,7 @@
 
 			{#if editingItem.type === 'bool'}
 				<select
-					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 					bind:value={editValue}
 				>
 					<option value="true">true</option>
@@ -257,14 +257,14 @@
 					<div class="flex gap-2">
 						<input
 							type="number"
-							class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+							class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 							class:border-danger={!!editError}
 							bind:value={editValue}
 							min="0"
 							step="any"
 						/>
 						<select
-							class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+							class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 							bind:value={editUnit}
 						>
 							{#each BYTE_UNITS as u}
@@ -280,7 +280,7 @@
 				<div>
 					<input
 						type={editingItem.type === 'number' ? 'number' : 'text'}
-						class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+						class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 						class:border-danger={!!editError}
 						bind:value={editValue}
 						placeholder={String(editingItem.defaultValue)}

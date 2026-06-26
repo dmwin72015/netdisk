@@ -135,7 +135,7 @@
 				bind:value={searchQuery}
 				onkeydown={handleKeydown}
 				placeholder={m.admin_search_files()}
-				class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+				class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
 		<Select.Root type="single" bind:value={categoryFilter}>

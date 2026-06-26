@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
@@ -25,7 +26,7 @@ func requireAdminUserID(c echo.Context) (int64, error) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, model.ErrInvalidInput
+		return 0, echo.NewHTTPError(http.StatusBadRequest, "invalid id parameter")
 	}
 	return id, nil
 }
@@ -33,7 +34,7 @@ func requireAdminUserID(c echo.Context) (int64, error) {
 func (h *AdminHandler) DashboardStats(c echo.Context) error {
 	stats, err := h.svc.DashboardStats(c.Request().Context())
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, stats)
 }
@@ -74,7 +75,7 @@ func (h *AdminHandler) ListUsers(c echo.Context) error {
 
 	items, total, err := h.svc.ListUsers(c.Request().Context(), params)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -93,10 +94,10 @@ func (h *AdminHandler) CreateUser(c echo.Context) error {
 		Role     string `json:"role"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.Username == "" || input.Email == "" || input.Password == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.Role == "" {
 		input.Role = "user"
@@ -104,7 +105,7 @@ func (h *AdminHandler) CreateUser(c echo.Context) error {
 
 	user, err := h.svc.CreateUser(c.Request().Context(), input.Username, input.Email, input.Password, input.Role)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, user)
@@ -118,7 +119,7 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 
 	user, err := h.svc.GetUser(c.Request().Context(), id)
 	if err != nil {
-		return model.ErrNotFound
+		return BizError(model.ErrNotFound)
 	}
 
 	return OK(c, user)
@@ -134,15 +135,15 @@ func (h *AdminHandler) UpdateUser(c echo.Context) error {
 		Role *string `json:"role"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.Role == nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	user, err := h.svc.UpdateRole(c.Request().Context(), id, *input.Role)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, user)
@@ -158,12 +159,12 @@ func (h *AdminHandler) UpdateStorageBase(c echo.Context) error {
 		BaseBytes int64 `json:"baseBytes"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	user, err := h.svc.UpdateStorageBase(c.Request().Context(), id, input.BaseBytes)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, user)
@@ -176,7 +177,7 @@ func (h *AdminHandler) DeleteUser(c echo.Context) error {
 	}
 
 	if err := h.svc.DeleteUser(c.Request().Context(), id); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return c.NoContent(204)
@@ -203,7 +204,7 @@ func (h *AdminHandler) ListFiles(c echo.Context) error {
 
 	items, total, err := h.svc.ListFiles(c.Request().Context(), params)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -217,7 +218,7 @@ func (h *AdminHandler) ListFiles(c echo.Context) error {
 func (h *AdminHandler) StorageStats(c echo.Context) error {
 	stats, err := h.svc.StorageStats(c.Request().Context())
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, stats)
 }
@@ -263,7 +264,7 @@ func (h *AdminHandler) DeleteFile(c echo.Context) error {
 	}
 
 	if err := h.svc.DeleteFile(c.Request().Context(), id); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return c.NoContent(204)
@@ -276,7 +277,7 @@ func (h *AdminHandler) RestoreFile(c echo.Context) error {
 	}
 
 	if err := h.svc.RestoreFile(c.Request().Context(), id); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return c.NoContent(204)
@@ -285,7 +286,7 @@ func (h *AdminHandler) RestoreFile(c echo.Context) error {
 func (h *AdminHandler) ListSystemConfig(c echo.Context) error {
 	items, err := h.configSvc.List(c.Request().Context())
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, items)
 }
@@ -293,13 +294,13 @@ func (h *AdminHandler) ListSystemConfig(c echo.Context) error {
 func (h *AdminHandler) UpdateSystemConfig(c echo.Context) error {
 	var input map[string]any
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if len(input) == 0 {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if err := h.configSvc.SetBatch(c.Request().Context(), input); err != nil {
-		return err
+		return BizError(err)
 	}
 	items, _ := h.configSvc.List(c.Request().Context())
 	return OK(c, items)
@@ -310,15 +311,15 @@ func (h *AdminHandler) ResetSystemConfig(c echo.Context) error {
 		Key string `json:"key"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.Key != "" {
 		if err := h.configSvc.Reset(c.Request().Context(), input.Key); err != nil {
-			return err
+			return BizError(err)
 		}
 	} else {
 		if err := h.configSvc.ResetAll(c.Request().Context()); err != nil {
-			return err
+			return BizError(err)
 		}
 	}
 	items, _ := h.configSvc.List(c.Request().Context())
@@ -331,14 +332,14 @@ func (h *AdminHandler) CleanupQuery(c echo.Context) error {
 		Hash string `json:"hash"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.Slug == "" && input.Hash == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	result, err := h.svc.CleanupQuery(c.Request().Context(), input.Slug, input.Hash)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, result)
 }
@@ -348,14 +349,14 @@ func (h *AdminHandler) CleanupDeleteUserFile(c echo.Context) error {
 		UserFileID int64 `json:"userFileId"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.UserFileID == 0 {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	result, err := h.svc.CleanupDeleteUserFile(c.Request().Context(), input.UserFileID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, result)
 }
@@ -365,14 +366,14 @@ func (h *AdminHandler) CleanupDeletePhysicalFile(c echo.Context) error {
 		PhysicalFileID int64 `json:"physicalFileId"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.PhysicalFileID == 0 {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	result, err := h.svc.CleanupDeletePhysicalFile(c.Request().Context(), input.PhysicalFileID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, result)
 }

@@ -12,6 +12,12 @@ import (
 	"github.com/netdisk/server/pkg/i18n"
 )
 
+// BizError wraps a sentinel error as a business error.
+// The error handler will return HTTP 200 with the business errCode.
+func BizError(err error) error {
+	return &model.BusinessError{Err: err}
+}
+
 func OK(c echo.Context, data any) error {
 	return c.JSON(http.StatusOK, map[string]any{"data": data})
 }
@@ -30,6 +36,15 @@ func EchoErrorHandler(logger zerolog.Logger) echo.HTTPErrorHandler {
 			return
 		}
 		lang := i18n.DetectLanguage(c.Request().Header.Get("Accept-Language"))
+
+		// Business errors return HTTP 200 with errCode in the body.
+		var be *model.BusinessError
+		if errors.As(err, &be) {
+			code, msg := mapBusinessError(be.Err, lang)
+			_ = c.JSON(http.StatusOK, map[string]any{"code": code, "error": msg})
+			return
+		}
+
 		status, code, msg := MapError(err, lang)
 
 		ev := logger.Warn().Err(err).Int("status", status).Int("errCode", code).Str("path", c.Path()).Str("method", c.Request().Method)
@@ -59,47 +74,54 @@ func MapError(err error, lang i18n.Language) (int, int, string) {
 		code := mapHTTPErrorCode(he.Code)
 		return he.Code, code, msg
 	}
+	return http.StatusInternalServerError, model.ErrCodeInternal, i18n.T(i18n.MsgInternal, lang)
+}
+
+// mapBusinessError maps a business sentinel error to its errCode and i18n message.
+func mapBusinessError(err error, lang i18n.Language) (int, string) {
 	switch {
 	case errors.Is(err, model.ErrNotFound):
-		return http.StatusNotFound, model.ErrCodeNotFound, i18n.T(i18n.MsgNotFound, lang)
+		return model.ErrCodeNotFound, i18n.T(i18n.MsgNotFound, lang)
 	case errors.Is(err, model.ErrUnauthorized):
-		return http.StatusUnauthorized, model.ErrCodeUnauthorized, i18n.T(i18n.MsgUnauthorized, lang)
+		return model.ErrCodeUnauthorized, i18n.T(i18n.MsgUnauthorized, lang)
 	case errors.Is(err, model.ErrForbidden):
-		return http.StatusForbidden, model.ErrCodeForbidden, i18n.T(i18n.MsgForbidden, lang)
+		return model.ErrCodeForbidden, i18n.T(i18n.MsgForbidden, lang)
 	case errors.Is(err, model.ErrInvalidInput):
-		return http.StatusBadRequest, model.ErrCodeInvalidInput, i18n.T(i18n.MsgInvalidInput, lang)
+		return model.ErrCodeInvalidInput, i18n.T(i18n.MsgInvalidInput, lang)
 	case errors.Is(err, model.ErrInvalidCredentials):
-		return http.StatusUnauthorized, model.ErrCodeInvalidCredentials, i18n.T(i18n.MsgInvalidCredentials, lang)
+		return model.ErrCodeInvalidCredentials, i18n.T(i18n.MsgInvalidCredentials, lang)
 	case errors.Is(err, model.ErrAlreadyExists):
-		return http.StatusConflict, model.ErrCodeAlreadyExists, i18n.T(i18n.MsgAlreadyExists, lang)
+		return model.ErrCodeAlreadyExists, i18n.T(i18n.MsgAlreadyExists, lang)
 	case errors.Is(err, model.ErrNameConflict):
-		return http.StatusConflict, model.ErrCodeNameConflict, i18n.T(i18n.MsgNameConflict, lang)
+		return model.ErrCodeNameConflict, i18n.T(i18n.MsgNameConflict, lang)
 	case errors.Is(err, model.ErrDuplicateFile):
-		return http.StatusConflict, model.ErrCodeDuplicateFile, i18n.T(i18n.MsgDuplicateFile, lang)
+		return model.ErrCodeDuplicateFile, i18n.T(i18n.MsgDuplicateFile, lang)
 	case errors.Is(err, model.ErrSameFileConflict):
-		return http.StatusConflict, model.ErrCodeSameFileConflict, i18n.T(i18n.MsgSameFileConflict, lang)
+		return model.ErrCodeSameFileConflict, i18n.T(i18n.MsgSameFileConflict, lang)
 	case errors.Is(err, model.ErrFileTooLarge):
-		return http.StatusRequestEntityTooLarge, model.ErrCodeFileTooLarge, i18n.T(i18n.MsgFileTooLarge, lang)
+		return model.ErrCodeFileTooLarge, i18n.T(i18n.MsgFileTooLarge, lang)
 	case errors.Is(err, model.ErrUnsupportedType):
-		return http.StatusBadRequest, model.ErrCodeUnsupportedType, i18n.T(i18n.MsgUnsupportedType, lang)
+		return model.ErrCodeUnsupportedType, i18n.T(i18n.MsgUnsupportedType, lang)
 	case errors.Is(err, model.ErrQuotaExceeded):
-		return http.StatusInsufficientStorage, model.ErrCodeQuotaExceeded, i18n.T(i18n.MsgQuotaExceeded, lang)
+		return model.ErrCodeQuotaExceeded, i18n.T(i18n.MsgQuotaExceeded, lang)
 	case errors.Is(err, model.ErrChallengeExpired):
-		return http.StatusNotFound, model.ErrCodeChallengeExpired, i18n.T(i18n.MsgChallengeExpired, lang)
+		return model.ErrCodeChallengeExpired, i18n.T(i18n.MsgChallengeExpired, lang)
 	case errors.Is(err, model.ErrChallengeMismatch):
-		return http.StatusForbidden, model.ErrCodeChallengeMismatch, i18n.T(i18n.MsgChallengeMismatch, lang)
+		return model.ErrCodeChallengeMismatch, i18n.T(i18n.MsgChallengeMismatch, lang)
 	case errors.Is(err, model.ErrDirNotEmpty):
-		return http.StatusConflict, model.ErrCodeDirNotEmpty, i18n.T(i18n.MsgDirNotEmpty, lang)
+		return model.ErrCodeDirNotEmpty, i18n.T(i18n.MsgDirNotEmpty, lang)
 	case errors.Is(err, model.ErrFileRequired):
-		return http.StatusBadRequest, model.ErrCodeFileRequired, i18n.T(i18n.MsgFileRequired, lang)
+		return model.ErrCodeFileRequired, i18n.T(i18n.MsgFileRequired, lang)
 	case errors.Is(err, model.ErrUnsupportedImage):
-		return http.StatusBadRequest, model.ErrCodeUnsupportedImage, i18n.T(i18n.MsgUnsupportedImage, lang)
+		return model.ErrCodeUnsupportedImage, i18n.T(i18n.MsgUnsupportedImage, lang)
 	case errors.Is(err, model.ErrSystemFileLocked):
-		return http.StatusForbidden, model.ErrCodeSystemFileLocked, i18n.T(i18n.MsgSystemFileLocked, lang)
+		return model.ErrCodeSystemFileLocked, i18n.T(i18n.MsgSystemFileLocked, lang)
 	case errors.Is(err, model.ErrDirectoryLocked):
-		return http.StatusLocked, model.ErrCodeDirectoryLocked, i18n.T(i18n.MsgDirectoryLocked, lang)
+		return model.ErrCodeDirectoryLocked, i18n.T(i18n.MsgDirectoryLocked, lang)
+	case errors.Is(err, model.ErrWrongPassword):
+		return model.ErrCodeWrongPassword, i18n.T(i18n.MsgWrongPassword, lang)
 	default:
-		return http.StatusInternalServerError, model.ErrCodeInternal, i18n.T(i18n.MsgInternal, lang)
+		return model.ErrCodeInternal, i18n.T(i18n.MsgInternal, lang)
 	}
 }
 

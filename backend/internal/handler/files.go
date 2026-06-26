@@ -55,7 +55,7 @@ func (h *FilesHandler) ListFiles(c echo.Context) error {
 	if parentSlug := c.QueryParam("parentSlug"); parentSlug != "" {
 		parent, pErr := h.svc.ResolveParent(c.Request().Context(), userID, parentSlug)
 		if pErr != nil {
-			return pErr
+			return BizError(pErr)
 		}
 		params.ParentID = &parent.ID
 	}
@@ -85,7 +85,7 @@ func (h *FilesHandler) ListFiles(c echo.Context) error {
 
 	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params, middleware.SessionID(c))
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -107,7 +107,7 @@ func (h *FilesHandler) ListRecentFiles(c echo.Context) error {
 
 	items, total, err := h.svc.ListRecentFiles(c.Request().Context(), userID, middleware.SessionID(c), limit)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -127,12 +127,12 @@ func (h *FilesHandler) Mkdir(c echo.Context) error {
 		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	item, err := h.svc.Mkdir(c.Request().Context(), userID, middleware.SessionID(c), input.DirName, input.ParentSlug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return Created(c, item)
@@ -151,12 +151,12 @@ func (h *FilesHandler) CheckConflict(c echo.Context) error {
 		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.CheckConflict(c.Request().Context(), userID, middleware.SessionID(c), input.FileName, input.PreHash, input.ParentSlug, input.FileSize)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, resp)
@@ -173,12 +173,12 @@ func (h *FilesHandler) CheckDuplicate(c echo.Context) error {
 		ParentSlug string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.CheckDuplicate(c.Request().Context(), userID, middleware.SessionID(c), input.FileHash, input.ParentSlug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, resp)
@@ -196,12 +196,12 @@ func (h *FilesHandler) ImportFile(c echo.Context) error {
 		ParentSlug       string `json:"parentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.ImportFile(c.Request().Context(), userID, middleware.SessionID(c), input.PhysicalFileSlug, input.FileName, input.ParentSlug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return Created(c, resp)
@@ -216,7 +216,7 @@ func (h *FilesHandler) GetBreadcrumb(c echo.Context) error {
 	slug := c.Param("slug")
 	items, err := h.svc.GetBreadcrumb(c.Request().Context(), userID, middleware.SessionID(c), slug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, items)
@@ -230,7 +230,7 @@ func (h *FilesHandler) TrashFile(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if err := h.svc.TrashFile(c.Request().Context(), userID, middleware.SessionID(c), slug); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "file trashed"})
@@ -246,14 +246,14 @@ func (h *FilesHandler) BatchTrashFiles(c echo.Context) error {
 		Slugs []string `json:"slugs"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if len(input.Slugs) == 0 {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.BatchTrashFiles(c.Request().Context(), userID, middleware.SessionID(c), input.Slugs); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "files trashed"})
@@ -267,7 +267,7 @@ func (h *FilesHandler) RestoreFile(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if err := h.svc.RestoreFile(c.Request().Context(), userID, slug); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "file restored"})
@@ -281,7 +281,7 @@ func (h *FilesHandler) PermanentDelete(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if err := h.svc.PermanentDelete(c.Request().Context(), userID, slug); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "file permanently deleted"})
@@ -295,7 +295,7 @@ func (h *FilesHandler) ForceDeleteDir(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if err := h.svc.ForceDeleteDir(c.Request().Context(), userID, middleware.SessionID(c), slug); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "directory force deleted"})
@@ -312,11 +312,11 @@ func (h *FilesHandler) RenameFile(c echo.Context) error {
 		NewName string `json:"newName"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.RenameFile(c.Request().Context(), userID, middleware.SessionID(c), slug, input.NewName); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "file renamed"})
@@ -333,11 +333,11 @@ func (h *FilesHandler) MoveFile(c echo.Context) error {
 		TargetParentSlug string `json:"targetParentSlug"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.MoveFile(c.Request().Context(), userID, middleware.SessionID(c), slug, input.TargetParentSlug); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "file moved"})
@@ -354,11 +354,11 @@ func (h *FilesHandler) SetStarred(c echo.Context) error {
 		Starred bool `json:"starred"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.SetStarred(c.Request().Context(), userID, middleware.SessionID(c), slug, input.Starred); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "star updated"})
@@ -373,7 +373,7 @@ func (h *FilesHandler) DownloadFile(c echo.Context) error {
 	slug := c.Param("slug")
 	res, err := h.svc.DownloadFile(c.Request().Context(), userID, middleware.SessionID(c), slug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	defer res.File.Close()
 
@@ -413,7 +413,7 @@ func (h *FilesHandler) ListTrashed(c echo.Context) error {
 
 	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params, middleware.SessionID(c))
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -430,7 +430,7 @@ func (h *FilesHandler) EmptyTrash(c echo.Context) error {
 
 	count, err := h.svc.EmptyTrash(c.Request().Context(), userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -446,7 +446,7 @@ func (h *FilesHandler) RestoreAll(c echo.Context) error {
 
 	count, err := h.svc.RestoreAll(c.Request().Context(), userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -477,7 +477,7 @@ func (h *FilesHandler) ListStarred(c echo.Context) error {
 
 	items, total, err := h.svc.ListUserFiles(c.Request().Context(), params, middleware.SessionID(c))
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -495,10 +495,10 @@ func (h *FilesHandler) SetDirectoryLock(c echo.Context) error {
 		Password string `json:"password"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if err := h.svc.SetDirectoryLock(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "directory locked"})
 }
@@ -512,10 +512,10 @@ func (h *FilesHandler) ClearDirectoryLock(c echo.Context) error {
 		Password string `json:"password"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if err := h.svc.ClearDirectoryLock(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "directory unlocked"})
 }
@@ -529,7 +529,7 @@ func (h *FilesHandler) GetFolderSummary(c echo.Context) error {
 	slug := c.Param("slug")
 	summary, err := h.svc.GetFolderSummary(c.Request().Context(), userID, slug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, summary)
@@ -545,10 +545,10 @@ func (h *FilesHandler) UnlockDirectory(c echo.Context) error {
 		TTLHours int    `json:"ttlHours"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if err := h.svc.UnlockDirectory(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password, input.TTLHours); err != nil {
-		return err
+		return BizError(err)
 	}
 	return OK(c, map[string]string{"message": "directory unlocked"})
 }

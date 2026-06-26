@@ -157,7 +157,7 @@
 						<input
 							type="datetime-local"
 							bind:value={customExpiresAt}
-							class="h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-primary"
+							class="h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 						/>
 					{/if}
 				</section>
@@ -175,7 +175,7 @@
 							<input
 								bind:value={passwordCode}
 								maxlength="16"
-								class="h-10 min-w-0 flex-1 rounded-lg border border-line px-3 text-sm uppercase outline-none focus:border-primary"
+								class="h-10 min-w-0 flex-1 rounded-lg border border-line px-3 text-sm uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 							/>
 							<button type="button" onclick={refreshPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-muted">
 								<RefreshCw size={14} /> {m.share_refresh_code()}

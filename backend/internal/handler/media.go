@@ -34,12 +34,12 @@ func (h *MediaHandler) AddToLibrary(c echo.Context) error {
 
 	var input service.AddToLibraryRequest
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.AddToLibrary(c.Request().Context(), userID, input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return Created(c, resp)
@@ -53,12 +53,12 @@ func (h *MediaHandler) ReaddExistingUpload(c echo.Context) error {
 
 	var input service.ReaddExistingUploadRequest
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.ReaddExistingUpload(c.Request().Context(), userID, input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return Created(c, resp)
@@ -72,7 +72,7 @@ func (h *MediaHandler) EnsureUploadDir(c echo.Context) error {
 
 	item, err := h.svc.EnsureUploadDir(c.Request().Context(), userID)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, item)
@@ -89,7 +89,7 @@ func (h *MediaHandler) ListMediaItems(c echo.Context) error {
 
 	items, total, err := h.svc.ListMediaItems(c.Request().Context(), userID, page, pageSize)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]any{
@@ -107,7 +107,7 @@ func (h *MediaHandler) GetMediaItem(c echo.Context) error {
 	mediaSlug := c.Param("media_slug")
 	item, err := h.svc.GetMediaItem(c.Request().Context(), userID, mediaSlug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, item)
@@ -121,7 +121,7 @@ func (h *MediaHandler) RemoveFromLibrary(c echo.Context) error {
 
 	mediaSlug := c.Param("media_slug")
 	if err := h.svc.RemoveFromLibrary(c.Request().Context(), userID, mediaSlug); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "removed from library"})
@@ -137,11 +137,11 @@ func (h *MediaHandler) BatchRemoveFromLibrary(c echo.Context) error {
 		MediaSlugs []string `json:"mediaSlugs"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.BatchRemoveFromLibrary(c.Request().Context(), userID, input.MediaSlugs); err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, map[string]string{"message": "removed from library"})
@@ -157,12 +157,12 @@ func (h *MediaHandler) RenameMediaItem(c echo.Context) error {
 		NewName string `json:"newName"`
 	}
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	item, err := h.svc.RenameMediaItem(c.Request().Context(), userID, c.Param("media_slug"), input.NewName)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, item)
@@ -177,17 +177,17 @@ func (h *MediaHandler) ServePoster(c echo.Context) error {
 	mediaSlug := c.Param("media_slug")
 	filePath, err := h.svc.GetPosterPath(c.Request().Context(), userID, mediaSlug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	f, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 	defer f.Close()
 	stat, err := f.Stat()
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	resp := c.Response()
@@ -213,7 +213,7 @@ func (h *MediaHandler) ServeHLS(c echo.Context) error {
 
 	filePath, err := h.svc.GetHLSPath(c.Request().Context(), userID, mediaSlug, subPath)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	// Set content type based on extension

@@ -21,6 +21,7 @@
 	let fileName = $state('');
 	let submitting = $state(false);
 	let expanded = $state(false);
+	let filenameInput: HTMLInputElement | undefined = $state();
 
 	const PREVIEW_MAX_LENGTH = 500;
 	const isLongText = $derived(text.length > PREVIEW_MAX_LENGTH);
@@ -38,6 +39,11 @@
 			expanded = false;
 		}
 	});
+
+	function onOpenAutoFocus(e: Event) {
+		e.preventDefault();
+		requestAnimationFrame(() => filenameInput?.focus());
+	}
 
 	function handleClose(value: boolean) {
 		if (!value) onCancel();
@@ -59,6 +65,7 @@
 <Dialog
 	bind:open
 	onOpenChangeComplete={handleClose}
+	onOpenAutoFocus={onOpenAutoFocus}
 	title={sizeError ? m.paste_text_size_exceeded() : m.text_upload_title()}
 	footer={false}
 	size="md"
@@ -103,6 +110,7 @@
 				id="filename-input"
 				type="text"
 				bind:value={fileName}
+				bind:this={filenameInput}
 				placeholder={m.text_filename_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>

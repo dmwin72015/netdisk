@@ -32,7 +32,7 @@ func (h *UploadHandler) UploadFromURL(c echo.Context) error {
 	var input service.URLUploadRequest
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("upload-from-url: bind failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	h.logger.Info().Int64("userID", userID).Str("url", input.URL).Str("fileName", input.FileName).Str("parentSlug", input.ParentSlug).Msg("upload-from-url: request")
@@ -40,7 +40,7 @@ func (h *UploadHandler) UploadFromURL(c echo.Context) error {
 	resp, err := h.svc.UploadFromURL(c.Request().Context(), userID, middleware.SessionID(c), input)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("url", input.URL).Err(err).Msg("upload-from-url: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Info().Int64("userID", userID).Str("taskSlug", resp.TaskSlug).Str("status", resp.Status).Msg("upload-from-url: response")
@@ -56,14 +56,14 @@ func (h *UploadHandler) PreCheck(c echo.Context) error {
 	var input service.PreCheckRequest
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("pre-check: bind request failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	h.logger.Debug().Int64("userID", userID).Str("preHash", safeHashPrefix(input.PreHash)).Int64("fileSize", input.FileSize).Msg("pre-check: request")
 
 	resp, err := h.svc.PreCheck(c.Request().Context(), userID, input)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("preHash", safeHashPrefix(input.PreHash)).Int64("fileSize", input.FileSize).Err(err).Msg("pre-check: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Debug().Int64("userID", userID).Str("preHash", safeHashPrefix(input.PreHash)).Str("status", resp.Status).Msg("pre-check: response")
@@ -79,14 +79,14 @@ func (h *UploadHandler) RequestChallenge(c echo.Context) error {
 	var input service.RequestChallengeRequest
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("request-challenge: bind failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	h.logger.Debug().Int64("userID", userID).Str("fileHash", safeHashPrefix(input.FileHash)).Msg("request-challenge: request")
 
 	resp, err := h.svc.RequestChallenge(c.Request().Context(), userID, input)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(input.FileHash)).Err(err).Msg("request-challenge: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Debug().Int64("userID", userID).Str("fileHash", safeHashPrefix(input.FileHash)).Str("status", resp.Status).Msg("request-challenge: response")
@@ -102,14 +102,14 @@ func (h *UploadHandler) Verify(c echo.Context) error {
 	var input service.VerifyRequest
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("verify: bind failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	h.logger.Debug().Int64("userID", userID).Str("fileHash", safeHashPrefix(input.FileHash)).Msg("verify: request")
 
 	resp, err := h.svc.Verify(c.Request().Context(), userID, input)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("fileHash", safeHashPrefix(input.FileHash)).Err(err).Msg("verify: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Debug().Int64("userID", userID).Str("fileHash", safeHashPrefix(input.FileHash)).Str("status", resp.Status).Msg("verify: response")
@@ -119,15 +119,15 @@ func (h *UploadHandler) Verify(c echo.Context) error {
 func (h *UploadHandler) CheckFileDedup(c echo.Context) error {
 	var input service.FileDedupRequest
 	if err := c.Bind(&input); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if input.FileHash == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.CheckFileDedup(c.Request().Context(), input)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, resp)
@@ -142,14 +142,14 @@ func (h *UploadHandler) Init(c echo.Context) error {
 	var input service.InitRequest
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("init: bind failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	h.logger.Info().Int64("userID", userID).Str("fileName", input.FileName).Int64("fileSize", input.FileSize).Str("mimeType", input.MimeType).Str("parentSlug", input.ParentSlug).Str("fileHash", safeHashPrefix(input.FileHash)).Str("preHash", safeHashPrefix(input.PreHash)).Msg("init: request")
 
 	resp, err := h.svc.Init(c.Request().Context(), userID, middleware.SessionID(c), input)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("fileName", input.FileName).Int64("fileSize", input.FileSize).Err(err).Msg("init: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Info().Int64("userID", userID).Str("uploadSlug", resp.UploadSlug).Int32("totalChunks", resp.TotalChunks).Int("completedChunks", len(resp.CompletedChunks)).Msg("init: response")
@@ -168,33 +168,33 @@ func (h *UploadHandler) UploadChunk(c echo.Context) error {
 	chunkIndex, err := strconv.Atoi(chunkIndexStr)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", uploadSlug).Str("chunkIndex", chunkIndexStr).Int64("contentLength", contentLength).Msg("upload chunk: invalid chunk index")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	file, err := c.FormFile("chunkData")
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("contentLength", contentLength).Err(err).Msg("upload chunk: missing or invalid chunk data")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	f, err := file.Open()
 	if err != nil {
 		h.logger.Error().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("fileSize", file.Size).Int64("contentLength", contentLength).Err(err).Msg("upload chunk: open multipart file failed")
-		return model.ErrInternal
+		return BizError(model.ErrInternal)
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
 		h.logger.Error().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("fileSize", file.Size).Int64("contentLength", contentLength).Err(err).Msg("upload chunk: read multipart file failed")
-		return model.ErrInternal
+		return BizError(model.ErrInternal)
 	}
 
 	h.logger.Info().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int64("declaredSize", file.Size).Int("readSize", len(data)).Int64("contentLength", contentLength).Msg("upload chunk: received")
 
 	if err := h.svc.AppendChunk(c.Request().Context(), userID, uploadSlug, int32(chunkIndex), data); err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Int("dataSize", len(data)).Int64("contentLength", contentLength).Err(err).Msg("upload chunk: AppendChunk failed")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Debug().Int64("userID", userID).Str("uploadSlug", uploadSlug).Int("chunkIndex", chunkIndex).Msg("upload chunk: success")
@@ -212,14 +212,14 @@ func (h *UploadHandler) Complete(c echo.Context) error {
 	}
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("complete: bind failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	h.logger.Info().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Msg("complete: request")
 
 	resp, err := h.svc.Complete(c.Request().Context(), userID, input.UploadSlug)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Err(err).Msg("complete: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Info().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Str("status", resp.Status).Str("physicalFileSlug", resp.PhysicalFileSlug).Msg("complete: response")
@@ -235,13 +235,13 @@ func (h *UploadHandler) UpdateHash(c echo.Context) error {
 	var input service.UpdateHashRequest
 	if err := c.Bind(&input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Err(err).Msg("update-hash: bind failed")
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	h.logger.Debug().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Str("fileHash", safeHashPrefix(input.FileHash)).Msg("update-hash: request")
 
 	if err := h.svc.UpdateHash(c.Request().Context(), userID, input); err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Str("fileHash", safeHashPrefix(input.FileHash)).Err(err).Msg("update-hash: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Debug().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Str("fileHash", safeHashPrefix(input.FileHash)).Msg("update-hash: success")
@@ -260,7 +260,7 @@ func (h *UploadHandler) GetStatus(c echo.Context) error {
 	resp, err := h.svc.GetStatus(c.Request().Context(), userID, uploadSlug)
 	if err != nil {
 		h.logger.Warn().Int64("userID", userID).Str("uploadSlug", uploadSlug).Err(err).Msg("get-status: service error")
-		return err
+		return BizError(err)
 	}
 
 	h.logger.Debug().Int64("userID", userID).Str("uploadSlug", uploadSlug).Str("status", resp.Status).Str("physicalFileSlug", resp.PhysicalFileSlug).Msg("get-status: response")
@@ -298,7 +298,7 @@ func (h *UploadHandler) ListTasks(c echo.Context) error {
 
 	resp, err := h.svc.ListTasks(c.Request().Context(), userID, limit, offset, startDate, endDate, status)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return OK(c, resp)
@@ -312,12 +312,12 @@ func (h *UploadHandler) RetryTask(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if slug == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	resp, err := h.svc.RetryTask(c.Request().Context(), userID, middleware.SessionID(c), slug)
 	if err != nil {
-		return err
+		return BizError(err)
 	}
 
 	return Created(c, resp)
@@ -331,11 +331,11 @@ func (h *UploadHandler) DeleteTask(c echo.Context) error {
 
 	slug := c.Param("slug")
 	if slug == "" {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.DeleteTask(c.Request().Context(), userID, slug); err != nil {
-		return err
+		return BizError(err)
 	}
 	return c.NoContent(204)
 }
@@ -350,15 +350,15 @@ func (h *UploadHandler) DeleteTasks(c echo.Context) error {
 		Slugs []string `json:"slugs"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 	if len(req.Slugs) == 0 {
-		return model.ErrInvalidInput
+		return BizError(model.ErrInvalidInput)
 	}
 
 	if err := h.svc.DeleteTasks(c.Request().Context(), userID, req.Slugs); err != nil {
 		h.logger.Warn().Int64("userID", userID).Int("count", len(req.Slugs)).Err(err).Msg("delete-tasks: service error")
-		return err
+		return BizError(err)
 	}
 	h.logger.Info().Int64("userID", userID).Int("count", len(req.Slugs)).Msg("delete-tasks: success")
 	return c.NoContent(204)

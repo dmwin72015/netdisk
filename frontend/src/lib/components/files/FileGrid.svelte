@@ -6,6 +6,8 @@
   import { fileManager } from "$lib/services/fileManager.svelte";
   import { lockManager } from "$lib/services/lockManager.svelte";
   import { previewManager } from "$lib/services/previewManager.svelte";
+  import { toast } from "svelte-sonner";
+  import { confirmAction } from "$lib/dialog";
   import * as m from "$lib/paraglide/messages";
   import MimeIcon from "$lib/components/MimeIcon.svelte";
   import FileActionsDropdown from "./FileActionsDropdown.svelte";
@@ -43,6 +45,15 @@
   function markThumbnailFailed(fileId: string) {
     failedThumbs.add(fileId);
     failedThumbs = new Set(failedThumbs);
+  }
+
+  async function toggleLock(f: NormalizedFile) {
+    if (lockManager.isEffectivelyLocked(f)) {
+      try { await lockManager.unlock(f.slug, f.name); } catch { toast.error(m.dir_password_wrong()); }
+    } else {
+      const ok = await confirmAction(m.dir_password(), m.dir_relock_confirm({ name: f.name }), m.confirm());
+      if (ok) lockManager.relock(f.slug);
+    }
   }
 </script>
 
@@ -124,11 +135,19 @@
           </span>
         {/if}
         {#if f.hasPassword}
-          {#if !lockManager.isEffectivelyLocked(f)}
-            <LockOpen size={12} class="shrink-0 text-success" />
-          {:else}
-            <Lock size={12} class="shrink-0 text-ink-4" />
-          {/if}{/if}
+          <button
+            type="button"
+            class="shrink-0 rounded-md p-0.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-3"
+            onclick={(e) => { e.stopPropagation(); toggleLock(f); }}
+            aria-label={lockManager.isEffectivelyLocked(f) ? m.dir_password() : m.dir_unlocked()}
+          >
+            {#if lockManager.isEffectivelyLocked(f)}
+              <Lock size={12} />
+            {:else}
+              <LockOpen size={12} class="text-success" />
+            {/if}
+          </button>
+        {/if}
       </div>
       <p class="mt-0.5 text-xs text-ink-4">
         {f.isDir ? "" : fmtSize(f.size)}

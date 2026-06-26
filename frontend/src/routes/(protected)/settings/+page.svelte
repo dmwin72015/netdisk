@@ -116,7 +116,7 @@
             setDirectoryUnlockTtlHours(
               parseInt((e.currentTarget as HTMLSelectElement).value, 10),
             )}
-          class="rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-soft"
+          class="rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           {#each ttlOptions as option}
             <option value={option.value}>{option.label}</option>
