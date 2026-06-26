@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { tick } from "svelte";
+	import { Dialog } from "$lib/ui/dialog";
 	import { getPending, getPinValue, setPinValue, closePinDialog } from "$lib/dialog-pin.svelte";
 	import * as m from "$lib/paraglide/messages";
-	import { X } from "@lucide/svelte";
 
 	let pending = $derived(getPending());
 	let pinVal = $derived(getPinValue());
@@ -15,17 +16,18 @@
 		if (pending && !closing) {
 			requestAnimationFrame(() => {
 				open = true;
-				focusFirstEmpty();
+				tick().then(() => focusFirstEmpty());
 			});
 		}
 	});
 
 	function cleanup() {
+		const p = pending;
 		open = false;
 		closing = false;
 		closePinDialog();
 		if (resolveValue !== undefined) {
-			pending?.resolve(resolveValue);
+			p?.resolve(resolveValue);
 			resolveValue = undefined;
 		}
 	}
@@ -42,6 +44,12 @@
 		setTimeout(() => {
 			if (closing) cleanup();
 		}, 300);
+	}
+
+	function onOpenChange(isOpen: boolean) {
+		if (!isOpen && !closing) {
+			closeWithAnimation(null);
+		}
 	}
 
 	function onConfirm() {
@@ -120,94 +128,63 @@
 </script>
 
 {#if pending}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-overlay/60 backdrop-blur-sm"
-		role="dialog"
-		aria-modal="true"
+	<Dialog
+		{open}
+		{onOpenChange}
+		{onCancel}
+		title={pending?.opts.title ?? ""}
+		description={pending?.opts.message}
+		showConfirm={false}
+		showCancel={false}
 	>
-		<div
-			bind:this={contentEl}
-			class="w-full max-w-sm rounded-xl border border-line-soft bg-white p-6 shadow-dialog"
-			style="animation: dialog-in 200ms ease-out"
-		>
-			<div class="flex items-center justify-between">
-				<h2 class="text-sm font-medium leading-5 text-ink-2">
-					{pending?.opts.title ?? ''}
-				</h2>
-				<button
-					type="button"
-					onclick={onCancel}
-					class="text-ink-4 hover:bg-surface-sunken hover:text-ink rounded-md p-1 transition-colors duration-150"
-					aria-label="Close"
+		{#snippet children()}
+			<div bind:this={contentEl}>
+				<div
+					class="flex items-center justify-center gap-3"
+					onclick={handleContainerClick}
+					role="group"
+					aria-label="PIN input"
 				>
-					<X size={16} strokeWidth={1.75} />
-				</button>
-			</div>
+					{#each { length: 4 } as _, i}
+						<input
+							bind:this={inputs[i]}
+							type="text"
+							inputmode="numeric"
+							pattern="[0-9]"
+							maxlength="1"
+							value={getBoxValue(i)}
+							oninput={(e) => setBoxValue(i, e.currentTarget.value)}
+							onkeydown={(e) => handleBoxKeydown(i, e)}
+							onpaste={handlePaste}
+							onfocus={() => {
+								if (inputs[i] && pinVal[i]) {
+									inputs[i].select();
+								}
+							}}
+							class="h-12 w-10 rounded-lg border border-line bg-white text-center text-lg font-mono font-medium text-ink outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-soft"
+							aria-label="Digit {i + 1}"
+						/>
+					{/each}
+				</div>
 
-			{#if pending?.opts.message}
-				<p class="mt-1.5 text-xs text-ink-3">
-					{pending.opts.message}
-				</p>
-			{/if}
-
-			<div
-				class="mt-5 flex items-center justify-center gap-3"
-				onclick={handleContainerClick}
-				role="group"
-				aria-label="PIN input"
-			>
-				{#each { length: 4 } as _, i}
-					<input
-						bind:this={inputs[i]}
-						type="text"
-						inputmode="numeric"
-						pattern="[0-9]"
-						maxlength="1"
-						value={getBoxValue(i)}
-						oninput={(e) => setBoxValue(i, e.currentTarget.value)}
-						onkeydown={(e) => handleBoxKeydown(i, e)}
-						onpaste={handlePaste}
-						onfocus={() => {
-							if (inputs[i] && pinVal[i]) {
-								inputs[i].select();
-							}
-						}}
-						class="h-12 w-10 rounded-lg border border-line bg-white text-center text-lg font-mono font-medium text-ink outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-soft"
-						aria-label="Digit {i + 1}"
-					/>
-				{/each}
+				<div class="mt-5 flex justify-end gap-2">
+					<button
+						type="button"
+						onclick={onCancel}
+						class="rounded-lg px-4 py-2 text-sm text-ink-3 transition-colors duration-150 hover:bg-surface-sunken"
+					>
+						{pending?.opts.cancelText ?? m.cancel()}
+					</button>
+					<button
+						type="button"
+						onclick={onConfirm}
+						disabled={getConfirmDisabled()}
+						class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-primary-hover disabled:opacity-40 disabled:hover:bg-primary"
+					>
+						{pending?.opts.confirmText ?? m.confirm()}
+					</button>
+				</div>
 			</div>
-
-			<div class="mt-5 flex justify-end gap-2">
-				<button
-					type="button"
-					onclick={onCancel}
-					class="rounded-lg px-4 py-2 text-sm text-ink-3 transition-colors duration-150 hover:bg-surface-sunken"
-				>
-					{pending?.opts.cancelText ?? m.cancel()}
-				</button>
-				<button
-					type="button"
-					onclick={onConfirm}
-					disabled={getConfirmDisabled()}
-					class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-primary-hover disabled:opacity-40 disabled:hover:bg-primary"
-				>
-					{pending?.opts.confirmText ?? m.confirm()}
-				</button>
-			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Dialog>
 {/if}
-
-<style>
-	@keyframes dialog-in {
-		from {
-			opacity: 0;
-			transform: scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
-	}
-</style>

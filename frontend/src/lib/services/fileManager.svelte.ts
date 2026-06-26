@@ -93,14 +93,16 @@ class FileManager {
   ): Promise<"navigated" | "unlocked" | "blocked"> {
     const file = this.normalizedFiles.find((item) => item.id === slug);
     if (file && lockManager.isEffectivelyLocked(file)) {
+      let unlocked: boolean;
       try {
-        await lockManager.unlock(slug, file.name);
-        toast.success("目录已解锁");
-        return "unlocked";
+        unlocked = await lockManager.unlock(slug, file.name);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "目录密码错误");
         return "blocked";
       }
+      if (!unlocked) return "blocked";
+      toast.success("目录已解锁");
+      return "unlocked";
     }
     this.loading = true;
     this.files = [];
@@ -147,13 +149,19 @@ class FileManager {
         e.status === 423 &&
         this.currentSlug
       ) {
+        let unlocked: boolean;
         try {
-          await lockManager.unlock(this.currentSlug, this.crumbs.at(-1)?.name);
-          toast.success("目录已解锁");
-          void this.refresh(showLoading, force);
+          unlocked = await lockManager.unlock(
+            this.currentSlug,
+            this.crumbs.at(-1)?.name,
+          );
         } catch {
           toast.error("目录密码错误");
+          return;
         }
+        if (!unlocked) return;
+        toast.success("目录已解锁");
+        void this.refresh(showLoading, force);
       } else {
         toast.error(e instanceof Error ? e.message : m.load_failed());
       }

@@ -153,7 +153,7 @@
               {/if}
               {#if showThumbnail(f)}
                 <span
-                  class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-muted"
+                  class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-muted"
                 >
                   <LazyThumbnail
                     src={authedThumbnailUrl(f)}
@@ -168,7 +168,7 @@
                   name={f.name}
                   isDir={f.isDir}
                   category={f.fileCategory}
-                  size={24}
+                  size={28}
                 />
               {/if}
               <span class="min-w-0 flex-1 truncate text-ink-2" title={f.name}
