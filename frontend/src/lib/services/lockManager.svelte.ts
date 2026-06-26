@@ -10,6 +10,7 @@ import {
 } from "$lib/api/files";
 import { settingsManager } from "./settingsManager.svelte";
 import { promptInput, pinInput } from "$lib/dialog";
+	import * as m from "$lib/paraglide/messages";
 
 const LS_UNLOCKED_DIRS = "nd.files.unlockedDirs";
 
@@ -54,12 +55,12 @@ class LockManager {
 
   /** Prompt for password and temporarily unlock a directory. */
   async unlock(slug: string, name?: string): Promise<boolean> {
-    const password = await pinInput(
-      "目录密码",
-      {
-        message: `请输入${name ? `「${name}」` : "目录"}的密码`,
-      },
-    );
+const password = await pinInput(
+       m.dir_password(),
+       {
+         message: name ? m.dir_password_enter({ name }) : m.dir_password(),
+       },
+     );
     if (!password) return false;
     try {
       await unlockDirectory(
@@ -72,18 +73,18 @@ class LockManager {
       this.persistUnlocks();
       return true;
     } catch {
-      throw new Error("目录密码错误");
+      throw new Error(m.dir_password_wrong());
     }
   }
 
   /** Set a lock password on a directory. */
   async lock(file: NormalizedFile): Promise<void> {
-    const password = await pinInput(
-      "设置目录密码",
-      {
-        message: `请输入「${file.name}」的目录密码（4 位数字）`,
-      },
-    );
+const password = await pinInput(
+       m.dir_password_set(),
+       {
+         message: m.dir_password_set_desc({ name: file.name }),
+       },
+     );
     if (!password) return;
     await setDirectoryLock(file.id, password);
     this.lockedSlugs.add(file.slug);
@@ -94,12 +95,12 @@ class LockManager {
 
   /** Clear the lock password on a directory. */
   async clearLock(file: NormalizedFile): Promise<void> {
-    const password = await pinInput(
-      "取消目录密码",
-      {
-        message: `请输入「${file.name}」的目录密码`,
-      },
-    );
+const password = await pinInput(
+       m.dir_password_clear(),
+       {
+         message: m.dir_password_clear_desc({ name: file.name }),
+       },
+     );
     if (!password) return;
     await clearDirectoryLock(file.id, password);
     this.lockedSlugs.delete(file.slug);

@@ -97,11 +97,11 @@ class FileManager {
       try {
         unlocked = await lockManager.unlock(slug, file.name);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "目录密码错误");
+        toast.error(e instanceof Error ? e.message : m.dir_password_wrong());
         return "blocked";
       }
       if (!unlocked) return "blocked";
-      toast.success("目录已解锁");
+toast.success(m.dir_unlocked());
       return "unlocked";
     }
     this.loading = true;
@@ -156,11 +156,11 @@ class FileManager {
             this.crumbs.at(-1)?.name,
           );
         } catch {
-          toast.error("目录密码错误");
+          toast.error(m.dir_password_wrong());
           return;
         }
         if (!unlocked) return;
-        toast.success("目录已解锁");
+toast.success(m.dir_unlocked());
         void this.refresh(showLoading, force);
       } else {
         toast.error(e instanceof Error ? e.message : m.load_failed());
@@ -227,7 +227,7 @@ class FileManager {
   async remove(slug: string, name: string) {
     const file = this.normalizedFiles.find((f) => f.slug === slug);
     if (file && lockManager.isEffectivelyLocked(file)) {
-      toast.error("目录已加锁，无法删除");
+      toast.error(m.dir_locked_cannot_delete());
       return;
     }
     if (!(await confirmDelete(m.confirm_delete_file({ name })))) return;
@@ -254,7 +254,7 @@ class FileManager {
       return !f || !lockManager.isEffectivelyLocked(f);
     });
     if (unlockedIds.length === 0) {
-      toast.error("所有选中的目录均已加锁");
+      toast.error(m.dir_all_locked());
       return;
     }
     const names = unlockedIds
@@ -262,7 +262,7 @@ class FileManager {
       .filter(Boolean) as NormalizedFile[];
     if (names.length === 0) return;
     if (lockedNames.length > 0) {
-      toast.info(`已跳过 ${lockedNames.length} 个加锁目录`);
+      toast.info(m.skipped_locked_dirs({ count: String(lockedNames.length) }));
     }
     if (
       !(await confirmDelete(
@@ -288,7 +288,7 @@ class FileManager {
   async rename(slug: string, currentName: string) {
     const file = this.normalizedFiles.find((f) => f.slug === slug);
     if (file && lockManager.isEffectivelyLocked(file)) {
-      toast.error("目录已加锁，无法重命名");
+      toast.error(m.dir_locked_cannot_rename());
       return;
     }
     const newName = await promptInput(
@@ -322,11 +322,11 @@ class FileManager {
       return !f || !lockManager.isEffectivelyLocked(f);
     });
     if (unlockedIds.length === 0) {
-      toast.error("所有选中的目录均已加锁，无法移动");
+      toast.error(m.dir_locked_cannot_move());
       return;
     }
     if (lockedNames.length > 0) {
-      toast.info(`已跳过 ${lockedNames.length} 个加锁目录`);
+      toast.info(m.skipped_locked_dirs({ count: String(lockedNames.length) }));
     }
     if (unlockedIds.length === 0) return;
     const isMovingOut = targetParentSlug !== this.currentSlug;
@@ -363,24 +363,24 @@ class FileManager {
 
   async forceRemoveDir(file: NormalizedFile) {
     if (lockManager.isEffectivelyLocked(file)) {
-      toast.error("目录已加锁，无法强制删除");
+      toast.error(m.dir_locked_cannot_force_delete());
       return;
     }
-    if (
-      !(await confirmDelete(
-        `确认强制删除目录「${file.name}」及其所有内容？此操作不可恢复。`,
-      ))
-    )
-      return;
+if (
+       !(await confirmDelete(
+         m.dir_force_delete_confirm({ name: file.name }),
+       ))
+     )
+       return;
     this.files = this.files.filter((f) => f.slug !== file.slug);
     this.total = Math.max(0, this.total - 1);
     try {
       await forceDeleteDir(file.id);
-      toast.success(`目录「${file.name}」已强制删除`);
+      toast.success(m.dir_force_deleted({ name: file.name }));
       void this.refresh(false);
     } catch (e) {
       await this.refresh(true);
-      toast.error(e instanceof Error ? e.message : "强制删除失败");
+      toast.error(e instanceof Error ? e.message : m.dir_force_delete_failed());
     }
   }
 

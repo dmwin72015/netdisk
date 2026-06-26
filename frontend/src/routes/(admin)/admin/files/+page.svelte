@@ -138,7 +138,7 @@
 				class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
 			/>
 		</div>
-		<Select.Root type="single" bind:value={categoryFilter} onValueChange={handleFilterChange}>
+		<Select.Root type="single" bind:value={categoryFilter}>
 			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[150px] data-[placeholder]:text-ink-4">
 				<Select.Value placeholder={m.admin_all_categories()} />
 				<ChevronDown size={14} class="text-ink-4" />
@@ -152,7 +152,7 @@
 				{/each}
 			</Select.Content>
 		</Select.Root>
-		<Select.Root type="single" bind:value={trashedFilter} onValueChange={handleFilterChange}>
+		<Select.Root type="single" bind:value={trashedFilter}>
 			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[135px] data-[placeholder]:text-ink-4">
 				<Select.Value placeholder={m.admin_all_status()} />
 				<ChevronDown size={14} class="text-ink-4" />
@@ -166,7 +166,7 @@
 				{/each}
 			</Select.Content>
 		</Select.Root>
-		<Select.Root type="single" bind:value={sortBy} onValueChange={loadFiles}>
+		<Select.Root type="single" bind:value={sortBy}>
 			<Select.Trigger class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[155px] data-[placeholder]:text-ink-4">
 				<Select.Value />
 				<ChevronDown size={14} class="text-ink-4" />

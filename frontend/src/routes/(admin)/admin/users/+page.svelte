@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { goto } from "$app/navigation";
+  import { getLocale } from "$lib/paraglide/runtime";
   import {
     Trash2,
     Eye,
@@ -242,21 +243,32 @@
         bind:value={searchQuery}
         onkeydown={handleKeydown}
         placeholder={m.admin_search_users()}
-        class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+        class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-8 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
       />
+      {#if searchQuery}
+        <button
+          type="button"
+          onclick={() => (searchQuery = "")}
+          class="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+        >
+          <X size={12} />
+        </button>
+      {/if}
     </div>
-    <Select.Root
-      type="single"
-      bind:value={roleFilter}
-      onValueChange={() => {
-        offset = 0;
-        loadUsers();
-      }}
-    >
+    <Select.Root type="single" bind:value={roleFilter}>
       <Select.Trigger
         class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[130px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none"
       >
         <Select.Value placeholder={m.admin_all_roles()} />
+        {#if roleFilter}
+          <button
+            type="button"
+            onclick={(e) => { e.stopPropagation(); roleFilter = ""; }}
+            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+          >
+            <X size={12} />
+          </button>
+        {/if}
         <ChevronDown size={14} class="text-ink-4" />
       </Select.Trigger>
       <Select.Content
@@ -278,11 +290,20 @@
         {/each}
       </Select.Content>
     </Select.Root>
-    <Select.Root type="single" bind:value={sortBy} onValueChange={loadUsers}>
+    <Select.Root type="single" bind:value={sortBy}>
       <Select.Trigger
         class="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-3 min-w-[150px] data-[placeholder]:text-ink-4 focus:border-primary focus:outline-none"
       >
         <Select.Value />
+        {#if sortBy !== "-created_at"}
+          <button
+            type="button"
+            onclick={(e) => { e.stopPropagation(); sortBy = "-created_at"; }}
+            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+          >
+            <X size={12} />
+          </button>
+        {/if}
         <ChevronDown size={14} class="text-ink-4" />
       </Select.Trigger>
       <Select.Content
@@ -305,9 +326,11 @@
       value={dateRange}
       onValueChange={(range) => {
         dateRange = range;
-        offset = 0;
-        loadUsers();
       }}
+      onClear={() => {
+        dateRange = { start: null, end: null };
+      }}
+      locale={getLocale()}
       class="min-w-60"
     />
     <button
@@ -485,7 +508,7 @@
       aria-hidden="true"
     />
     <div class="space-y-4">
-      <div>
+      <div class="relative">
         <label class="mb-1 block text-xs text-ink-3">{m.username()}</label>
         <input
           bind:value={createUsername}
@@ -495,10 +518,19 @@
           autocapitalize="off"
           spellcheck="false"
           placeholder="Username"
-          class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+          class="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-8 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
         />
+        {#if createUsername}
+          <button
+            type="button"
+            onclick={() => (createUsername = "")}
+            class="absolute right-2 top-7 flex h-5 w-5 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+          >
+            <X size={12} />
+          </button>
+        {/if}
       </div>
-      <div>
+      <div class="relative">
         <label class="mb-1 block text-xs text-ink-3">{m.email()}</label>
         <input
           bind:value={createEmail}
@@ -509,10 +541,19 @@
           autocapitalize="off"
           spellcheck="false"
           placeholder="Email"
-          class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+          class="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-8 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
         />
+        {#if createEmail}
+          <button
+            type="button"
+            onclick={() => (createEmail = "")}
+            class="absolute right-2 top-7 flex h-5 w-5 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+          >
+            <X size={12} />
+          </button>
+        {/if}
       </div>
-      <div>
+      <div class="relative">
         <label class="mb-1 block text-xs text-ink-3">{m.password()}</label>
         <input
           bind:value={createPassword}
@@ -520,8 +561,17 @@
           name="new-admin-password"
           autocomplete="new-password"
           placeholder="Password"
-          class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+          class="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-8 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
         />
+        {#if createPassword}
+          <button
+            type="button"
+            onclick={() => (createPassword = "")}
+            class="absolute right-2 top-7 flex h-5 w-5 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+          >
+            <X size={12} />
+          </button>
+        {/if}
       </div>
       <div>
         <label class="mb-1 block text-xs text-ink-3">{m.col_role()}</label>
@@ -530,6 +580,15 @@
             class="flex w-full items-center justify-between gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink data-[placeholder]:text-ink-4"
           >
             <Select.Value placeholder="user" />
+            {#if createRole !== "user"}
+              <button
+                type="button"
+                onclick={(e) => { e.stopPropagation(); createRole = "user"; }}
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+              >
+                <X size={12} />
+              </button>
+            {/if}
             <ChevronDown size={14} class="text-ink-4" />
           </Select.Trigger>
           <Select.Portal>
@@ -578,6 +637,15 @@
             class="flex w-full items-center justify-between gap-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink data-[placeholder]:text-ink-4"
           >
             <Select.Value />
+            {#if editRoleValue !== "user"}
+              <button
+                type="button"
+                onclick={(e) => { e.stopPropagation(); editRoleValue = "user"; }}
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+              >
+                <X size={12} />
+              </button>
+            {/if}
             <ChevronDown size={14} class="shrink-0 text-ink-4" />
           </Select.Trigger>
           <Select.Content
@@ -600,15 +668,24 @@
           </Select.Content>
         </Select.Root>
       </div>
-      <div>
+      <div class="relative">
         <label class="mb-1 block text-xs text-ink-3"
           >{m.admin_set_base_storage()}</label
         >
         <input
           bind:value={editStorageBytes}
           type="number"
-          class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
+          class="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-8 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none"
         />
+        {#if editStorageBytes}
+          <button
+            type="button"
+            onclick={() => (editStorageBytes = "")}
+            class="absolute right-2 top-7 flex h-5 w-5 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+          >
+            <X size={12} />
+          </button>
+        {/if}
         <p class="mt-1 text-xs text-ink-4">
           {fmtSize(parseInt(editStorageBytes) || 0)}
         </p>

@@ -3,6 +3,7 @@
 	import { FileText, Check, X, AlertTriangle, ChevronDown, ChevronUp } from '@lucide/svelte';
 	import { Dialog } from '$lib/ui/dialog';
 	import { MAX_PASTE_TEXT_SIZE, getDefaultFileName } from '$lib/paste-text-upload';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		open = $bindable(false),
@@ -57,7 +58,7 @@
 	bind:open
 	onOpenChangeComplete={handleOpenChangeComplete}
 	onCancel={onCancel}
-	title={sizeError ? '文本大小超出限制' : '确认粘贴文本'}
+	title={sizeError ? m.paste_text_size_exceeded() : m.paste_text_title()}
 	footer={false}
 	size="md"
 	bodyClass="p-0"
@@ -84,10 +85,10 @@
 				</div>
 				<div class="min-w-0">
 					<p class="text-sm text-ink-2">
-						将粘贴文本保存到 <span class="font-semibold text-ink">{targetLabel}</span>
+						{m.paste_saving_text({ target: targetLabel })}
 					</p>
 					<p class="mt-1 text-xs text-ink-4">
-						文本大小 {fmtSize(new Blob([text]).size)}，共 {text.length} 个字符
+						{m.paste_text_size({ size: fmtSize(new Blob([text]).size), count: String(text.length) })}
 					</p>
 				</div>
 			</div>
@@ -95,12 +96,12 @@
 
 		<!-- Filename input -->
 		<div class="border-b border-line-soft px-5 py-3">
-			<label for="filename" class="text-sm font-medium text-ink-3">文件名</label>
+<label for="filename" class="text-sm font-medium text-ink-3">{m.paste_filename()}</label>
 			<input
 				id="filename"
 				type="text"
 				bind:value={fileName}
-				placeholder="请输入文件名"
+				placeholder={m.paste_filename_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
@@ -112,9 +113,9 @@
 				onclick={togglePreview}
 				class="flex w-full items-center justify-between text-left"
 			>
-				<span class="text-sm font-medium text-ink-3">文本预览</span>
+				<span class="text-sm font-medium text-ink-3">{m.paste_text_preview()}</span>
 				<div class="flex items-center gap-1.5 text-xs text-ink-4">
-					<span>{text.length} 个字符</span>
+					<span>{m.paste_text_chars({ count: String(text.length) })}</span>
 					{#if isLongText}
 						{#if expanded}
 							<ChevronUp size={14} />
@@ -143,7 +144,7 @@
 			onclick={() => { open = false; }}
 			class="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
 		>
-			<X size={14} /> 取消
+			<X size={14} /> {m.cancel()}
 		</button>
 		<button
 			type="button"
@@ -151,7 +152,7 @@
 			disabled={!fileName.trim() || !!sizeError}
 			class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			<Check size={14} /> 确认
+			<Check size={14} /> {m.confirm()}
 		</button>
 	</div>
 </Dialog>

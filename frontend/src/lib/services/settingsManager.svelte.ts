@@ -8,6 +8,7 @@ import {
   UPLOAD_FILE_CONCURRENCY,
   UPLOAD_FILE_CONCURRENCY_DEFAULT,
 } from "$lib/upload-concurrency";
+	import * as m from "$lib/paraglide/messages";
 
 export const DIRECTORY_UNLOCK_TTL_OPTIONS = [1, 2, 6, 24, -1] as const;
 export type DirectoryUnlockTtlHours =
@@ -102,7 +103,7 @@ class SettingsManager {
       this.apply(saved, true);
     } catch {
       this.setLocal(key, prev);
-      throw new Error("设置保存失败");
+      throw new Error(m.settings_save_failed());
     }
   }
 

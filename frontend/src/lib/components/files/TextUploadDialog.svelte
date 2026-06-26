@@ -3,6 +3,7 @@
 	import { FileText, Check, X, ChevronDown, ChevronUp, AlertTriangle } from '@lucide/svelte';
 	import { Dialog } from '$lib/ui/dialog';
 	import { MAX_PASTE_TEXT_SIZE } from '$lib/paste-text-upload';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		open = $bindable(false),
@@ -26,7 +27,7 @@
 	const displayText = $derived(expanded || !isLongText ? text : text.slice(0, PREVIEW_MAX_LENGTH));
 	const charCount = $derived(text.length);
 	const textSize = $derived(new Blob([text]).size);
-	const sizeError = $derived(textSize > MAX_PASTE_TEXT_SIZE ? `文本大小 (${fmtSize(textSize)}) 超出最大限制 (${fmtSize(MAX_PASTE_TEXT_SIZE)})` : undefined);
+	const sizeError = $derived(textSize > MAX_PASTE_TEXT_SIZE ? m.text_size_exceeded({ current: fmtSize(textSize), max: fmtSize(MAX_PASTE_TEXT_SIZE) }) : undefined);
 	const canConfirm = $derived(text.trim().length > 0 && fileName.trim().length > 0 && !sizeError && !submitting);
 
 	$effect(() => {
@@ -58,7 +59,7 @@
 <Dialog
 	bind:open
 	onOpenChangeComplete={handleClose}
-	title={sizeError ? '文本大小超出限制' : '确认粘贴文本'}
+	title={sizeError ? m.paste_text_size_exceeded() : m.text_upload_title()}
 	footer={false}
 	size="md"
 	bodyClass="p-0"
@@ -84,10 +85,10 @@
 				</div>
 				<div class="min-w-0">
 					<p class="text-sm text-ink-2">
-						将粘贴文本保存到 <span class="font-semibold text-ink">{targetLabel}</span>
+						{m.text_uploading_to({ target: targetLabel })}
 					</p>
 					<p class="mt-1 text-xs text-ink-4">
-						大小 {fmtSize(textSize)} · {charCount} 个字符
+						{m.text_upload_size({ size: fmtSize(textSize), count: String(charCount) })}
 					</p>
 				</div>
 			</div>
@@ -96,13 +97,13 @@
 		<!-- Filename input -->
 		<div class="border-b border-line-soft px-5 py-3">
 			<label for="filename-input" class="text-sm font-medium text-ink-2">
-				文件名
+				{m.text_filename_label()}
 			</label>
 			<input
 				id="filename-input"
 				type="text"
 				bind:value={fileName}
-				placeholder="请输入文件名，如：note.txt"
+				placeholder={m.text_filename_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
@@ -110,13 +111,13 @@
 		<!-- Text content input -->
 		<div class="border-b border-line-soft px-5 py-3">
 			<label for="text-content" class="text-sm font-medium text-ink-2">
-				文本内容
+				{m.text_content_label()}
 			</label>
 			<textarea
 				id="text-content"
 				bind:value={text}
 				rows={6}
-				placeholder="在此粘贴或输入文本内容..."
+				placeholder={m.text_content_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
 			></textarea>
 		</div>
@@ -129,9 +130,9 @@
 					onclick={() => (expanded = !expanded)}
 					class="flex w-full items-center justify-between text-left"
 				>
-					<span class="text-sm font-medium text-ink-2">文本预览</span>
+					<span class="text-sm font-medium text-ink-2">{m.paste_text_preview()}</span>
 					<div class="flex items-center gap-1.5 text-xs text-ink-4">
-						<span>{charCount} 个字符</span>
+						<span>{m.paste_text_chars({ count: String(charCount) })}</span>
 						{#if isLongText}
 							{#if expanded}
 								<ChevronUp size={14} />
@@ -163,7 +164,7 @@
 			onclick={onCancel}
 			class="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
 		>
-			<X size={14} /> 取消
+			<X size={14} /> {m.cancel()}
 		</button>
 		<button
 			type="button"
@@ -171,7 +172,7 @@
 			disabled={!canConfirm}
 			class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			<Check size={14} /> 确认
+			<Check size={14} /> {m.confirm()}
 		</button>
 	</div>
 </Dialog>

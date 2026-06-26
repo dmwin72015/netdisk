@@ -27,11 +27,11 @@
   });
 
   const ttlOptions = [
-    { value: 1, label: "1 小时" },
-    { value: 2, label: "2 小时" },
-    { value: 6, label: "6 小时" },
-    { value: 24, label: "24 小时" },
-    { value: -1, label: "永久（当前登录状态）" },
+    { value: 1, label: m.settings_ttl_1h() },
+    { value: 2, label: m.settings_ttl_2h() },
+    { value: 6, label: m.settings_ttl_6h() },
+    { value: 24, label: m.settings_ttl_24h() },
+    { value: -1, label: m.settings_ttl_forever() },
   ];
 
   function downloadSettingsJson() {
@@ -55,9 +55,9 @@
     try {
       const raw = await file.text();
       await importPreferences(JSON.parse(raw));
-      toast.success("设置已恢复");
+      toast.success(m.settings_restored());
     } catch {
-      toast.error("恢复设置失败，请选择有效的 JSON 文件");
+      toast.error(m.settings_restore_failed());
     } finally {
       importing = false;
     }
@@ -99,16 +99,16 @@
     <div class="mb-3 flex items-center gap-2">
       <Lock size={16} class="text-ink-4" />
       <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-3">
-        目录加锁
+        {m.settings_dir_lock()}
       </h2>
     </div>
     <div class="rounded-xl border border-line-soft bg-white">
       <div class="flex items-center justify-between gap-4 px-5 py-4">
         <div class="min-w-0">
-          <p class="text-sm font-medium text-ink-2">密码有效期</p>
-          <p class="mt-1 text-xs leading-5 text-ink-3">
-            目录解锁后，在当前登录会话中的有效时间。
-          </p>
+<p class="text-sm font-medium text-ink-2">{m.settings_password_ttl()}</p>
+           <p class="mt-1 text-xs leading-5 text-ink-3">
+             {m.settings_password_ttl_desc()}
+           </p>
         </div>
         <select
           value={getDirectoryUnlockTtlHours()}
@@ -131,7 +131,7 @@
     <div class="mb-3 flex items-center gap-2">
       <FileJson size={16} class="text-ink-4" />
       <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-3">
-        配置备份
+        {m.settings_backup()}
       </h2>
     </div>
     <div class="rounded-xl border border-line-soft bg-white">
@@ -139,10 +139,10 @@
         class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div class="min-w-0">
-          <p class="text-sm font-medium text-ink-2">导出 / 恢复设置</p>
-          <p class="mt-1 text-xs leading-5 text-ink-3">
-            将当前设置导出为 JSON，或从 JSON 文件恢复。
-          </p>
+<p class="text-sm font-medium text-ink-2">{m.settings_backup_desc()}</p>
+           <p class="mt-1 text-xs leading-5 text-ink-3">
+             {m.settings_backup_desc()}
+           </p>
         </div>
         <div class="flex shrink-0 items-center gap-2">
           <button
@@ -150,7 +150,7 @@
             onclick={downloadSettingsJson}
             class="rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-muted"
           >
-            导出 JSON
+            {m.settings_export_json()}
           </button>
           <button
             type="button"
@@ -158,7 +158,7 @@
             onclick={() => importInput?.click()}
             class="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
-            {importing ? "恢复中..." : "从 JSON 恢复"}
+            {importing ? m.settings_importing() : m.settings_import_from_json()}
           </button>
           <input
             bind:this={importInput}

@@ -108,7 +108,7 @@ function fallbackCopy(text: string): boolean {
 
 /** Friendly failure reason when copyToClipboard returns false. */
 export function clipboardUnavailableReason(): string {
-	if (typeof window === 'undefined') return '复制失败';
-	if (!navigator.clipboard?.writeText && !document.execCommand) return '复制失败：浏览器不支持剪贴板';
-	return '复制失败';
+	if (typeof window === 'undefined') return m.clipboard_copy_failed();
+	if (!navigator.clipboard?.writeText && !document.execCommand) return m.clipboard_unsupported();
+	return m.clipboard_copy_failed();
 }

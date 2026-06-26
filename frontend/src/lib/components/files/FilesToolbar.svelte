@@ -196,7 +196,7 @@
                 }}
               >
                 <FileText size={15} class="text-amber-500" />
-                粘贴文本
+                {m.paste_text()}
               </button>
             {/if}
             <div class="bg-line-soft mx-1 my-1 h-px"></div>

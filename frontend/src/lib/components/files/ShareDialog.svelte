@@ -7,6 +7,7 @@
 	import type { NormalizedFile } from '$lib/types/file';
 	import { copyToClipboard, clipboardUnavailableReason, fmtSize } from '$lib/utils/format';
 	import { qrCodeDataUrl } from '$lib/utils/qrcode';
+	import * as m from '$lib/paraglide/messages';
 
 	type ExpiryOption = '1d' | '7d' | '30d' | 'forever' | 'custom';
 
@@ -67,11 +68,11 @@
 		if (files.length === 0 || creating) return;
 		const expiresAt = resolveExpiresAt();
 		if (expiresAt === undefined) {
-			toast.error('请选择自定义截止时间');
+			toast.error(m.share_select_custom_expiry());
 			return;
 		}
 		if (privateShare && passwordCode.trim() === '') {
-			toast.error('请输入提取码');
+			toast.error(m.share_enter_password());
 			return;
 		}
 
@@ -83,10 +84,10 @@
 				passwordCode: privateShare ? passwordCode.trim() : null,
 			});
 			if (share.passwordCode) passwordCode = share.passwordCode;
-			toast.success('分享链接已生成');
+			toast.success(m.share_create_success());
 		} catch (error) {
 			console.error(error);
-			toast.error('生成分享失败');
+			toast.error(m.share_create_failed());
 		} finally {
 			creating = false;
 		}
@@ -97,7 +98,7 @@
 		const ok = await copyToClipboard(shareLink);
 		if (ok) {
 			copied = true;
-			toast.success('链接已复制');
+			toast.success(m.share_link_copied());
 			setTimeout(() => (copied = false), 1200);
 		} else {
 			toast.error(clipboardUnavailableReason());
@@ -107,22 +108,22 @@
 	async function copyPasswordCode() {
 		if (!share?.hasPassword) return;
 		const ok = await copyToClipboard(passwordCode);
-		if (ok) toast.success('提取码已复制');
+		if (ok) toast.success(m.share_password_copied());
 		else toast.error(clipboardUnavailableReason());
 	}
 </script>
 
-<Dialog bind:open title="分享文件" description={files.length === 1 ? files[0]?.name : `${files.length} 个文件`} footer={false} size="lg">
+<Dialog bind:open title={m.share_dialog_title()} description={files.length === 1 ? files[0]?.name : m.share_files_count({ count: String(files.length) })} footer={false} size="lg">
 	<div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
 		<div class="space-y-5">
 			{#if files.length > 0}
 				<div class="rounded-xl border border-line-soft bg-surface-muted px-4 py-3">
 					{#if files.length === 1}
 						<p class="truncate text-sm font-medium text-ink">{files[0].name}</p>
-						<p class="mt-1 text-xs text-ink-3">{fmtSize(totalSize)} · {files[0].mimeType || '未知类型'}</p>
+						<p class="mt-1 text-xs text-ink-3">{fmtSize(totalSize)} · {files[0].mimeType || m.share_unknown_type()}</p>
 					{:else}
-						<p class="text-sm font-medium text-ink">共 {files.length} 个文件</p>
-						<p class="mt-1 text-xs text-ink-3">总计 {fmtSize(totalSize)}</p>
+						<p class="text-sm font-medium text-ink">{m.share_files_count({ count: String(files.length) })}</p>
+						<p class="mt-1 text-xs text-ink-3">{m.share_total_size({ size: fmtSize(totalSize) })}</p>
 						<div class="mt-2 max-h-24 space-y-1 overflow-y-auto">
 							{#each files as f}
 								<p class="truncate text-xs text-ink-3"><File size={12} class="inline" /> {f.name}</p>
@@ -134,14 +135,14 @@
 
 			{#if !share}
 				<section class="space-y-2">
-					<p class="text-sm font-medium text-ink-2">有效期</p>
+					<p class="text-sm font-medium text-ink-2">{m.share_expiry_label()}</p>
 					<div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
 						{#each [
-							['1d', '1天'],
-							['7d', '7天'],
-							['30d', '30天'],
-							['forever', '永久'],
-							['custom', '自定义'],
+							['1d', m.share_1d()],
+							['7d', m.share_7d()],
+							['30d', m.share_30d()],
+							['forever', m.share_forever()],
+							['custom', m.share_custom()],
 						] as [value, label]}
 							<button
 								type="button"
@@ -164,8 +165,8 @@
 				<section class="space-y-3 rounded-xl border border-line-soft p-4">
 					<label class="flex items-center justify-between gap-4">
 						<span>
-							<span class="block text-sm font-medium text-ink-2">私密分享</span>
-							<span class="mt-1 block text-xs text-ink-3">开启后访问者需要输入提取码</span>
+							<span class="block text-sm font-medium text-ink-2">{m.share_private_share()}</span>
+							<span class="mt-1 block text-xs text-ink-3">{m.share_private_desc()}</span>
 						</span>
 						<input type="checkbox" bind:checked={privateShare} class="h-4 w-4 rounded border-line text-primary" />
 					</label>
@@ -177,58 +178,58 @@
 								class="h-10 min-w-0 flex-1 rounded-lg border border-line px-3 text-sm uppercase outline-none focus:border-primary"
 							/>
 							<button type="button" onclick={refreshPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-muted">
-								<RefreshCw size={14} /> 换一个
+								<RefreshCw size={14} /> {m.share_refresh_code()}
 							</button>
 						</div>
 					{/if}
 				</section>
 
 				<div class="flex justify-end gap-2 border-t border-line-soft pt-4">
-					<button type="button" onclick={() => (open = false)} class="h-9 rounded-lg px-4 text-sm text-ink-3 hover:bg-surface-sunken">取消</button>
+					<button type="button" onclick={() => (open = false)} class="h-9 rounded-lg px-4 text-sm text-ink-3 hover:bg-surface-sunken">{m.cancel()}</button>
 					<button type="button" onclick={submitShare} disabled={creating} class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60">
 						{#if creating}<LoaderCircle size={15} class="animate-spin" />{/if}
-						生成链接
+{m.share_create_link()}
 					</button>
 				</div>
 			{:else}
 				<section class="space-y-4">
 					<div>
-						<p class="mb-2 text-sm font-medium text-ink-2">分享链接</p>
+						<p class="mb-2 text-sm font-medium text-ink-2">{m.share_link_label()}</p>
 						<div class="flex gap-2">
 							<input readonly value={shareLink} class="h-10 min-w-0 flex-1 rounded-lg border border-line bg-surface-muted px-3 text-sm text-ink-2" />
 							<button type="button" onclick={copyLink} class="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover">
-								{#if copied}<Check size={14} />{:else}<Copy size={14} />{/if} 复制
+								{#if copied}<Check size={14} />{:else}<Copy size={14} />{/if} {m.share_copy()}
 							</button>
 						</div>
 					</div>
 					{#if share.hasPassword}
 						<div>
-							<p class="mb-2 text-sm font-medium text-ink-2">提取码</p>
+							<p class="mb-2 text-sm font-medium text-ink-2">{m.share_password_label()}</p>
 							<div class="flex gap-2">
 								<input readonly value={passwordCode} class="h-10 w-32 rounded-lg border border-line bg-surface-muted px-3 text-sm tracking-widest text-ink-2" />
 								<button type="button" onclick={copyPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-muted">
-									<Copy size={14} /> 复制提取码
+									<Copy size={14} /> {m.share_copy_password()}
 								</button>
 							</div>
 						</div>
 					{/if}
-					<p class="text-xs text-ink-3">有效期：{share.expiresAt ? new Date(share.expiresAt).toLocaleString() : '永久'}</p>
+					<p class="text-xs text-ink-3">{m.share_expiry_info({ expiry: share.expiresAt ? new Date(share.expiresAt).toLocaleString() : m.share_forever() })}</p>
 				</section>
 			{/if}
 		</div>
 
 		<aside class="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-line bg-surface-muted p-4">
 			{#if qrCodeUrl}
-				<img src={qrCodeUrl} alt="分享二维码" class="h-44 w-44 rounded-lg bg-white p-2 " />
+				<img src={qrCodeUrl} alt={m.share_qr_code()} class="h-44 w-44 rounded-lg bg-white p-2 " />
 			{:else if shareLink}
 				<div class="text-center text-ink-4">
 					<QrCode size={44} class="mx-auto mb-3" />
-					<p class="text-sm">链接较长，无法生成二维码</p>
+					<p class="text-sm">{m.share_qr_too_long()}</p>
 				</div>
 			{:else}
 				<div class="text-center text-ink-4">
 					<QrCode size={44} class="mx-auto mb-3" />
-					<p class="text-sm">生成链接后显示二维码</p>
+					<p class="text-sm">{m.share_qr_not_generated()}</p>
 				</div>
 			{/if}
 		</aside>

@@ -69,7 +69,7 @@
 			await unlinkOAuth(target);
 			unlinkTarget = null;
 			onRefresh?.();
-			toast.success(`已成功解绑 ${knownProviders[target]?.name ?? target}`);
+			toast.success(m.account_unlinked({ name: knownProviders[target]?.name ?? target }));
 		} catch (err) {
 			unlinkError = err instanceof ApiError ? err.message : 'Failed to unlink';
 			toast.error(unlinkError);
@@ -153,9 +153,9 @@
 
 		bindError = null;
 		if (alreadyBound) {
-			toast.info(`该 ${providerName} 账号已绑定到当前账号`);
+			toast.info(m.account_linked_info({ name: providerName }));
 		} else {
-			toast.success(`已成功绑定 ${providerName}`);
+			toast.success(m.account_linked_success({ name: providerName }));
 		}
 		onRefresh?.();
 	}
@@ -183,7 +183,7 @@
 			replaceTarget = null;
 			replaceDialogOpen = false;
 			onRefresh?.();
-			toast.success(`已成功绑定 ${providerName}`);
+			toast.success(m.account_linked_success({ name: providerName }));
 		} catch (err) {
 			bindError = err instanceof ApiError ? err.message : 'Failed to replace binding';
 			toast.error(bindError);

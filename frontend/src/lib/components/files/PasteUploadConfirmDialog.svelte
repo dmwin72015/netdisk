@@ -2,6 +2,7 @@
 	import { fmtSize } from '$lib/utils/format';
 	import { AlertTriangle, Check, Clipboard, X } from '@lucide/svelte';
 	import { Dialog } from '$lib/ui/dialog';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		acceptedFiles,
@@ -77,7 +78,7 @@
 	bind:open
 	onOpenChangeComplete={handleOpenChangeComplete}
 	onCancel={onCancel}
-	title="确认上传粘贴的文件？"
+	title={m.paste_confirm_title()}
 	footer={false}
 	size="md"
 	bodyClass="p-0"
@@ -90,10 +91,9 @@
 			</div>
 			<div class="min-w-0">
 				<p class="text-sm text-ink-2">
-					将上传 <span class="font-semibold text-ink">{acceptedFiles.length}</span> 个文件到
-					<span class="font-semibold text-ink">{targetLabel}</span>
+					{m.paste_uploading_files({ count: String(acceptedFiles.length), target: targetLabel })}
 				</p>
-				<p class="mt-1 text-xs text-ink-4">总大小 {fmtSize(totalSize)}</p>
+				<p class="mt-1 text-xs text-ink-4">{m.paste_total_size({ size: fmtSize(totalSize) })}</p>
 			</div>
 		</div>
 	</div>
@@ -101,13 +101,13 @@
 	{#if acceptedFiles.length > 0}
 		<!-- Filename input -->
 		<div class="border-b border-line-soft px-5 py-3">
-			<label for="paste-filename" class="text-sm font-medium text-ink-3">文件名</label>
+			<label for="paste-filename" class="text-sm font-medium text-ink-3">{m.paste_filename()}</label>
 			<input
 				id="paste-filename"
 				type="text"
 				bind:value={fileName}
 				oninput={handleFileNameInput}
-				placeholder="请输入文件名"
+				placeholder={m.paste_filename_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
@@ -125,12 +125,12 @@
 				</div>
 			{/each}
 			{#if hiddenAcceptedCount > 0}
-				<p class="px-3 py-2 text-xs text-ink-4">还有 {hiddenAcceptedCount} 个文件未显示</p>
+				<p class="px-3 py-2 text-xs text-ink-4">{m.paste_more_files({ count: String(hiddenAcceptedCount) })}</p>
 			{/if}
 		</div>
 	{:else}
 		<div class="px-5 py-8 text-center text-sm text-ink-3">
-			没有可上传的文件。
+			{m.paste_no_files()}
 		</div>
 	{/if}
 
@@ -138,7 +138,7 @@
 		<div class="mx-5 mt-4 rounded-xl border border-warning bg-warning-soft px-3 py-2 text-sm text-warning">
 			<div class="flex items-start gap-2">
 				<AlertTriangle size={16} class="mt-0.5 shrink-0" />
-				<p>已跳过 {rejectedFiles.length} 个不支持的文件。</p>
+				<p>{m.paste_skipped_files({ count: String(rejectedFiles.length) })}</p>
 			</div>
 		</div>
 	{/if}
@@ -149,7 +149,7 @@
 			onclick={() => { open = false; }}
 			class="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
 		>
-			<X size={14} /> 取消
+			<X size={14} /> {m.cancel()}
 		</button>
 		<button
 			type="button"
@@ -157,7 +157,7 @@
 			disabled={acceptedFiles.length === 0}
 			class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			<Check size={14} /> 确认上传
+			<Check size={14} /> {m.paste_confirm_upload()}
 		</button>
 	</div>
 </Dialog>

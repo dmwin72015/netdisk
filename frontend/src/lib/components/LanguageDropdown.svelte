@@ -2,6 +2,7 @@
 	import { ChevronDown, Globe } from '@lucide/svelte';
 	import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		triggerClass = 'flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-ink-3 transition-colors hover:bg-surface-sunken hover:text-ink-2 data-[state=open]:bg-surface-sunken data-[state=open]:text-ink-2',
@@ -15,7 +16,7 @@
 		align?: 'start' | 'center' | 'end';
 	} = $props();
 
-	const localeLabels: Record<string, string> = { zh: '中文', en: 'English' };
+	const localeLabels: Record<string, string> = { zh: m.lang_zh(), en: m.lang_en() };
 	let open = $state(false);
 </script>
 

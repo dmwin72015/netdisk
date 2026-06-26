@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { toast } from 'svelte-sonner';
-	import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from '$lib/paste-upload';
-	import { extractClipboardText, validateTextSize, getDefaultFileName } from '$lib/paste-text-upload';
-	import PasteUploadConfirmDialog from './PasteUploadConfirmDialog.svelte';
-	import PasteTextUploadConfirmDialog from './PasteTextUploadConfirmDialog.svelte';
+import { toast } from 'svelte-sonner';
+import { extractClipboardFiles, filterPasteFiles, isEditablePasteTarget } from '$lib/paste-upload';
+import { extractClipboardText, validateTextSize, getDefaultFileName } from '$lib/paste-text-upload';
+import PasteUploadConfirmDialog from './PasteUploadConfirmDialog.svelte';
+import PasteTextUploadConfirmDialog from './PasteTextUploadConfirmDialog.svelte';
+import * as m from '$lib/paraglide/messages';
 
 	let {
 		enabled = true,
@@ -37,7 +38,7 @@
 		try {
 			await onUpload([file]);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '粘贴上传失败');
+			toast.error(error instanceof Error ? error.message : m.paste_upload_failed());
 		} finally {
 			clipboardText = null;
 			textFileName = '';
@@ -67,7 +68,7 @@
 			// 检查文本大小
 			const sizeCheck = validateTextSize(text);
 			if (!sizeCheck.valid) {
-				toast.error(sizeCheck.error || '文本内容过大');
+				toast.error(sizeCheck.error || m.text_too_large());
 				return;
 			}
 
@@ -82,7 +83,7 @@
 		try {
 			await onUpload(files);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '粘贴上传失败');
+			toast.error(error instanceof Error ? error.message : m.paste_upload_failed());
 		}
 	}
 

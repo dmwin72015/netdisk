@@ -9,14 +9,15 @@
 	import noFilesSvg from '$lib/assets/empty-states/no-files.svg';
 	import { copyToClipboard, clipboardUnavailableReason, fmtSize, fmtTime } from '$lib/utils/format';
 	import AlertDialog from '$lib/ui/alert-dialog/AlertDialog.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	const expiryLabels: Record<ExpiryChoice, string> = {
-		keep: '选择新的有效期',
-		'1d': '从现在起 1 天',
-		'7d': '从现在起 7 天',
-		'30d': '从现在起 30 天',
-		forever: '永久',
-		custom: '自定义截止时间',
+		keep: m.share_select_expiry(),
+		'1d': m.share_1d_desc(),
+		'7d': m.share_7d_desc(),
+		'30d': m.share_30d_desc(),
+		forever: m.share_forever(),
+		custom: m.share_custom(),
 	};
 
 	type ExpiryChoice = 'keep' | '1d' | '7d' | '30d' | 'forever' | 'custom';
@@ -47,7 +48,7 @@
 			total = data.total;
 		} catch (error) {
 			console.error(error);
-			toast.error('加载分享列表失败');
+			toast.error(m.share_load_failed());
 		} finally {
 			loading = false;
 		}
@@ -80,7 +81,7 @@
 	async function saveExpiry(share: ShareItem) {
 		const expiresAt = resolveExpiresAt(share.slug);
 		if (expiresAt === undefined) {
-			toast.error('请选择新的有效期');
+			toast.error(m.share_select_new_expiry());
 			return;
 		}
 		savingSlug = share.slug;
@@ -88,10 +89,10 @@
 			const updated = await updateShare(share.slug, { expiresAt });
 			shares = shares.map((item) => (item.slug === updated.slug ? updated : item));
 			setExpiryChoice(share.slug, 'keep');
-			toast.success('有效期已更新');
+			toast.success(m.share_expiry_updated());
 		} catch (error) {
 			console.error(error);
-			toast.error('更新有效期失败');
+			toast.error(m.share_expiry_update_failed());
 		} finally {
 			savingSlug = null;
 		}
@@ -104,10 +105,10 @@
 		try {
 			await deleteShare(share.slug);
 			await loadShares(false);
-			toast.success('分享已删除');
+			toast.success(m.share_deleted());
 		} catch (error) {
 			console.error(error);
-			toast.error('删除分享失败');
+			toast.error(m.share_delete_failed());
 		} finally {
 			savingSlug = null;
 		}
@@ -115,7 +116,7 @@
 
 	function confirmCancel(share: ShareItem) {
 		cancelTarget = share;
-		cancelDescription = `确定取消「${cancelNames(share)}」的分享吗？`;
+		cancelDescription = m.share_confirm_cancel_desc({ name: cancelNames(share) });
 		showCancelDialog = true;
 	}
 
@@ -126,10 +127,10 @@
 		try {
 			await cancelShare(share.slug);
 			await loadShares(false);
-			toast.success('分享已取消');
+			toast.success(m.share_cancelled());
 		} catch (error) {
 			console.error(error);
-			toast.error('取消分享失败');
+			toast.error(m.share_cancel_failed());
 		} finally {
 			savingSlug = null;
 		}
@@ -141,7 +142,7 @@
 
 	async function copyShareLink(share: ShareItem) {
 		const ok = await copyToClipboard(shareLink(share.slug));
-		if (ok) toast.success('分享链接已复制');
+		if (ok) toast.success(m.share_link_copied());
 		else toast.error(clipboardUnavailableReason());
 	}
 
@@ -152,9 +153,9 @@
 	}
 
 	function statusText(share: ShareItem) {
-		if (share.disabledAt) return '已取消';
-		if (share.isExpired) return '已过期';
-		return '生效中';
+		if (share.disabledAt) return m.share_status_cancelled();
+		if (share.isExpired) return m.share_status_expired();
+		return m.share_status_active();
 	}
 
 	function statusClass(share: ShareItem) {
@@ -168,8 +169,8 @@
 	}
 
 	function fileCountText(share: ShareItem) {
-		if (share.files.length === 0) return '无文件';
-		return `${share.files.length} 个文件`;
+		if (share.files.length === 0) return m.share_no_files();
+		return m.share_files_count_detail({ count: String(share.files.length) });
 	}
 
 	function expiryClass(share: ShareItem) {
@@ -183,17 +184,17 @@
 
 	function subFileNames(share: ShareItem) {
 		if (share.files.length <= 3) return share.files.map((f) => f.fileName).join('、');
-		return share.files.slice(0, 3).map((f) => f.fileName).join('、') + ` 等${share.files.length}项`;
+		return share.files.slice(0, 3).map((f) => f.fileName).join('、') + m.share_files_more({ count: String(share.files.length) });
 	}
 </script>
 
 <div class="space-y-5">
 	<div class="flex items-center justify-between gap-4">
 		<div>
-			<h1 class="text-xl font-semibold text-ink">我的分享</h1>
-			<p class="mt-1 text-sm text-ink-3">管理已生成的文件分享链接、有效期和状态</p>
+			<h1 class="text-xl font-semibold text-ink">{m.shares_title()}</h1>
+			<p class="mt-1 text-sm text-ink-3">{m.shares_subtitle()}</p>
 		</div>
-		<div class="rounded-full bg-white px-3 py-1.5 text-sm text-ink-3 ">共 {total} 个分享</div>
+		<div class="rounded-full bg-white px-3 py-1.5 text-sm text-ink-3 ">{m.shares_total({ total: String(total) })}</div>
 	</div>
 
 	<section class="overflow-hidden rounded-xl border border-line bg-white">
@@ -204,7 +205,7 @@
 		{:else if shares.length === 0}
 			<div class="flex flex-col items-center justify-center px-6 py-24 text-center">
 				<img src={noFilesSvg} class="mb-3 w-32 h-32" alt="" />
-				<p class="text-sm text-ink-3">暂无分享记录</p>
+				<p class="text-sm text-ink-3">{m.shares_empty()}</p>
 			</div>
 		{:else}
 			<div class="divide-y divide-line-soft">
@@ -220,27 +221,27 @@
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm font-medium text-ink">{fileCountText(share)}</p>
-									<p class="mt-1 text-xs text-ink-3">{fmtSize(totalSize(share))} · 创建于 {fmtTime(share.createdAt)}</p>
+									<p class="mt-1 text-xs text-ink-3">{fmtSize(totalSize(share))} · {m.share_created_at()} {fmtTime(share.createdAt)}</p>
 								</div>
 								<span class="shrink-0 rounded-full px-2 py-1 text-xs font-medium {statusClass(share)}">{statusText(share)}</span>
 							</div>
 
 							<div class="flex flex-wrap items-center gap-2 text-xs">
 								<span class="inline-flex items-center gap-1 rounded-full px-2 py-1 {expiryClass(share)}">
-									<CalendarClock size={13} /> 有效期 {share.expiresAt ? fmtTime(share.expiresAt) : '永久'}
+									<CalendarClock size={13} /> {m.share_expiry_label()} {share.expiresAt ? fmtTime(share.expiresAt) : m.share_forever()}
 								</span>
 								{#if isPrivate}
 									<span class="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2.5 py-1 font-medium text-ink-2 ring-1 ring-line">
-										<Lock size={13} /> 私密 {share.passwordCode ? `· 提取码 ${share.passwordCode}` : ''}
+										<Lock size={13} /> {m.share_private()} {share.passwordCode ? `· ${m.share_password_code()} ${share.passwordCode}` : ''}
 										{#if share.passwordCode}
-											<button type="button" onclick={async () => { const ok = await copyToClipboard(share.passwordCode!); if (ok) toast.success('提取码已复制'); else toast.error(clipboardUnavailableReason()); }} class="-mr-0.5 ml-0.5 inline-flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-2 transition-colors hover:bg-line hover:text-ink-2">
+											<button type="button" onclick={async () => { const ok = await copyToClipboard(share.passwordCode!); if (ok) toast.success(m.share_password_copied()); else toast.error(clipboardUnavailableReason()); }} class="-mr-0.5 ml-0.5 inline-flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-2 transition-colors hover:bg-line hover:text-ink-2">
 												<Copy size={12} />
 											</button>
 										{/if}
 									</span>
 								{:else}
 									<span class="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-1 font-medium text-success ring-1 ring-success">
-										<Globe size={13} /> 公开 · 无需提取码
+										<Globe size={13} /> {m.share_public_no_password()}
 									</span>
 								{/if}
 							</div>
@@ -257,12 +258,12 @@
 										{/each}
 										{#if !expanded && share.files.length > 5}
 											<button type="button" onclick={() => (expandedFiles = { ...expandedFiles, [share.slug]: true })} class="inline-flex cursor-pointer items-center rounded-md bg-surface-sunken px-2 py-1 text-xs text-ink-4 transition-colors hover:bg-line hover:text-ink-3">
-												+{share.files.length - 5} 更多
+												+{share.files.length - 5} {m.share_files_more({ count: String(share.files.length - 5) })}
 											</button>
 										{/if}
 										{#if expanded && share.files.length > 5}
 											<button type="button" onclick={() => (expandedFiles = { ...expandedFiles, [share.slug]: false })} class="inline-flex cursor-pointer items-center rounded-md bg-surface-sunken px-2 py-1 text-xs text-ink-4 transition-colors hover:bg-line hover:text-ink-3">
-												收起
+												{m.share_collapse()}
 											</button>
 										{/if}
 									</div>
@@ -272,13 +273,13 @@
 							<div class="flex min-w-0 gap-2">
 								<input readonly value={shareLink(share.slug)} class="h-9 min-w-0 flex-1 rounded-lg border {isPrivate ? 'border-line bg-surface-sunken/50' : 'border-success bg-success-soft/50'} px-3 text-xs {isPrivate ? 'text-ink-2' : 'text-success'} placeholder-ink-4 outline-none" />
 								<button type="button" onclick={() => copyShareLink(share)} class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-muted">
-									<Copy size={14} /> 复制链接
+									<Copy size={14} /> {m.share_copy_link()}
 								</button>
 							</div>
 						</div>
 
 						<div class="space-y-3 rounded-xl border border-line-soft bg-surface-muted p-3">
-							<p class="text-xs font-medium uppercase tracking-wide text-ink-4">修改有效期</p>
+							<p class="text-xs font-medium uppercase tracking-wide text-ink-4">{m.share_modify_expiry()}</p>
 							<div class="flex gap-2">
 								<Dropdown
 									disabled={isDisabled}
@@ -297,7 +298,7 @@
 								</Dropdown>
 								<button type="button" onclick={() => saveExpiry(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60">
 									{#if savingSlug === share.slug}<LoaderCircle size={14} class="animate-spin" />{/if}
-									保存
+									{m.share_save()}
 								</button>
 							</div>
 							{#if choice === 'custom'}
@@ -305,10 +306,10 @@
 							{/if}
 
 							<button type="button" onclick={() => confirmCancel(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-danger bg-white px-3 text-sm text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">
-								<Ban size={14} /> 取消分享
+								<Ban size={14} /> {m.share_cancel_share()}
 							</button>
-							<button type="button" onclick={() => { deleteTarget = share; deleteDescription = `确定永久删除「${cancelNames(share)}」的分享吗？此操作不可撤销。`; showDeleteDialog = true; }} disabled={savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-danger px-3 text-sm font-medium text-white hover:bg-danger-hover disabled:cursor-not-allowed disabled:opacity-50">
-								<Trash2 size={14} /> 删除
+							<button type="button" onclick={() => { deleteTarget = share; deleteDescription = m.share_confirm_delete_desc({ name: cancelNames(share) }); showDeleteDialog = true; }} disabled={savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-danger px-3 text-sm font-medium text-white hover:bg-danger-hover disabled:cursor-not-allowed disabled:opacity-50">
+								<Trash2 size={14} /> {m.share_delete_share()}
 							</button>
 						</div>
 					</div>
@@ -320,10 +321,10 @@
 
 <AlertDialog
 	bind:open={showCancelDialog}
-	title="取消分享"
+	title={m.share_confirm_cancel_title()}
 	description={cancelDescription}
-	confirmText="确认取消"
-	cancelText="再想想"
+	confirmText={m.share_confirm_cancel_btn()}
+	cancelText={m.share_confirm_cancel_cancel()}
 	variant="destructive"
 	onConfirm={() => { if (cancelTarget) void disableShare(cancelTarget); }}
 	onCancel={() => { showCancelDialog = false; }}
@@ -331,10 +332,10 @@
 
 <AlertDialog
 	bind:open={showDeleteDialog}
-	title="删除分享"
+	title={m.share_confirm_delete_title()}
 	description={deleteDescription}
-	confirmText="确认删除"
-	cancelText="再想想"
+	confirmText={m.share_confirm_delete_btn()}
+	cancelText={m.share_confirm_delete_cancel()}
 	variant="destructive"
 	onConfirm={() => { if (deleteTarget) void handleDeleteShare(deleteTarget); }}
 	onCancel={() => { deleteTarget = null; showDeleteDialog = false; }}

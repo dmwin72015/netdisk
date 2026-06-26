@@ -6,28 +6,49 @@
     getLocalTimeZone,
     type DateValue,
   } from "@internationalized/date";
-  import { ChevronLeft, ChevronRight, CalendarDays } from "@lucide/svelte";
+  import { ChevronLeft, ChevronRight, CalendarDays, X } from "@lucide/svelte";
   import { cn } from "$lib/utils/cn";
-  import * as m from "$lib/paraglide/messages";
-  import { getLocale } from "$lib/paraglide/runtime";
+
+  /** Self-contained i18n data — no external dependencies. */
+  const MONTH_NAMES: Record<string, string[]> = {
+    zh: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+    en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  };
+
+  const WEEKDAY_NAMES: Record<string, string[]> = {
+    zh: ["日", "一", "二", "三", "四", "五", "六"],
+    en: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+  };
+
+  const PLACEHOLDER_DEFAULT: Record<string, string> = {
+    zh: "选择日期范围",
+    en: "Select date range",
+  };
 
   let {
     value = $bindable({ start: null, end: null }),
     placeholder = $bindable(null),
     disabled = false,
-    placeholderText = m.select_date_range(),
+    locale = "zh",
+    placeholderText,
     onValueChange,
+    onClear,
     numberOfMonths = 2,
     class: className = "",
   }: {
     value?: { start: Date | null; end: Date | null };
     placeholder?: Date | null;
     disabled?: boolean;
+    locale?: string;
     placeholderText?: string;
     onValueChange?: (range: { start: Date | null; end: Date | null }) => void;
+    onClear?: () => void;
     numberOfMonths?: number;
     class?: string;
   } = $props();
+
+  const effectiveLocale = MONTH_NAMES[locale] ? locale : "zh";
+  const effectivePlaceholder = placeholderText ?? PLACEHOLDER_DEFAULT[effectiveLocale] ?? PLACEHOLDER_DEFAULT.zh;
 
   const tz = getLocalTimeZone();
 
@@ -50,22 +71,14 @@
   }
 
   function formatDisplayValue(): string {
-    if (!value.start && !value.end) return placeholderText;
+    if (!value.start && !value.end) return effectivePlaceholder;
     if (value.start && !value.end) return `${formatDateRange(value.start)} ~`;
     if (value.start && value.end) return `${formatDateRange(value.start)} ~ ${formatDateRange(value.end)}`;
-    return placeholderText;
+    return effectivePlaceholder;
   }
 
-  const MONTH_NAMES_EN = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
-  const MONTH_NAMES_ZH = [
-    "1月", "2月", "3月", "4月", "5月", "6月",
-    "7月", "8月", "9月", "10月", "11月", "12月",
-  ];
-
-  const monthNames = $derived(getLocale() === "zh" ? MONTH_NAMES_ZH : MONTH_NAMES_EN);
+  const monthNames = $derived(MONTH_NAMES[effectiveLocale]);
+  const weekdayNames = $derived(WEEKDAY_NAMES[effectiveLocale]);
 
   function monthLabel(monthNum: number, year: number): string {
     return `${monthNames[monthNum - 1]} ${year}`;
@@ -134,7 +147,6 @@
   {disabled}
   {numberOfMonths}
   closeOnRangeSelect={true}
-  weekdayFormat="short"
 >
   <div class={cn("relative", className)}>
     <!-- Trigger: AntD-style placeholder display -->
@@ -142,8 +154,17 @@
       class="flex h-8 w-full items-center rounded-lg border border-line bg-surface px-3 text-sm text-ink-3 outline-none transition-colors hover:border-line focus:border-primary"
     >
       <span class={cn(!displayValue ? "text-ink-4" : "text-ink-3")}>
-        {displayValue || placeholderText}
+        {displayValue || effectivePlaceholder}
       </span>
+      {#if onClear && (value.start || value.end)}
+        <button
+          type="button"
+          onclick={(e) => { e.stopPropagation(); onClear?.(); }}
+          class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+        >
+          <X size={12} />
+        </button>
+      {/if}
       <CalendarDays size={14} class="ml-auto shrink-0 text-ink-4" />
     </DateRangePicker.Trigger>
 
@@ -157,7 +178,7 @@
       sideOffset={4}
     >
       <DateRangePicker.Calendar>
-        {#snippet children({ months, weekdays })}
+        {#snippet children({ months })}
           <!-- Months displayed horizontally with individual headers and nav -->
           <div class="flex gap-4">
             {#each months as month}
@@ -184,11 +205,11 @@
                 <DateRangePicker.Grid class="border-collapse">
                   <DateRangePicker.GridHead>
                     <DateRangePicker.GridRow class="flex">
-                      {#each weekdays as day}
+                      {#each weekdayNames as day}
                         <DateRangePicker.HeadCell
                           class="w-8 pb-1 text-center text-xs font-medium text-ink-4"
                         >
-                          {day.slice(0, 2)}
+                          {day}
                         </DateRangePicker.HeadCell>
                       {/each}
                     </DateRangePicker.GridRow>

@@ -73,7 +73,7 @@
       const f = files.find((f) => f.id === id);
       return !f || !lockManager.isEffectivelyLocked(f);
     });
-    if (locked.length > 0) toast.info(`已跳过 ${locked.length} 个加锁目录`);
+    if (locked.length > 0) toast.info(m.skipped_locked_dirs({ count: String(locked.length) }));
     if (ids.length > 0) fileManager.batchRemove(ids);
   }
 
@@ -274,10 +274,10 @@
         {/if}
         {#if onBatchShare}
           <Tooltip
-            content="分享"
+            content={m.share_file()}
             delayDuration={200}
             triggerProps={{
-              "aria-label": "分享",
+              "aria-label": m.share_file(),
               onclick: () =>
                 onBatchShare?.(
                   files.filter((f) => fileManager.selectedIds.has(f.id)),

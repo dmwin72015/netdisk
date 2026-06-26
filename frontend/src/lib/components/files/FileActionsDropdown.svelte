@@ -107,7 +107,7 @@
       {#if onShare}
         <DropdownBase.Item onSelect={() => onShare(file)}>
           {#snippet icon()}<Share2 size={14} class="text-ink-4" />{/snippet}
-          {#snippet children()}分享{/snippet}
+          {#snippet children()}{m.share_file()}{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}
@@ -144,12 +144,12 @@
       {#if file.hasPassword}
         <DropdownBase.Item onSelect={() => lockManager.clearLock(file)}>
           {#snippet icon()}<LockOpen size={14} class="text-ink-4" />{/snippet}
-          {#snippet children()}取消目录密码{/snippet}
+          {#snippet children()}{m.clear_dir_password()}{/snippet}
         </DropdownBase.Item>
       {:else}
         <DropdownBase.Item onSelect={() => lockManager.lock(file)}>
           {#snippet icon()}<Lock size={14} class="text-ink-4" />{/snippet}
-          {#snippet children()}设置目录密码{/snippet}
+          {#snippet children()}{m.set_dir_password()}{/snippet}
         </DropdownBase.Item>
       {/if}
     {/if}
@@ -159,7 +159,7 @@
         onSelect={() => fileManager.forceRemoveDir(file)}
       >
         {#snippet icon()}<Trash size={14} class="text-danger" />{/snippet}
-        {#snippet children()}强制删除{/snippet}
+        {#snippet children()}{m.force_delete()}{/snippet}
       </DropdownBase.Item>
     {/if}
     {#if !file.isSystem && !lockManager.isEffectivelyLocked(file)}

@@ -49,7 +49,7 @@
   // --- Detail dialog ---
   function showDetails(file: NormalizedFile) {
     if (file.isDir && lockManager.isEffectivelyLocked(file)) {
-      toast.error("目录已加锁，无法查看详情");
+      toast.error(m.dir_locked_cannot_view());
       return;
     }
     detailFile = file;

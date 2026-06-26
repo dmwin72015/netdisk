@@ -50,7 +50,7 @@
 	const moreItems: MoreItem[] = [
 		{ href: '/files/starred', match: '/files/starred', label: m.nav_starred(), icon: Star },
 		{ href: '/files/trash', match: '/files/trash', label: m.nav_trash(), icon: Trash2 },
-		{ href: '/shares', match: '/shares', label: '我的分享', icon: Share2 },
+		{ href: '/shares', match: '/shares', label: m.nav_shares(), icon: Share2 },
 		{ href: '/tasks', match: '/tasks', label: m.upload_title(), icon: ListRestart },
 		{ href: '/settings', match: '/settings', label: m.nav_settings(), icon: Settings },
 		{ href: '/account', match: '/account', label: m.nav_account(), icon: User },
@@ -201,7 +201,7 @@
 				<button
 					type="button"
 					class="text-ink-3 hover:bg-surface-sunken hover:text-ink flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150"
-					aria-label="通知"
+					aria-label={m.notifications()}
 				>
 					<Bell size={16} strokeWidth={1.75} />
 				</button>
