@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { tick } from "svelte";
 	import { Dialog } from "$lib/ui/dialog";
 	import { getPending, getPinValue, setPinValue, closePinDialog } from "$lib/dialog-pin.svelte";
 	import * as m from "$lib/paraglide/messages";
@@ -14,12 +13,15 @@
 
 	$effect(() => {
 		if (pending && !closing) {
-			requestAnimationFrame(() => {
-				open = true;
-				tick().then(() => focusFirstEmpty());
-			});
+			open = true;
 		}
 	});
+
+	function onOpenComplete(isOpen: boolean) {
+		if (isOpen) {
+			requestAnimationFrame(() => focusFirstEmpty());
+		}
+	}
 
 	function cleanup() {
 		const p = pending;
@@ -136,6 +138,7 @@
 		description={pending?.opts.message}
 		showConfirm={false}
 		showCancel={false}
+		onOpenChangeComplete={onOpenComplete}
 	>
 		{#snippet children()}
 			<div bind:this={contentEl}>
