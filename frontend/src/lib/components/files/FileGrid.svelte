@@ -6,7 +6,6 @@
   import { fileManager } from "$lib/services/fileManager.svelte";
   import { lockManager } from "$lib/services/lockManager.svelte";
   import { previewManager } from "$lib/services/previewManager.svelte";
-  import { toast } from "svelte-sonner";
   import { confirmAction } from "$lib/dialog";
   import * as m from "$lib/paraglide/messages";
   import MimeIcon from "$lib/components/MimeIcon.svelte";
@@ -49,7 +48,7 @@
 
   async function toggleLock(f: NormalizedFile) {
     if (lockManager.isEffectivelyLocked(f)) {
-      try { await lockManager.unlock(f.slug, f.name); } catch { toast.error(m.dir_password_wrong()); }
+      await lockManager.unlock(f.slug, f.name);
     } else {
       const ok = await confirmAction(m.dir_password(), m.dir_relock_confirm({ name: f.name }), m.confirm());
       if (ok) lockManager.relock(f.slug);

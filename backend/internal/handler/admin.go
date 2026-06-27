@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -102,6 +103,10 @@ func (h *AdminHandler) CreateUser(c echo.Context) error {
 	if input.Role == "" {
 		input.Role = "user"
 	}
+	input.Role = strings.ToLower(input.Role)
+	if input.Role != "admin" && input.Role != "user" {
+		return BizError(model.ErrInvalidInput)
+	}
 
 	user, err := h.svc.CreateUser(c.Request().Context(), input.Username, input.Email, input.Password, input.Role)
 	if err != nil {
@@ -140,8 +145,12 @@ func (h *AdminHandler) UpdateUser(c echo.Context) error {
 	if input.Role == nil {
 		return BizError(model.ErrInvalidInput)
 	}
+	role := strings.ToLower(*input.Role)
+	if role != "admin" && role != "user" {
+		return BizError(model.ErrInvalidInput)
+	}
 
-	user, err := h.svc.UpdateRole(c.Request().Context(), id, *input.Role)
+	user, err := h.svc.UpdateRole(c.Request().Context(), id, role)
 	if err != nil {
 		return BizError(err)
 	}

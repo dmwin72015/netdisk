@@ -89,11 +89,7 @@
 
   async function toggleLock(f: NormalizedFile) {
     if (lockManager.isEffectivelyLocked(f)) {
-      try {
-        await lockManager.unlock(f.slug, f.name);
-      } catch {
-        toast.error(m.dir_password_wrong());
-      }
+      await lockManager.unlock(f.slug, f.name);
     } else {
       const ok = await confirmAction(m.dir_password(), m.dir_relock_confirm({ name: f.name }), m.confirm());
       if (ok) lockManager.relock(f.slug);

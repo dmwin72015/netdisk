@@ -9,6 +9,7 @@ import {
   unlockDirectory,
 } from "$lib/api/files";
 import { settingsManager } from "./settingsManager.svelte";
+import { fileManager } from "./fileManager.svelte";
 import { promptInput, pinInput } from "$lib/dialog";
 import { toast } from "svelte-sonner";
 	import * as m from "$lib/paraglide/messages";
@@ -63,33 +64,40 @@ const password = await pinInput(
        },
      );
     if (!password) return false;
-    try {
-      await unlockDirectory(
-        slug,
-        password,
-        settingsManager.directoryUnlockTtlHours,
-      );
-      this.unlockedSlugs.add(slug);
-      this.persistedUnlocks.set(slug, Date.now());
-      this.persistUnlocks();
-      return true;
-    } catch {
-      throw new Error(m.dir_password_wrong());
-    }
+    await toast.promise(
+      unlockDirectory(slug, password, settingsManager.directoryUnlockTtlHours),
+      {
+        loading: m.dir_unlocking(),
+        success: m.dir_unlocked(),
+        error: m.dir_password_wrong(),
+      },
+    );
+    this.unlockedSlugs.add(slug);
+    this.persistedUnlocks.set(slug, Date.now());
+    this.persistUnlocks();
+    return true;
   }
 
   /** Set a lock password on a directory. */
   async lock(file: NormalizedFile): Promise<void> {
-const password = await pinInput(
-       m.dir_password_set(),
-       {
-         message: m.dir_password_set_desc({ name: file.name }),
-       },
-     );
+    const password = await pinInput(
+      m.dir_password_set(),
+      {
+        message: m.dir_password_set_desc({ name: file.name }),
+      },
+    );
     if (!password) return;
-    await setDirectoryLock(file.slug, password);
-    toast.success(m.dir_lock_set());
-    this.lockedSlugs.add(file.slug);
+    try {
+      await toast.promise(setDirectoryLock(file.slug, password), {
+        loading: m.dir_locking(),
+        success: m.dir_lock_set(),
+        error: (err) => (err instanceof Error ? err.message : m.action_failed()),
+      });
+      this.lockedSlugs.add(file.slug);
+      fileManager.setFileHasPassword(file.slug, true);
+    } catch {
+      // toast.promise already showed the error
+    }
   }
 
   /** Re-lock a temporarily unlocked directory (no PIN needed). */
@@ -101,24 +109,27 @@ const password = await pinInput(
 
   /** Clear the lock password on a directory. */
   async clearLock(file: NormalizedFile): Promise<void> {
-const password = await pinInput(
-       m.dir_password_clear(),
-       {
-         message: m.dir_password_clear_desc({ name: file.name }),
-       },
-     );
+    const password = await pinInput(
+      m.dir_password_clear(),
+      {
+        message: m.dir_password_clear_desc({ name: file.name }),
+      },
+    );
     if (!password) return;
     try {
-      await clearDirectoryLock(file.slug, password);
+      await toast.promise(clearDirectoryLock(file.slug, password), {
+        loading: m.dir_clearing(),
+        success: m.dir_lock_cleared(),
+        error: m.dir_password_wrong(),
+      });
+      this.lockedSlugs.delete(file.slug);
+      this.unlockedSlugs.delete(file.slug);
+      this.persistedUnlocks.delete(file.slug);
+      this.persistUnlocks();
+      fileManager.setFileHasPassword(file.slug, false);
     } catch {
-      toast.error(m.dir_password_wrong());
-      return;
+      // toast.promise already showed the error
     }
-    toast.success(m.dir_lock_cleared());
-    this.lockedSlugs.delete(file.slug);
-    this.unlockedSlugs.delete(file.slug);
-    this.persistedUnlocks.delete(file.slug);
-    this.persistUnlocks();
   }
 
   /** Sync locked state from file list data (call after refresh). */

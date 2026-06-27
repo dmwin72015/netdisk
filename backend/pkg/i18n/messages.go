@@ -30,6 +30,7 @@ const (
 	MsgUnsupportedImage     MessageKey = "unsupported_image"
 	MsgSystemFileLocked     MessageKey = "system_file_locked"
 	MsgDirectoryLocked      MessageKey = "directory_locked"
+	MsgWrongPassword        MessageKey = "wrong_password"
 	MsgInternal             MessageKey = "internal_error"
 	MsgFileTooLargeUpload   MessageKey = "file_exceeds_size_limit_upload"
 	MsgTotalSizeExceeded    MessageKey = "total_size_exceeded"
@@ -137,6 +138,10 @@ var messages = map[MessageKey]map[Language]string{
 	MsgDirectoryLocked: {
 		LangZH: "目录已锁定",
 		LangEN: "directory is locked",
+	},
+	MsgWrongPassword: {
+		LangZH: "密码错误",
+		LangEN: "wrong password",
 	},
 	MsgInternal: {
 		LangZH: "内部错误",

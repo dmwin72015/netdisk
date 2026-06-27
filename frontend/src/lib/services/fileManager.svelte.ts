@@ -384,6 +384,14 @@ if (
     }
   }
 
+  // --- Lock state ---
+
+  setFileHasPassword(slug: string, hasPassword: boolean) {
+    this.files = this.files.map((f) =>
+      f.slug === slug ? { ...f, hasPassword } : f,
+    );
+  }
+
   // --- Media ---
 
   async addToMedia(file: NormalizedFile) {
