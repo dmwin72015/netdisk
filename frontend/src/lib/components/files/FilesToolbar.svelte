@@ -28,9 +28,9 @@
   } = $props();
 </script>
 
-<div class="flex items-end justify-between px-6 my-3">
+<div class="flex items-end justify-between my-3">
   <!-- Left: select all + count -->
-  <div class="flex items-center gap-2 pl-2">
+  <div class="flex items-center gap-2 pl-1">
     <button
       type="button"
       onclick={() => fileManager.toggleSelectAll()}

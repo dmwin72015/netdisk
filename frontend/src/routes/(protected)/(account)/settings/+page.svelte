@@ -12,10 +12,11 @@
     importPreferences,
   } from "$lib/stores/file-preferences.svelte";
   import { UPLOAD_FILE_CONCURRENCY } from "$lib/upload-concurrency";
-  import { Eye, Upload, FileWarning, Lock, FileJson } from "@lucide/svelte";
+  import { Eye, Upload, FileWarning, Lock, FileJson, Globe } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
   import * as m from "$lib/paraglide/messages";
   import { lockManager } from "$lib/services/lockManager.svelte";
+  import LanguageDropdown from "$lib/components/LanguageDropdown.svelte";
 
   let importInput: HTMLInputElement | undefined = $state();
   let importing = $state(false);
@@ -64,8 +65,29 @@
   }
 </script>
 
-<div class="mx-auto max-w-4xl space-y-8">
-  <h1 class="text-xl font-semibold text-ink">{m.file_settings()}</h1>
+<div class="space-y-8">
+  <!-- Language -->
+  <section>
+    <div class="mb-3 flex items-center gap-2">
+      <Globe size={16} class="text-ink-4" />
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-3">
+        {m.language()}
+      </h2>
+    </div>
+    <div class="rounded-xl border border-line-soft bg-white">
+      <div class="flex items-center justify-between gap-4 px-5 py-4">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-ink-2">{m.language()}</p>
+          <p class="mt-1 text-xs leading-5 text-ink-3">
+            {m.language_desc()}
+          </p>
+        </div>
+        <LanguageDropdown
+          triggerClass="flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
+        />
+      </div>
+    </div>
+  </section>
 
   <!-- Display -->
   <section>

@@ -136,7 +136,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="px-4">
+<div class="px-6 pt-4 pb-6">
 	<!-- Back button -->
 	<button type="button" onclick={() => goto('/media')}
 		class="mb-4 flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink-2">

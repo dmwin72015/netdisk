@@ -99,7 +99,7 @@
 </script>
 
 {#if !$authReady}{:else if $user}
- <div class="space-y-4">
+ <div class="space-y-4 px-6 pt-4 pb-6">
  <div class="flex items-center justify-between">
  <div class="flex items-center gap-2">
  <Trash2 size={20} class="text-ink-3" />

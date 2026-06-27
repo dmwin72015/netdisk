@@ -244,6 +244,7 @@
   "network_error": "Network error",
 
   "language": "Language",
+  "language_desc": "Switch the interface display language",
   "admin_panel": "Admin",
   "user_management": "User Management",
   "col_role": "Role",
@@ -410,6 +411,9 @@
   "file_settings_desc": "Adjust file list display and behavior.",
   "display_settings": "Display",
   "nav_settings": "Settings",
+  "nav_security_log": "Security Log",
+  "nav_account_manage": "Account Management",
+  "coming_soon": "Coming Soon",
   "duplicate_strategy": "Duplicate file handling",
   "duplicate_strategy_desc": "What to do when uploading a file that already exists on the server.",
   "duplicate_strategy_prompt": "Ask me each time",

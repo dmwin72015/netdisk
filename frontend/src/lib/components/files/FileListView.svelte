@@ -92,9 +92,7 @@
   }
 
   function openSelectedMoveDialog() {
-    openMoveDialog(
-      files.filter((file) => !!fileManager.selectedIds[file.id]),
-    );
+    openMoveDialog(files.filter((file) => !!fileManager.selectedIds[file.id]));
   }
 
   function handleMoveClose() {
@@ -157,7 +155,7 @@
   }
 </script>
 
-<div class="relative min-h-37.5 px-6">
+<div class="relative min-h-37.5">
   {#if loading}
     <div
       class="absolute inset-0 z-10 flex items-center justify-center"

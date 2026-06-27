@@ -188,7 +188,7 @@
 	}
 </script>
 
-<div class="space-y-5">
+<div class="space-y-5 px-6 pt-4 pb-6">
 	<div class="flex items-center justify-between gap-4">
 		<div>
 			<h1 class="text-xl font-semibold text-ink">{m.shares_title()}</h1>

@@ -187,7 +187,7 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-4">
+	<div class="space-y-4 px-6 pt-4 pb-6">
 		<!-- Header -->
 		<div class="flex items-center gap-2">
 			<ListRestart size={20} class="text-ink-3" />

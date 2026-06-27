@@ -56,7 +56,7 @@
 </script>
 
 {#if $authReady && $user}
-	<div class="space-y-4">
+	<div class="space-y-4 px-6 pt-4 pb-6">
 		<!-- Header -->
 		<div class="flex items-center gap-3">
 			<a href="/photos/albums" class="rounded-md p-1 text-ink-4 hover:text-ink-3">

@@ -20,7 +20,6 @@
   import { logout } from "$lib/api/auth";
   import { setUser, user } from "$lib/stores/auth";
   import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
-  import LanguageDropdown from "$lib/components/LanguageDropdown.svelte";
   import FileSearchDialog from "$lib/components/FileSearchDialog.svelte";
   import { getFilesUrl } from "$lib/stores/last-section-url";
   import * as m from "$lib/paraglide/messages";
@@ -88,8 +87,14 @@
       label: m.nav_settings(),
       icon: Settings,
     },
-    { href: "/account", match: "/account", label: m.nav_account(), icon: User },
+    { href: "/profile", match: "/profile", label: m.nav_account(), icon: User },
   ];
+
+  let isAccountPage = $derived(
+    ["/profile", "/settings", "/security-log", "/account-manage"].some((p) =>
+      currentPath.startsWith(p),
+    ),
+  );
 
   let pageTitle = $derived.by(() => {
     const all = [...primaryNav, ...moreItems];
@@ -227,26 +232,25 @@
   <!-- Main area -->
   <div class="flex min-w-0 flex-1 flex-col">
     <header class="flex items-center gap-3 px-6 pt-5 pb-2">
-      <button
-        type="button"
-        onclick={() => {
-          searchOpen = true;
-        }}
-        class="border-line bg-surface-sunken text-ink-3 hover:border-ink-5 hover:bg-surface-muted hover:text-ink-2 hidden h-9 max-w-xl flex-1 items-center gap-2 rounded-lg border px-3 text-sm transition-colors duration-150 md:flex"
-      >
-        <Search size={15} strokeWidth={1.75} />
-        <span class="flex-1 text-left">{m.search_files()}…</span>
-        <kbd
-          class="border-line bg-surface text-ink-3 rounded border px-1.5 py-0.5 text-[10px] font-medium"
+      {#if !isAccountPage}
+        <button
+          type="button"
+          onclick={() => {
+            searchOpen = true;
+          }}
+          class="border-line bg-surface-sunken text-ink-3 hover:border-ink-5 hover:bg-surface-muted hover:text-ink-2 hidden h-9 max-w-xl flex-1 items-center gap-2 rounded-lg border px-3 text-sm transition-colors duration-150 md:flex"
         >
-          ⌘K
-        </kbd>
-      </button>
+          <Search size={15} strokeWidth={1.75} />
+          <span class="flex-1 text-left">{m.search_files()}…</span>
+          <kbd
+            class="border-line bg-surface text-ink-3 rounded border px-1.5 py-0.5 text-[10px] font-medium"
+          >
+            ⌘K
+          </kbd>
+        </button>
+      {/if}
 
       <div class="ml-auto flex items-center gap-1">
-        <LanguageDropdown
-          triggerClass="flex items-center gap-1 rounded-lg px-2.5 h-8 text-sm text-ink-3 transition-colors duration-150 hover:bg-surface-sunken hover:text-ink data-[state=open]:bg-surface-sunken data-[state=open]:text-ink"
-        />
         <button
           type="button"
           class="text-ink-3 hover:bg-surface-sunken hover:text-ink flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150"

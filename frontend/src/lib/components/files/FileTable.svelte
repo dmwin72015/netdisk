@@ -105,8 +105,8 @@
   <table class="w-full table-fixed text-sm">
     <thead>
       <tr class="border-b border-line text-left text-xs text-ink-4">
-        <th class="w-[54%] px-2 py-2.5 font-medium">
-          <div class="pl-6">
+        <th class="w-[54%] pr-2 py-2.5 font-medium">
+          <div class="pl-7">
             {m.col_filename()}
           </div>
         </th>
@@ -131,8 +131,8 @@
             : ''} {isSelected ? 'bg-primary-soft/50' : ''}"
           onclick={() => handelClick(f)}
         >
-          <td class="px-2 py-2.5">
-            <div class="flex items-center gap-2.5">
+          <td class="pr-2 py-2.5">
+            <div class="flex items-center gap-1.5 pl-1">
               {#if f.isSystem}
                 <span class="h-4 w-4 shrink-0"></span>
               {:else}
@@ -180,7 +180,7 @@
                   size={28}
                 />
               {/if}
-              <span class="min-w-0 flex-1 truncate text-ink-2" title={f.name}
+              <span class="min-w-0 flex-1 truncate text-ink-2 ml-2.5" title={f.name}
                 >{f.name}</span
               >
               {#if f.isSystem}
