@@ -78,6 +78,10 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	authed.PUT("/user/settings", h.User.UpdateSettings)
 	authed.GET("/user/transactions", h.User.ListTransactions)
 
+	// Security log routes
+	authed.GET("/user/security-logs", h.ActivityLog.ListSecurityLogs)
+	authed.GET("/user/login-devices", h.ActivityLog.ListLoginDevices)
+
 	// Static avatar serving
 	avatarDir := filepath.Join(cfg.Storage.Root, cfg.Storage.AvatarsDir)
 	api.GET("/avatars/*", func(c echo.Context) error {

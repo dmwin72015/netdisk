@@ -26,6 +26,7 @@ import (
 	"github.com/netdisk/server/internal/db/sqlc"
 	"github.com/netdisk/server/internal/handler"
 	"github.com/netdisk/server/internal/media"
+	"github.com/netdisk/server/internal/pkg/iplookup"
 	"github.com/netdisk/server/internal/service"
 	"github.com/netdisk/server/internal/storage"
 	"github.com/netdisk/server/internal/store"
@@ -334,15 +335,16 @@ func initSystemConfig(ctx context.Context, cfg *config.Config, pg *pgxpool.Pool,
 }
 
 type handlers struct {
-	Auth   *handler.AuthHandler
-	User   *handler.UserHandler
-	Files  *handler.FilesHandler
-	Share  *handler.ShareHandler
-	Upload *handler.UploadHandler
-	Media  *handler.MediaHandler
-	Photo  *handler.PhotoHandler
-	Config *handler.ConfigHandler
-	Admin  *handler.AdminHandler
+	Auth         *handler.AuthHandler
+	User         *handler.UserHandler
+	Files        *handler.FilesHandler
+	Share        *handler.ShareHandler
+	Upload       *handler.UploadHandler
+	Media        *handler.MediaHandler
+	Photo        *handler.PhotoHandler
+	Config       *handler.ConfigHandler
+	Admin        *handler.AdminHandler
+	ActivityLog  *handler.ActivityLogHandler
 }
 
 func buildHandlers(
@@ -360,6 +362,9 @@ func buildHandlers(
 		logger.Warn().Err(err).Msg("system config load (using defaults)")
 	}
 
+	ipLookup := newIPLookup(cfg.IPLookup, logger)
+	auditSvc := service.NewAuditService(pg, ipLookup, logger)
+
 	authSvc := service.NewAuthService(queries, pg, jwtMgr, cfg, rdb, configSvc)
 	userSvc := service.NewUserService(queries, pg, cfg)
 	adminSvc := service.NewAdminService(queries, pg, logger, cfg.Storage.Root, cfg.Storage.FilesDir, configSvc)
@@ -374,15 +379,16 @@ func buildHandlers(
 	photoSvc := service.NewPhotoService(queries, pg, cfg, store, logger)
 
 	return &handlers{
-		Auth:   handler.NewAuthHandler(authSvc),
-		User:   handler.NewUserHandler(userSvc),
-		Files:  handler.NewFilesHandler(filesSvc),
-		Share:  handler.NewShareHandler(shareSvc),
-		Upload: handler.NewUploadHandler(uploadSvc, logger),
+		Auth:   handler.NewAuthHandler(authSvc, auditSvc),
+		User:   handler.NewUserHandler(userSvc, auditSvc),
+		Files:  handler.NewFilesHandler(filesSvc, auditSvc),
+		Share:  handler.NewShareHandler(shareSvc, auditSvc),
+		Upload: handler.NewUploadHandler(uploadSvc, logger, auditSvc),
 		Media:  handler.NewMediaHandler(mediaSvc, broadcaster),
 		Photo:  handler.NewPhotoHandler(photoSvc),
-		Config: handler.NewConfigHandler(cfg),
-		Admin:  handler.NewAdminHandler(adminSvc, cfg, configSvc),
+		Config:      handler.NewConfigHandler(cfg),
+		Admin:       handler.NewAdminHandler(adminSvc, cfg, configSvc, auditSvc),
+		ActivityLog: handler.NewActivityLogHandler(queries),
 	}
 }
 
@@ -402,4 +408,23 @@ func recoverStuckDownloadTasks(ctx context.Context, pg *pgxpool.Pool, logger zer
 		logger.Warn().Int64("count", n).Msg("recovered stuck URL download tasks")
 	}
 	return nil
+}
+
+func newIPLookup(cfg config.IPLookupConfig, logger zerolog.Logger) iplookup.Lookup {
+	switch cfg.Provider {
+	case "maxmind":
+		lookup, err := iplookup.NewMaxMindLookup(cfg.MaxMindDBPath)
+		if err != nil {
+			logger.Warn().Err(err).Str("path", cfg.MaxMindDBPath).Msg("maxmind db not available, falling back to http")
+			return iplookup.NewHTTPLookup("http://ip-api.com/json/{ip}", "")
+		}
+		logger.Info().Str("path", cfg.MaxMindDBPath).Msg("ip lookup: maxmind loaded")
+		return lookup
+	case "http":
+		logger.Info().Str("endpoint", cfg.HTTPEndpoint).Msg("ip lookup: http api")
+		return iplookup.NewHTTPLookup(cfg.HTTPEndpoint, cfg.HTTPAPIKey)
+	default:
+		logger.Info().Msg("ip lookup: using free ip-api.com")
+		return iplookup.NewHTTPLookup("http://ip-api.com/json/{ip}", "")
+	}
 }

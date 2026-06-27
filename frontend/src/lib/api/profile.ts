@@ -62,6 +62,13 @@ export async function unlinkOAuth(provider: string): Promise<void> {
 	});
 }
 
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+	await api('/api/v1/user/me/password', {
+		method: 'POST',
+		body: JSON.stringify({ oldPassword, newPassword }),
+	});
+}
+
 export async function getStorageBreakdown(): Promise<CategoryStat[]> {
 	const data = await api<{ categories: CategoryStat[] }>('/api/v1/user/storage-breakdown');
 	return data.categories;
