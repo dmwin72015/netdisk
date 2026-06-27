@@ -2,6 +2,16 @@
   import FileListView from "./FileListView.svelte";
   import FilesToolbar from "./FilesToolbar.svelte";
   import Breadcrumb from "../Breadcrumb.svelte";
+  import {
+    Plus,
+    Upload,
+    FolderPlus,
+    FolderOpen,
+    ChevronDown,
+    Globe,
+    FileText,
+  } from "@lucide/svelte";
+  import { Popover } from "$lib/ui/popover";
   import { FileQuestionMark } from "@lucide/svelte";
   import type { NormalizedFile } from "$lib/types/file";
   import { fileManager } from "$lib/services/fileManager.svelte";
@@ -27,6 +37,20 @@
     onUploadFromURL?: () => void;
     onUploadText?: () => void;
   } = $props();
+
+  let showFabMenu = $state(false);
+  let fabTimeout: ReturnType<typeof setTimeout>;
+
+  function onFabEnter() {
+    clearTimeout(fabTimeout);
+    showFabMenu = true;
+  }
+
+  function onFabLeave() {
+    fabTimeout = setTimeout(() => {
+      showFabMenu = false;
+    }, 150);
+  }
 
   function navigateHome() {
     void goto("/files/all", { keepFocus: true });
@@ -59,12 +83,7 @@
     onHome={navigateHome}
   />
 
-  <FilesToolbar
-    {onUploadFiles}
-    {onUploadFolder}
-    {onUploadFromURL}
-    {onUploadText}
-  />
+  <FilesToolbar total={fileManager.total} />
   <input type="file" multiple class="hidden" onchange={upload.onPick} />
   <input
     type="file"
@@ -85,18 +104,102 @@
   </div>
 
   {#if fileManager.files.length > 0}
-    <div class="flex items-center justify-between text-xs text-ink-4">
-      <span>{m.total_files({ total: fileManager.total })}</span>
+    <div class="flex justify-center py-8">
       {#if fileManager.files.length < fileManager.total}
         <button
           type="button"
           onclick={() => fileManager.loadMore()}
           disabled={fileManager.loadingMore}
-          class="text-ink-3 transition-colors hover:text-ink-2 disabled:opacity-50"
+          class="text-xs text-ink-3 transition-colors hover:text-ink-2 disabled:opacity-50"
         >
           {fileManager.loadingMore ? m.loading() : m.load_more()}
         </button>
+      {:else}
+        <span class="text-xs text-ink-4">{m.no_more()}</span>
       {/if}
     </div>
   {/if}
+
+  <!-- Floating Action Button -->
+  <div
+    class="fixed bottom-6 right-6 z-40"
+    role="region"
+    onmouseenter={onFabEnter}
+    onmouseleave={onFabLeave}
+  >
+    <Popover
+      bind:open={showFabMenu}
+      triggerClass="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-pop transition-colors hover:bg-primary-hover active:bg-primary-active"
+      contentClass="min-w-40 p-1.5"
+      sideOffset={8}
+      align="end"
+    >
+      {#snippet trigger()}
+        <Plus size={22} />
+      {/snippet}
+
+      <div role="region" onmouseenter={onFabEnter} onmouseleave={onFabLeave}>
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-primary-soft hover:text-primary"
+          onclick={() => {
+            showFabMenu = false;
+            onUploadFiles();
+          }}
+        >
+          <Upload size={15} class="text-primary" />
+          {m.upload_files()}
+        </button>
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-primary-soft hover:text-primary"
+          onclick={() => {
+            showFabMenu = false;
+            onUploadFolder();
+          }}
+        >
+          <FolderOpen size={15} class="text-primary" />
+          {m.upload_folder()}
+        </button>
+        {#if onUploadFromURL}
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-purple-50 hover:text-purple-600"
+            onclick={() => {
+              showFabMenu = false;
+              onUploadFromURL();
+            }}
+          >
+            <Globe size={15} class="text-purple-500" />
+            {m.remote_upload()}
+          </button>
+        {/if}
+        {#if onUploadText}
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-amber-50 hover:text-amber-600"
+            onclick={() => {
+              showFabMenu = false;
+              onUploadText();
+            }}
+          >
+            <FileText size={15} class="text-amber-500" />
+            {m.paste_text()}
+          </button>
+        {/if}
+        <div class="bg-line-soft mx-1 my-1 h-px"></div>
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-green-50 hover:text-green-600"
+          onclick={() => {
+            showFabMenu = false;
+            fileManager.createDir();
+          }}
+        >
+          <FolderPlus size={15} class="text-green-500" />
+          {m.new_folder()}
+        </button>
+      </div>
+    </Popover>
+  </div>
 {/if}

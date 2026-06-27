@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Lock, LockOpen } from "@lucide/svelte";
+  import { Lock, LockOpen, Check } from "@lucide/svelte";
   import { fade } from "svelte/transition";
   import { fmtSize } from "$lib/utils/format";
   import type { NormalizedFile } from "$lib/types/file";
@@ -84,6 +84,32 @@
         }
       }}
     >
+      {#if !f.isSystem}
+        {@const isSelected = !!fileManager.selectedIds[f.id]}
+        <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+        <span
+          role="checkbox"
+          aria-checked={isSelected}
+          tabindex="-1"
+          class="absolute left-1.5 top-1.5 z-10 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border transition-colors {isSelected
+            ? 'border-primary bg-primary text-white opacity-100'
+            : 'border-line bg-white/90 opacity-0 backdrop-blur group-hover:opacity-100 hover:border-primary'}"
+          onclick={(e) => {
+            e.stopPropagation();
+            fileManager.toggleSelect(f.id);
+          }}
+          onkeydown={(e) => {
+            if (e.key === " " || e.key === "Enter") {
+              e.stopPropagation();
+              fileManager.toggleSelect(f.id);
+            }
+          }}
+        >
+          {#if isSelected}
+            <Check size={10} />
+          {/if}
+        </span>
+      {/if}
       <div
         class="absolute right-1.5 top-1.5"
         role="button"

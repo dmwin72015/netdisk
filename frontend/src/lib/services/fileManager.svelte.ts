@@ -42,7 +42,7 @@ class FileManager {
   crumbs = $state<{ id: string; name: string }[]>([]);
 
   // --- Selection ---
-  selectedIds = $state<Set<string>>(new Set());
+  selectedIds = $state<Record<string, boolean>>({});
 
   // --- View preferences (persisted) ---
   viewMode = persistedState<ViewMode>("nd.files.view", "list");
@@ -63,13 +63,13 @@ class FileManager {
     const selectable = this.normalizedFiles.filter((f) => !f.isSystem);
     return (
       selectable.length > 0 &&
-      selectable.every((f) => this.selectedIds.has(f.id))
+      selectable.every((f) => !!this.selectedIds[f.id])
     );
   }
 
   /** Whether any files are selected. */
   get hasSelection(): boolean {
-    return this.selectedIds.size > 0;
+    return Object.keys(this.selectedIds).length > 0;
   }
 
   /** Breadcrumb label for the current directory. */
@@ -412,23 +412,27 @@ if (
   toggleSelect(id: string) {
     const file = this.normalizedFiles.find((f) => f.id === id);
     if (file?.isSystem) return;
-    if (this.selectedIds.has(id)) this.selectedIds.delete(id);
-    else this.selectedIds.add(id);
+    if (this.selectedIds[id]) {
+      const { [id]: _, ...rest } = this.selectedIds;
+      this.selectedIds = rest;
+    } else {
+      this.selectedIds = { ...this.selectedIds, [id]: true };
+    }
   }
 
   toggleSelectAll() {
     if (this.allSelected) {
-      this.selectedIds = new Set();
+      this.selectedIds = {};
     } else {
       const selectable = this.normalizedFiles
         .filter((f) => !f.isSystem)
         .map((f) => f.id);
-      this.selectedIds = new Set(selectable);
+      this.selectedIds = Object.fromEntries(selectable.map((id) => [id, true]));
     }
   }
 
   clearSelection() {
-    this.selectedIds = new Set();
+    this.selectedIds = {};
   }
 
   // --- Folder summary ---

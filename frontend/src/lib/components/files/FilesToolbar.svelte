@@ -1,19 +1,13 @@
 <script lang="ts">
   import {
-    Upload,
-    FolderPlus,
-    FolderOpen,
-    ChevronDown,
+    Check,
     LayoutGrid,
     LayoutList,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
-    Globe,
-    FileText,
   } from "@lucide/svelte";
   import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
-  import { Popover } from "$lib/ui/popover";
   import {
     fileManager,
     type SortField,
@@ -28,35 +22,33 @@
   ];
 
   let {
-    onUploadFiles,
-    onUploadFolder,
-    onUploadFromURL,
-    onUploadText,
+    total,
   }: {
-    onUploadFiles: () => void;
-    onUploadFolder: () => void;
-    onUploadFromURL?: () => void;
-    onUploadText?: () => void;
+    total: number;
   } = $props();
-
-  let showUploadMenu = $state(false);
-  let menuTimeout: ReturnType<typeof setTimeout>;
-
-  function onMenuEnter() {
-    clearTimeout(menuTimeout);
-    showUploadMenu = true;
-  }
-
-  function onMenuLeave() {
-    menuTimeout = setTimeout(() => {
-      showUploadMenu = false;
-    }, 150);
-  }
 </script>
 
-<div
-  class="flex flex-col gap-3 rounded-xl lg:flex-row lg:items-center lg:justify-end"
->
+<div class="flex items-end justify-between px-6 my-3">
+  <!-- Left: select all + count -->
+  <div class="flex items-center gap-2 pl-2">
+    <button
+      type="button"
+      onclick={() => fileManager.toggleSelectAll()}
+      class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {fileManager.allSelected
+        ? 'border-primary bg-primary text-white'
+        : 'border-line hover:border-primary'}"
+      aria-label={m.select_all()}
+    >
+      {#if fileManager.allSelected}
+        <Check size={10} />
+      {/if}
+    </button>
+    <span class="text-sm text-ink-2">
+      {m.total_items({ total: String(total) })}
+    </span>
+  </div>
+
+  <!-- Right: sort + view mode -->
   <div class="flex items-center gap-2">
     <Dropdown
       triggerClass="flex h-8 min-w-[120px] items-center justify-between gap-1.5 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-3 transition-colors hover:border-line hover:bg-surface-muted"
@@ -115,105 +107,6 @@
       >
         <LayoutGrid size={15} />
       </button>
-    </div>
-
-    <!-- Upload split button -->
-    <div
-      class="relative"
-      role="region"
-      onmouseenter={onMenuEnter}
-      onmouseleave={onMenuLeave}
-    >
-      <div
-        class="flex h-8 items-center overflow-hidden rounded-lg bg-primary text-sm font-medium text-white transition-colors"
-      >
-        <button
-          type="button"
-          onclick={onUploadFiles}
-          class="flex h-full items-center gap-1.5 bg-primary px-3.5 hover:bg-primary-hover active:bg-primary-active"
-        >
-          <Upload size={15} />
-          {m.upload_files()}
-        </button>
-        <Popover
-          bind:open={showUploadMenu}
-          triggerClass="flex h-full items-center px-1.5 bg-primary hover:bg-primary-hover active:bg-primary-active"
-          contentClass="min-w-40 p-1.5"
-          sideOffset={4}
-          align="end"
-        >
-          {#snippet trigger()}
-            <ChevronDown size={14} />
-          {/snippet}
-
-          <div
-            role="region"
-            onmouseenter={onMenuEnter}
-            onmouseleave={onMenuLeave}
-          >
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-primary-soft hover:text-primary"
-              onclick={() => {
-                showUploadMenu = false;
-                onUploadFiles();
-              }}
-            >
-              <Upload size={15} class="text-primary" />
-              {m.upload_files()}
-            </button>
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-primary-soft hover:text-primary"
-              onclick={() => {
-                showUploadMenu = false;
-                onUploadFolder();
-              }}
-            >
-              <FolderOpen size={15} class="text-primary" />
-              {m.upload_folder()}
-            </button>
-            {#if onUploadFromURL}
-              <button
-                type="button"
-                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-purple-50 hover:text-purple-600"
-                onclick={() => {
-                  showUploadMenu = false;
-                  onUploadFromURL();
-                }}
-              >
-                <Globe size={15} class="text-purple-500" />
-                {m.remote_upload()}
-              </button>
-            {/if}
-            {#if onUploadText}
-              <button
-                type="button"
-                class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-amber-50 hover:text-amber-600"
-                onclick={() => {
-                  showUploadMenu = false;
-                  onUploadText();
-                }}
-              >
-                <FileText size={15} class="text-amber-500" />
-                {m.paste_text()}
-              </button>
-            {/if}
-            <div class="bg-line-soft mx-1 my-1 h-px"></div>
-            <button
-              type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-ink-2 outline-none transition-colors duration-150 select-none cursor-pointer hover:bg-green-50 hover:text-green-600"
-              onclick={() => {
-                showUploadMenu = false;
-                fileManager.createDir();
-              }}
-            >
-              <FolderPlus size={15} class="text-green-500" />
-              {m.new_folder()}
-            </button>
-          </div>
-        </Popover>
-      </div>
     </div>
   </div>
 </div>

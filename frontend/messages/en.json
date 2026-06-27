@@ -102,6 +102,7 @@
   "all_files": "All Files",
   "load_more": "Load More",
   "load_more_failed": "Failed to load more",
+  "no_more": "No more",
   "rename": "Rename",
   "enter_new_name": "Enter new name",
   "create_dir_failed": "Failed to create directory",

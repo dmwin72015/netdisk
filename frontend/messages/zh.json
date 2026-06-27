@@ -95,6 +95,7 @@
   "all_files": "全部文件",
   "load_more": "加载更多",
   "load_more_failed": "加载更多失败",
+  "no_more": "没有更多了",
   "rename": "重命名",
   "enter_new_name": "输入新名称",
   "create_dir_failed": "创建目录失败",

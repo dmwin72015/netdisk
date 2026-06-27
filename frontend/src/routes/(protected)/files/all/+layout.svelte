@@ -82,29 +82,27 @@
 </script>
 
 {#if $authReady && $user}
-  <div class="space-y-4 rounded-xl border border-line bg-white p-4 relative">
-    <FileBrowserContent
-      {onBatchShare}
-      onUploadFiles={() => {
-        const input = document.querySelector<HTMLInputElement>(
-          'input[type="file"][multiple]',
-        );
-        input?.click();
-      }}
-      onUploadFolder={() => {
-        const input = document.querySelector<HTMLInputElement>(
-          'input[type="file"][webkitdirectory]',
-        );
-        input?.click();
-      }}
-      onUploadFromURL={() => {
-        remoteUploadOpen = true;
-      }}
-      onUploadText={() => {
-        textUploadOpen = true;
-      }}
-    />
-  </div>
+  <FileBrowserContent
+    {onBatchShare}
+    onUploadFiles={() => {
+      const input = document.querySelector<HTMLInputElement>(
+        'input[type="file"][multiple]',
+      );
+      input?.click();
+    }}
+    onUploadFolder={() => {
+      const input = document.querySelector<HTMLInputElement>(
+        'input[type="file"][webkitdirectory]',
+      );
+      input?.click();
+    }}
+    onUploadFromURL={() => {
+      remoteUploadOpen = true;
+    }}
+    onUploadText={() => {
+      textUploadOpen = true;
+    }}
+  />
 {/if}
 
 <ShareDialog bind:open={shareOpen} files={shareFiles} />

@@ -93,7 +93,7 @@
 
   function openSelectedMoveDialog() {
     openMoveDialog(
-      files.filter((file) => fileManager.selectedIds.has(file.id)),
+      files.filter((file) => !!fileManager.selectedIds[file.id]),
     );
   }
 
@@ -116,7 +116,7 @@
   // --- Batch actions ---
   function handleBatchDownload() {
     const selectedFiles = files.filter(
-      (f) => fileManager.selectedIds.has(f.id) && !f.isDir,
+      (f) => !!fileManager.selectedIds[f.id] && !f.isDir,
     );
     for (const f of selectedFiles) {
       const url = authedUrl(fileManager.getDownloadUrl(f.id));
@@ -129,7 +129,7 @@
   }
 
   function handleBatchShare() {
-    onBatchShare?.(files.filter((f) => fileManager.selectedIds.has(f.id)));
+    onBatchShare?.(files.filter((f) => !!fileManager.selectedIds[f.id]));
   }
 
   // --- Copy helpers ---
@@ -157,7 +157,7 @@
   }
 </script>
 
-<div class="relative min-h-37.5">
+<div class="relative min-h-37.5 px-6">
   {#if loading}
     <div
       class="absolute inset-0 z-10 flex items-center justify-center"
@@ -169,7 +169,7 @@
 
   {#if !loading && files.length === 0}
     <div
-      class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line py-16 text-center"
+      class="flex flex-col items-center justify-center py-24 text-center"
       in:fade={{ duration: 150 }}
     >
       <img src={noFilesSvg} class="mb-2 w-32 h-32" alt="" />

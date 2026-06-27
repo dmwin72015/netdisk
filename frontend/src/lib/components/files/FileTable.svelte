@@ -65,12 +65,12 @@
   }
 
   function handleBatchDelete() {
-    const selected = fileManager.selectedIds;
-    const locked = Array.from(selected).filter((id) => {
+    const selected = Object.keys(fileManager.selectedIds);
+    const locked = selected.filter((id) => {
       const f = files.find((f) => f.id === id);
       return f && lockManager.isEffectivelyLocked(f);
     });
-    const ids = Array.from(selected).filter((id) => {
+    const ids = selected.filter((id) => {
       const f = files.find((f) => f.id === id);
       return !f || !lockManager.isEffectivelyLocked(f);
     });
@@ -91,32 +91,22 @@
     if (lockManager.isEffectivelyLocked(f)) {
       await lockManager.unlock(f.slug, f.name);
     } else {
-      const ok = await confirmAction(m.dir_password(), m.dir_relock_confirm({ name: f.name }), m.confirm());
+      const ok = await confirmAction(
+        m.dir_password(),
+        m.dir_relock_confirm({ name: f.name }),
+        m.confirm(),
+      );
       if (ok) lockManager.relock(f.slug);
     }
   }
 </script>
 
-<div
-  class="relative overflow-hidden rounded-xl border border-line-soft bg-white"
-  in:fade={{ duration: 150 }}
->
+<div class="relative overflow-hidden" in:fade={{ duration: 150 }}>
   <table class="w-full table-fixed text-sm">
     <thead>
-      <tr class="border-b border-line-soft text-left text-xs text-ink-4">
+      <tr class="border-b border-line text-left text-xs text-ink-4">
         <th class="w-[54%] px-2 py-2.5 font-medium">
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              onclick={() => fileManager.toggleSelectAll()}
-              class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors {fileManager.allSelected
-                ? 'border-primary bg-primary text-white'
-                : 'border-line hover:border-primary'}"
-            >
-              {#if fileManager.allSelected}
-                <Check size={10} />
-              {/if}
-            </button>
+          <div class="pl-6">
             {m.col_filename()}
           </div>
         </th>
@@ -133,9 +123,9 @@
     </thead>
     <tbody>
       {#each files as f, i (f.id)}
-        {@const isSelected = fileManager.selectedIds.has(f.id)}
+        {@const isSelected = !!fileManager.selectedIds[f.id]}
         <tr
-          class="group border-b border-line-soft transition-colors last:border-0 hover:bg-surface-muted/80 {f.isDir ||
+          class="group border-b border-line transition-colors last:border-0 hover:bg-surface-muted/80 {f.isDir ||
           canPreview(f)
             ? 'cursor-pointer'
             : ''} {isSelected ? 'bg-primary-soft/50' : ''}"
@@ -146,20 +136,29 @@
               {#if f.isSystem}
                 <span class="h-4 w-4 shrink-0"></span>
               {:else}
-                <button
-                  type="button"
+                <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                <span
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  tabindex="-1"
+                  class="flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors {isSelected
+                    ? 'border-primary bg-primary text-white opacity-100'
+                    : 'border-line opacity-0 group-hover:opacity-100 hover:border-primary'}"
                   onclick={(e) => {
                     e.stopPropagation();
                     fileManager.toggleSelect(f.id);
                   }}
-                  class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-opacity {isSelected
-                    ? 'border-primary bg-primary text-white opacity-100'
-                    : 'border-line opacity-0 group-hover:opacity-100'}"
+                  onkeydown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.stopPropagation();
+                      fileManager.toggleSelect(f.id);
+                    }
+                  }}
                 >
                   {#if isSelected}
                     <Check size={10} />
                   {/if}
-                </button>
+                </span>
               {/if}
               {#if showThumbnail(f)}
                 <span
@@ -199,7 +198,9 @@
                     e.stopPropagation();
                     toggleLock(f);
                   }}
-                  aria-label={lockManager.isEffectivelyLocked(f) ? m.dir_password() : m.dir_unlocked()}
+                  aria-label={lockManager.isEffectivelyLocked(f)
+                    ? m.dir_password()
+                    : m.dir_unlocked()}
                 >
                   {#if lockManager.isEffectivelyLocked(f)}
                     <Lock size={14} />
@@ -263,7 +264,7 @@
     >
       <span class="shrink-0 px-3 text-sm font-medium text-ink-2"
         >{m.selected_count({
-          count: String(fileManager.selectedIds.size),
+          count: String(Object.keys(fileManager.selectedIds).length),
         })}</span
       >
       <div class="h-7 w-px shrink-0 bg-surface-sunken"></div>
@@ -300,7 +301,7 @@
               "aria-label": m.share_file(),
               onclick: () =>
                 onBatchShare?.(
-                  files.filter((f) => fileManager.selectedIds.has(f.id)),
+                  files.filter((f) => !!fileManager.selectedIds[f.id]),
                 ),
             }}
             triggerClass="h-8 w-8 rounded-full text-ink-3 transition-colors hover:bg-primary-soft hover:text-primary"
