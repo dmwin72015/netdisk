@@ -69,6 +69,20 @@ func buildWriter(opts Options) (io.Writer, io.Closer, error) {
 			return nil, nil, err
 		}
 		return writer, writer, nil
+	case "both":
+		filePath := strings.TrimSpace(opts.FilePath)
+		if filePath == "" {
+			filePath = defaultFilePath
+		}
+		maxSizeMB := opts.MaxSizeMB
+		if maxSizeMB <= 0 {
+			maxSizeMB = defaultMaxSizeMB
+		}
+		fileWriter, err := newRotatingFileWriter(filePath, int64(maxSizeMB)*1024*1024)
+		if err != nil {
+			return nil, nil, err
+		}
+		return io.MultiWriter(os.Stdout, fileWriter), fileWriter, nil
 	default:
 		return nil, nil, fmt.Errorf("unsupported log output %q", opts.Output)
 	}

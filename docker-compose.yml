@@ -33,6 +33,7 @@ services:
       - .env
     volumes:
       - netdiskdata:/data
+      - ${LOG_DIR:-./backend/logs}:/app/logs
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz >/dev/null 2>&1 || exit 1"]
       interval: 10s
