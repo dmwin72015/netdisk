@@ -65,17 +65,21 @@
     class?: string;
   } = $props();
 
-  const sizeClass = width ? "" : sizeWidths[size ?? DEFAULT_SIZE];
+  const sizeClass = $derived(width ? "" : sizeWidths[size ?? DEFAULT_SIZE]);
 
   const contentClass = $derived(
     cn("max-h-[90vh] flex flex-col overflow-hidden", sizeClass, className),
   );
 
-  const widthStyle = isDefined(width)
-    ? `width: ${typeof width === "number" ? `${width}px` : width};`
-    : "";
+  const widthStyle = $derived(
+    isDefined(width)
+      ? `width: ${typeof width === "number" ? `${width}px` : width};`
+      : ""
+  );
 
-  const contentInlineStyle = [contentStyle, widthStyle].filter(Boolean).join(" ").trim() || undefined;
+  const contentInlineStyle = $derived(
+    [contentStyle, widthStyle].filter(Boolean).join(" ").trim() || undefined
+  );
 
   let confirming = $state(false);
 
