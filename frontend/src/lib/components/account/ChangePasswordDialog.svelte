@@ -33,23 +33,23 @@
 
     if (!oldPassword) {
       error = m.account_old_password_placeholder();
-      return;
+      return false;
     }
     if (!newPassword) {
       error = m.account_new_password_placeholder();
-      return;
+      return false;
     }
     if (newPassword.length < 6) {
       error = m.account_password_too_short();
-      return;
+      return false;
     }
     if (newPassword !== confirmPassword) {
       error = m.account_password_mismatch();
-      return;
+      return false;
     }
     if (oldPassword === newPassword) {
       error = m.account_password_same();
-      return;
+      return false;
     }
 
     busy = true;

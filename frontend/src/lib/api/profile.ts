@@ -73,3 +73,7 @@ export async function getStorageBreakdown(): Promise<CategoryStat[]> {
 	const data = await api<{ categories: CategoryStat[] }>('/api/v1/user/storage-breakdown');
 	return data.categories;
 }
+
+export async function deleteAccount(): Promise<void> {
+	await api('/api/v1/user/me', { method: 'DELETE' });
+}

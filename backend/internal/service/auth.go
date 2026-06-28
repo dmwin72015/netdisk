@@ -83,6 +83,7 @@ type TokenPair struct {
 }
 
 type UserResponse struct {
+	ID             int64       `json:"id"`
 	Slug           string      `json:"slug"`
 	Username       string      `json:"username"`
 	Email          string      `json:"email"`
@@ -124,7 +125,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 	user, err := qtx.CreateUser(ctx, sqlc.CreateUserParams{
 		Slug:           slug,
 		Username:       input.Username,
-		Email:          input.Email,
+		Email:          strText(input.Email),
 		PasswordHash:   string(hash),
 		RegisterMethod: "email",
 	})
@@ -166,9 +167,10 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*UserR
 	}
 
 	return &UserResponse{
+		ID:             user.ID,
 		Slug:           user.Slug,
 		Username:       user.Username,
-		Email:          user.Email,
+		Email:          textStr(user.Email),
 		Status:         user.Status,
 		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
@@ -191,7 +193,7 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*UserRespons
 		return nil, nil, model.ErrInvalidInput
 	}
 
-	user, err := s.queries.GetUserByEmail(ctx, input.Email)
+	user, err := s.queries.GetUserByEmail(ctx, strText(input.Email))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil, model.ErrInvalidCredentials
@@ -209,9 +211,10 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*UserRespons
 	}
 
 	resp := &UserResponse{
+		ID:             user.ID,
 		Slug:           user.Slug,
 		Username:       user.Username,
-		Email:          user.Email,
+		Email:          textStr(user.Email),
 		Status:         user.Status,
 		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
@@ -422,6 +425,7 @@ func (s *AuthService) OAuthAuthorize(ctx context.Context, provider string) (stri
 
 type OAuthCallbackResult struct {
 	NewUser bool
+	UserID  int64
 	User    *UserResponse
 	Tokens  *TokenPair
 	// Bind flow fields
@@ -588,7 +592,7 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		// user (e.g. after unbind and re-login). If so, require explicit
 		// confirmation from the user before linking and logging in.
 		if userInfo.Email != "" {
-			existingUser, err := s.queries.GetUserByEmail(ctx, userInfo.Email)
+			existingUser, err := s.queries.GetUserByEmail(ctx, strText(userInfo.Email))
 			if err == nil {
 				confirmToken := makeState()
 				confirmVal := fmt.Sprintf("%s:%d:%s:%s:%s", provider, existingUser.ID, userInfo.ID, userInfo.Email, tokenResp.AccessToken)
@@ -635,9 +639,10 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 	}
 
 	resp := &UserResponse{
+		ID:             user.ID,
 		Slug:           user.Slug,
 		Username:       user.Username,
-		Email:          user.Email,
+		Email:          textStr(user.Email),
 		Status:         user.Status,
 		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
@@ -679,7 +684,7 @@ func (s *AuthService) OAuthCallback(ctx context.Context, provider, code, state s
 		resp.Level = ld
 	}
 
-	return &OAuthCallbackResult{User: resp, Tokens: tokens, NewUser: true}, nil
+	return &OAuthCallbackResult{UserID: user.ID, User: resp, Tokens: tokens, NewUser: true}, nil
 }
 
 func (s *AuthService) upsertOAuthAccount(ctx context.Context, userID int64, provider, providerAccountID, oauthEmail, accessToken string) error {
@@ -740,7 +745,7 @@ func (s *AuthService) OAuthUnlink(ctx context.Context, userID int64, provider st
 	}
 
 	// If user has no email and this is the only OAuth login method, block unlinking
-	if user.Email == "" && len(accounts) == 1 {
+	if !user.Email.Valid && len(accounts) == 1 {
 		return model.ErrForbidden
 	}
 

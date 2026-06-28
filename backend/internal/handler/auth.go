@@ -14,11 +14,12 @@ import (
 )
 
 type AuthHandler struct {
-	svc *service.AuthService
+	svc   *service.AuthService
+	audit *service.AuditService
 }
 
-func NewAuthHandler(svc *service.AuthService) *AuthHandler {
-	return &AuthHandler{svc: svc}
+func NewAuthHandler(svc *service.AuthService, audit *service.AuditService) *AuthHandler {
+	return &AuthHandler{svc: svc, audit: audit}
 }
 
 func (h *AuthHandler) Register(c echo.Context) error {
@@ -30,6 +31,10 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	if err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: user.ID, Action: service.ActionRegister,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return Created(c, user)
 }
 
@@ -42,6 +47,10 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: user.ID, Action: service.ActionLogin,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]any{
 		"user":   user,
 		"tokens": tokens,
@@ -70,6 +79,10 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	if err := h.svc.Logout(c.Request().Context(), input.RefreshToken, userID, sessionID); err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionLogout,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "logged out"})
 }
 
@@ -168,6 +181,11 @@ func (h *AuthHandler) OAuthCallback(c echo.Context) error {
 		url.QueryEscape(result.Tokens.AccessToken),
 		url.QueryEscape(result.Tokens.RefreshToken),
 	)
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: result.UserID, Action: service.ActionOAuthLogin,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Extra: map[string]any{"provider": provider},
+	})
 	return c.Redirect(http.StatusFound, redirectURL)
 }
 

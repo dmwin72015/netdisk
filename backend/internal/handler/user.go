@@ -13,11 +13,12 @@ import (
 )
 
 type UserHandler struct {
-	svc *service.UserService
+	svc   *service.UserService
+	audit *service.AuditService
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
-	return &UserHandler{svc: svc}
+func NewUserHandler(svc *service.UserService, audit *service.AuditService) *UserHandler {
+	return &UserHandler{svc: svc, audit: audit}
 }
 
 func requireUserID(c echo.Context) (int64, error) {
@@ -90,6 +91,10 @@ func (h *UserHandler) ChangePassword(c echo.Context) error {
 	if err := h.svc.ChangePassword(c.Request().Context(), userID, input.OldPassword, input.NewPassword); err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionPasswordChange,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "password changed"})
 }
 
@@ -161,6 +166,27 @@ func (h *UserHandler) UploadAvatar(c echo.Context) error {
 	}
 
 	return OK(c, map[string]string{"avatar_url": url})
+}
+
+func (h *UserHandler) DeleteMe(c echo.Context) error {
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.svc.DeleteMe(c.Request().Context(), userID); err != nil {
+		return BizError(err)
+	}
+
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID:      userID,
+		Action:      "user.delete_account",
+		IP:          c.RealIP(),
+		UserAgent:   c.Request().UserAgent(),
+		Extra:       map[string]any{"deletedUserID": userID},
+	})
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *UserHandler) ListTransactions(c echo.Context) error {

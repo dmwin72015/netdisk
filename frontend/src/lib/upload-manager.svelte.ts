@@ -163,6 +163,7 @@ export function createUploadManager(opts: {
 	}
 
 	let uploadItems = $state<UploadItem[]>([]);
+	let preResolvedConflicts = new Map<string, { strategy: 'overwrite' | 'skip' | 'keep_both'; existingSlug: string }>();
 	let _hydrated = false;
 
 	$effect(() => {
@@ -286,6 +287,26 @@ export function createUploadManager(opts: {
 
 	async function resolveItemNameConflict(item: UploadItem): Promise<boolean> {
 		// Returns true if the item was skipped/removed (caller should stop processing).
+
+		// Check pre-resolved conflicts first (from batch pre-check)
+		const preResolved = preResolvedConflicts.get(item.uid);
+		if (preResolved) {
+			preResolvedConflicts.delete(item.uid);
+			if (preResolved.strategy === 'skip') {
+				removeItemSilently(item.uid, `skipped due to name conflict: ${item.fileName}`);
+				return true;
+			}
+			if (preResolved.strategy === 'overwrite') {
+				item.conflictStrategy = 'overwrite';
+				item.conflictExistingSlug = preResolved.existingSlug;
+				return false;
+			}
+			if (preResolved.strategy === 'keep_both') {
+				item.fileName = await resolveKeepBothName(item.fileName, item.parentSlug ?? undefined);
+				return false;
+			}
+		}
+
 		if (!_onNameConflicts) return false;
 
 		let resp: Awaited<ReturnType<typeof checkConflict>>;
@@ -323,6 +344,9 @@ export function createUploadManager(opts: {
 		]);
 		const result = results.get(item.uid);
 		if (!result) return false;
+		if (result.applyToAll) {
+			setDuplicateStrategy(result.strategy);
+		}
 		switch (result.strategy) {
 			case 'skip':
 				removeItemSilently(item.uid, `skipped due to name conflict: ${item.fileName}`);
@@ -405,8 +429,60 @@ export function createUploadManager(opts: {
 			log(item.uid, null, `selected: ${item.fileName} (${fmtSize(item.fileSize)})`);
 		}
 
+		// Batch pre-check: detect all name conflicts before starting upload
+		await preCheckConflicts(newItems);
+
 		void startUploadQueue();
 		return newItems.length;
+	}
+
+	async function preCheckConflicts(items: UploadItem[]) {
+		if (!_onNameConflicts || items.length === 0) return;
+
+		const autoStrategy = getDuplicateStrategy();
+		if (autoStrategy !== 'prompt') return; // auto strategies are handled per-file
+
+		// Check all files for conflicts concurrently
+		const conflictChecks = await Promise.all(
+			items.map(async (item) => {
+				try {
+					const resp = await checkConflict(item.fileName, 0, '', item.parentSlug ?? undefined);
+					if (resp.status === 'NAME_CONFLICT' && resp.existing) {
+						return {
+							uid: item.uid,
+							fileName: item.fileName,
+							fileSize: item.fileSize,
+							existingSlug: resp.existing.slug,
+						};
+					}
+				} catch {
+					// ignore check failures
+				}
+				return null;
+			})
+		);
+
+		const conflicts = conflictChecks.filter((c): c is NonNullable<typeof c> => c !== null);
+		if (conflicts.length === 0) return;
+
+		log('precheck', null, `found ${conflicts.length} name conflicts, showing dialog`);
+
+		// Show single dialog for all conflicts
+		const results = await _onNameConflicts(conflicts);
+
+		// Store pre-resolved strategies
+		for (const [uid, result] of results) {
+			const conflict = conflicts.find((c) => c.uid === uid);
+			if (conflict) {
+				preResolvedConflicts.set(uid, {
+					strategy: result.strategy,
+					existingSlug: conflict.existingSlug,
+				});
+				if (result.applyToAll) {
+					setDuplicateStrategy(result.strategy);
+				}
+			}
+		}
 	}
 
 	function removeItemSilently(uid: string, reason: string) {

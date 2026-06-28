@@ -147,17 +147,15 @@
       </div>
 
       <!-- Apply to all -->
-      {#if conflicts.length > 1}
-        <label class="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={applyToAll}
-            onchange={(e) => handleApplyAllChange(e.currentTarget.checked)}
-            class="h-4 w-4 rounded border-line text-primary"
-          />
-          <span class="text-xs text-ink-3">{m.upload_conflict_apply_all()}</span>
-        </label>
-      {/if}
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          checked={applyToAll}
+          onchange={(e) => handleApplyAllChange(e.currentTarget.checked)}
+          class="h-4 w-4 rounded border-line text-primary"
+        />
+        <span class="text-xs text-ink-3">{m.upload_conflict_apply_all()}</span>
+      </label>
 
       <!-- Progress indicator -->
       {#if conflicts.length > 1 && !applyToAll}

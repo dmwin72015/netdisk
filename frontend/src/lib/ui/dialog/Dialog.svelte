@@ -77,7 +77,7 @@
 
   const contentInlineStyle = [contentStyle, widthStyle].filter(Boolean).join(" ").trim() || undefined;
 
-  let confirming = false;
+  let confirming = $state(false);
 
   async function handleConfirm() {
     if (!onConfirm) {
@@ -88,8 +88,10 @@
     if (result instanceof Promise) {
       confirming = true;
       try {
-        await result;
-        open = false;
+        const shouldClose = await result;
+        if (shouldClose !== false) {
+          open = false;
+        }
       } catch {
         // keep dialog open on failure
       } finally {

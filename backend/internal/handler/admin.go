@@ -14,13 +14,14 @@ import (
 )
 
 type AdminHandler struct {
-	svc        *service.AdminService
-	cfg        *config.Config
-	configSvc  *service.SystemConfigService
+	svc       *service.AdminService
+	cfg       *config.Config
+	configSvc *service.SystemConfigService
+	audit     *service.AuditService
 }
 
-func NewAdminHandler(svc *service.AdminService, cfg *config.Config, configSvc *service.SystemConfigService) *AdminHandler {
-	return &AdminHandler{svc: svc, cfg: cfg, configSvc: configSvc}
+func NewAdminHandler(svc *service.AdminService, cfg *config.Config, configSvc *service.SystemConfigService, audit *service.AuditService) *AdminHandler {
+	return &AdminHandler{svc: svc, cfg: cfg, configSvc: configSvc, audit: audit}
 }
 
 func requireAdminUserID(c echo.Context) (int64, error) {
@@ -113,6 +114,13 @@ func (h *AdminHandler) CreateUser(c echo.Context) error {
 		return BizError(err)
 	}
 
+	adminID, _ := requireUserID(c)
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: adminID, Action: service.ActionAdminCreateUser,
+		ResourceType: "user", ResourceName: input.Username,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Extra: map[string]any{"targetRole": input.Role},
+	})
 	return OK(c, user)
 }
 
@@ -155,6 +163,13 @@ func (h *AdminHandler) UpdateUser(c echo.Context) error {
 		return BizError(err)
 	}
 
+	adminID, _ := requireUserID(c)
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: adminID, Action: service.ActionAdminUpdateRole,
+		ResourceType: "user", ResourceName: user.Username,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Extra: map[string]any{"targetUserID": id, "newRole": role},
+	})
 	return OK(c, user)
 }
 
@@ -189,6 +204,13 @@ func (h *AdminHandler) DeleteUser(c echo.Context) error {
 		return BizError(err)
 	}
 
+	adminID, _ := requireUserID(c)
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: adminID, Action: service.ActionAdminDeleteUser,
+		ResourceType: "user",
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Extra: map[string]any{"targetUserID": id},
+	})
 	return c.NoContent(204)
 }
 

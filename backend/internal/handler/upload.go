@@ -17,10 +17,11 @@ import (
 type UploadHandler struct {
 	svc    *service.UploadService
 	logger zerolog.Logger
+	audit  *service.AuditService
 }
 
-func NewUploadHandler(svc *service.UploadService, logger zerolog.Logger) *UploadHandler {
-	return &UploadHandler{svc: svc, logger: logger}
+func NewUploadHandler(svc *service.UploadService, logger zerolog.Logger, audit *service.AuditService) *UploadHandler {
+	return &UploadHandler{svc: svc, logger: logger, audit: audit}
 }
 
 func (h *UploadHandler) UploadFromURL(c echo.Context) error {
@@ -223,6 +224,13 @@ func (h *UploadHandler) Complete(c echo.Context) error {
 	}
 
 	h.logger.Info().Int64("userID", userID).Str("uploadSlug", input.UploadSlug).Str("status", resp.Status).Str("physicalFileSlug", resp.PhysicalFileSlug).Msg("complete: response")
+	if resp.Status == "completed" {
+		h.audit.Log(c.Request().Context(), service.AuditLogInput{
+			UserID: userID, Action: service.ActionFileUpload,
+			ResourceType: "file", ResourceName: input.UploadSlug,
+			IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		})
+	}
 	return OK(c, resp)
 }
 

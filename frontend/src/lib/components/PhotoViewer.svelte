@@ -405,7 +405,7 @@
 							src={authedUrl(downloadUrl(visibleSlug))}
 							alt={visiblePhoto?.fileName ?? ''}
 							loading="eager"
-							class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-dialog will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
+							class="max-h-[90vh] max-w-[90vw] object-contain shadow-dialog will-change-transform {isWheelZooming || isPanning || isSwitchingImage ? '' : 'transition-transform duration-150 ease-out'}"
 							style:transform={imageTransform}
 							draggable="false"
 						/>

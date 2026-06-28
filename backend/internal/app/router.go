@@ -74,6 +74,7 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	authed.POST("/user/me/password", h.User.ChangePassword)
 	authed.DELETE("/user/oauth/:provider", h.Auth.OAuthUnlink)
 	authed.POST("/user/me/avatar", h.User.UploadAvatar)
+	authed.DELETE("/user/me", h.User.DeleteMe)
 	authed.GET("/user/settings", h.User.GetSettings)
 	authed.PUT("/user/settings", h.User.UpdateSettings)
 	authed.GET("/user/transactions", h.User.ListTransactions)

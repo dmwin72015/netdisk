@@ -14,11 +14,12 @@ import (
 )
 
 type FilesHandler struct {
-	svc *service.FilesService
+	svc   *service.FilesService
+	audit *service.AuditService
 }
 
-func NewFilesHandler(svc *service.FilesService) *FilesHandler {
-	return &FilesHandler{svc: svc}
+func NewFilesHandler(svc *service.FilesService, audit *service.AuditService) *FilesHandler {
+	return &FilesHandler{svc: svc, audit: audit}
 }
 
 func (h *FilesHandler) ListFiles(c echo.Context) error {
@@ -135,6 +136,11 @@ func (h *FilesHandler) Mkdir(c echo.Context) error {
 		return BizError(err)
 	}
 
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionDirCreate,
+		ResourceType: "dir", ResourceName: input.DirName,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return Created(c, item)
 }
 
@@ -233,6 +239,11 @@ func (h *FilesHandler) TrashFile(c echo.Context) error {
 		return BizError(err)
 	}
 
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionFileDelete,
+		ResourceType: "file", ResourceName: slug,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "file trashed"})
 }
 
@@ -319,6 +330,12 @@ func (h *FilesHandler) RenameFile(c echo.Context) error {
 		return BizError(err)
 	}
 
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionFileRename,
+		ResourceType: "file", ResourceName: slug,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Extra: map[string]any{"newName": input.NewName},
+	})
 	return OK(c, map[string]string{"message": "file renamed"})
 }
 
@@ -340,6 +357,11 @@ func (h *FilesHandler) MoveFile(c echo.Context) error {
 		return BizError(err)
 	}
 
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionFileMove,
+		ResourceType: "file", ResourceName: slug,
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "file moved"})
 }
 
@@ -500,6 +522,11 @@ func (h *FilesHandler) SetDirectoryLock(c echo.Context) error {
 	if err := h.svc.SetDirectoryLock(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password); err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionDirLock,
+		ResourceType: "dir", ResourceName: c.Param("slug"),
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "directory locked"})
 }
 
@@ -517,6 +544,11 @@ func (h *FilesHandler) ClearDirectoryLock(c echo.Context) error {
 	if err := h.svc.ClearDirectoryLock(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password); err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionDirUnlock,
+		ResourceType: "dir", ResourceName: c.Param("slug"),
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "directory unlocked"})
 }
 
@@ -550,5 +582,10 @@ func (h *FilesHandler) UnlockDirectory(c echo.Context) error {
 	if err := h.svc.UnlockDirectory(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password, input.TTLHours); err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionDirUnlock,
+		ResourceType: "dir", ResourceName: c.Param("slug"),
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+	})
 	return OK(c, map[string]string{"message": "directory unlocked"})
 }

@@ -12,6 +12,8 @@
     Mail,
     Calendar,
     HardDrive as HardDriveIcon,
+    Clock,
+    X,
   } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
   import {
@@ -27,6 +29,7 @@
   import Dialog from "$lib/ui/dialog/Dialog.svelte";
   import { Popover } from "$lib/ui/popover";
   import * as m from "$lib/paraglide/messages";
+  import { searchHistory } from "$lib/stores/search-history.svelte";
 
   let mode = $state<"slug" | "hash">("slug");
   let slug = $state("");
@@ -34,6 +37,9 @@
   let querying = $state(false);
   let result = $state<CleanupQueryResult | null>(null);
   let error = $state<string | null>(null);
+
+  // Search history
+  let showHistory = $state(false);
 
   let deletingUserFileId = $state<number | null>(null);
   let deletingPhysicalFileId = $state<number | null>(null);
@@ -45,16 +51,27 @@
   let userDetailLoading = $state<Record<number, boolean>>({});
   let userDetailCache = $state<Record<number, AdminUser>>({});
 
+  function getCurrentTerm(): string {
+    return mode === "slug" ? slug.trim() : hash.trim();
+  }
+
+  function setCurrentTerm(term: string) {
+    if (mode === "slug") slug = term;
+    else hash = term;
+  }
+
   async function handleQuery() {
-    if (mode === "slug" && !slug.trim()) return;
-    if (mode === "hash" && !hash.trim()) return;
+    const term = getCurrentTerm();
+    if (!term) return;
+    searchHistory.addSearch(mode, term);
+    showHistory = false;
     querying = true;
     error = null;
     result = null;
     try {
       result = await adminCleanupQuery(
-        mode === "slug" ? slug.trim() : "",
-        mode === "hash" ? hash.trim() : "",
+        mode === "slug" ? term : "",
+        mode === "hash" ? term : "",
       );
       if (result.userFiles.length === 0 && !result.physicalFile) {
         error = m.admin_cleanup_no_data_for_mode({ mode });
@@ -65,6 +82,32 @@
     } finally {
       querying = false;
     }
+  }
+
+  function handleHistoryClick(term: string) {
+    setCurrentTerm(term);
+    showHistory = false;
+    handleQuery();
+  }
+
+  function handleHistoryRemove(e: Event, term: string) {
+    e.stopPropagation();
+    searchHistory.removeEntry(mode, term);
+  }
+
+  function handleHistoryClear() {
+    searchHistory.clearHistory(mode);
+    showHistory = false;
+  }
+
+  function handleInputFocus() {
+    showHistory = true;
+  }
+
+  function handleInputBlur() {
+    setTimeout(() => {
+      showHistory = false;
+    }, 200);
   }
 
   async function handleDeleteUserFile(userFileId: number) {
@@ -162,7 +205,7 @@
       <div class="relative flex-1">
         <Search
           size={16}
-          class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 pointer-events-none"
         />
         {#if mode === "slug"}
           <input
@@ -170,6 +213,8 @@
             bind:value={slug}
             placeholder={m.admin_cleanup_slug_placeholder()}
             class="w-full rounded-lg border border-line bg-surface-sunken pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            onfocus={handleInputFocus}
+            onblur={handleInputBlur}
             onkeydown={(e) => e.key === "Enter" && handleQuery()}
           />
         {:else}
@@ -178,8 +223,50 @@
             bind:value={hash}
             placeholder={m.admin_cleanup_hash_placeholder()}
             class="w-full rounded-lg border border-line bg-surface-sunken pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            onfocus={handleInputFocus}
+            onblur={handleInputBlur}
             onkeydown={(e) => e.key === "Enter" && handleQuery()}
           />
+        {/if}
+
+        <!-- Search history dropdown -->
+        {#if showHistory && searchHistory.getHistory(mode).length > 0}
+          <div
+            class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-line bg-white shadow-pop"
+          >
+            <div class="px-3 py-2 text-xs font-medium text-ink-4 flex items-center gap-1.5 border-b border-line">
+              <Clock size={12} />
+              {m.admin_cleanup_recent_searches()}
+            </div>
+            <div class="max-h-64 overflow-y-auto py-1">
+              {#each searchHistory.getHistory(mode) as term}
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-sunken"
+                  onmousedown={() => handleHistoryClick(term)}
+                >
+                  <Clock size={13} class="shrink-0 text-ink-4" />
+                  <span class="min-w-0 flex-1 truncate">{term}</span>
+                  <span
+                    role="button"
+                    tabindex="-1"
+                    class="shrink-0 rounded p-0.5 text-ink-4 transition-colors hover:bg-surface-sunken hover:text-ink-2"
+                    onmousedown={(e) => handleHistoryRemove(e, term)}
+                  >
+                    <X size={12} />
+                  </span>
+                </button>
+              {/each}
+            </div>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-xs text-ink-4 transition-colors hover:text-ink-3"
+              onmousedown={handleHistoryClear}
+            >
+              <Trash2 size={12} />
+              {m.admin_cleanup_clear_history()}
+            </button>
+          </div>
         {/if}
       </div>
       <button

@@ -15,11 +15,12 @@ import (
 )
 
 type ShareHandler struct {
-	svc *service.ShareService
+	svc   *service.ShareService
+	audit *service.AuditService
 }
 
-func NewShareHandler(svc *service.ShareService) *ShareHandler {
-	return &ShareHandler{svc: svc}
+func NewShareHandler(svc *service.ShareService, audit *service.AuditService) *ShareHandler {
+	return &ShareHandler{svc: svc, audit: audit}
 }
 
 type shareRequest struct {
@@ -68,6 +69,12 @@ func (h *ShareHandler) CreateShare(c echo.Context) error {
 	if err != nil {
 		return BizError(err)
 	}
+	h.audit.Log(c.Request().Context(), service.AuditLogInput{
+		UserID: userID, Action: service.ActionShareCreate,
+		ResourceType: "share",
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Extra: map[string]any{"fileCount": len(request.FileSlugs)},
+	})
 	return Created(c, share)
 }
 
@@ -131,6 +138,11 @@ func (h *ShareHandler) CancelShare(c echo.Context) error {
 		if err := h.svc.DeleteShare(c.Request().Context(), userID, slug); err != nil {
 			return BizError(err)
 		}
+		h.audit.Log(c.Request().Context(), service.AuditLogInput{
+			UserID: userID, Action: service.ActionShareDelete,
+			ResourceType: "share", ResourceName: slug,
+			IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		})
 		return OK(c, map[string]string{"message": "share deleted"})
 	}
 

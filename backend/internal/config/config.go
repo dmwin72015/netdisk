@@ -24,6 +24,7 @@ type Config struct {
 	Media     MediaConfig     `mapstructure:"media"`
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 	OAuth2    OAuth2Config    `mapstructure:"oauth2"`
+	IPLookup  IPLookupConfig  `mapstructure:"ip_lookup"`
 }
 
 type ServerConfig struct {
@@ -112,6 +113,13 @@ type OAuth2Config struct {
 	Providers       map[string]OAuth2ProviderConfig `mapstructure:"providers"`
 }
 
+type IPLookupConfig struct {
+	Provider     string `mapstructure:"provider"`       // "maxmind" | "http" | "noop"
+	MaxMindDBPath string `mapstructure:"maxmind_db_path"`
+	HTTPEndpoint string `mapstructure:"http_endpoint"`
+	HTTPAPIKey   string `mapstructure:"http_api_key"`
+}
+
 type OAuth2ProviderConfig struct {
 	ClientID     string `mapstructure:"client_id"`
 	ClientSecret string `mapstructure:"client_secret"`
@@ -133,6 +141,11 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("log.output", "console")
 	v.SetDefault("log.file_path", "./logs/server.log")
 	v.SetDefault("log.max_size_mb", 5)
+	v.SetDefault("ip_lookup.provider", "noop")
+	v.SetDefault("ip_lookup.maxmind_db_path", "./data/GeoLite2-City.mmdb")
+	v.SetDefault("media.poll_interval", "5s")
+	v.SetDefault("media.batch_size", 50)
+	v.SetDefault("trash.poll_interval", "1h")
 
 	// Sensitive fields are sourced from environment variables so the on-disk
 	// config can be committed without leaking secrets. Non-sensitive fields

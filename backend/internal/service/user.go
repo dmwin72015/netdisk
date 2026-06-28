@@ -100,7 +100,7 @@ func (s *UserService) GetMe(ctx context.Context, userID int64) (*UserMeResponse,
 	resp := &UserMeResponse{
 		Slug:           user.Slug,
 		Username:       user.Username,
-		Email:          user.Email,
+		Email:          textStr(user.Email),
 		Status:         user.Status,
 		Role:           user.Role,
 		RegisterMethod: user.RegisterMethod,
@@ -380,4 +380,47 @@ func (s *UserService) ListTransactions(ctx context.Context, userID int64, page, 
 	}
 
 	return txs, int(total), nil
+}
+
+func (s *UserService) DeleteMe(ctx context.Context, userID int64) error {
+	tx, err := s.pg.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "DELETE FROM user_oauth_accounts WHERE user_id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("delete oauth accounts: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, "DELETE FROM user_storage_stats WHERE user_id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("delete storage stats: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, "DELETE FROM user_profiles WHERE user_id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("delete profile: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, "DELETE FROM user_files WHERE user_id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("delete files: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("delete refresh tokens: %w", err)
+	}
+
+	tag, err := tx.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return tx.Commit(ctx)
 }

@@ -1,13 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { authReady, user, setUser } from "$lib/stores/auth";
+  import { goto } from "$app/navigation";
   import {
     getProfile,
     unlinkOAuth,
+    deleteAccount,
     type ProfileData,
     type OAuthAccountInfo,
   } from "$lib/api/profile";
-  import { confirmAction } from "$lib/dialog";
+  import { confirmAction, promptInput } from "$lib/dialog";
   import { toast } from "svelte-sonner";
   import { LoaderCircle, AlertTriangle, Check, Link2, Unlink } from "@lucide/svelte";
   import ChangePasswordDialog from "$lib/components/account/ChangePasswordDialog.svelte";
@@ -54,6 +56,34 @@
       await fetchProfile();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : m.account_unlink_failed());
+    }
+  }
+
+  async function handleDelete() {
+    const hint = m.account_delete_prompt_hint();
+    const input = await promptInput(
+      m.account_delete(),
+      m.account_delete_prompt({ text: hint }),
+      "",
+      hint.length,
+    );
+    if (!input) return;
+    if (input !== hint) {
+      toast.error(m.account_delete_failed());
+      return;
+    }
+    const ok = await confirmAction(
+      m.account_delete_confirm_title(),
+      m.account_delete_confirm_desc(),
+      m.account_delete(),
+    );
+    if (!ok) return;
+    try {
+      await deleteAccount();
+      toast.success(m.account_delete_success());
+      goto("/login");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : m.account_delete_failed());
     }
   }
 
@@ -177,8 +207,8 @@
           <p class="text-sm text-ink-3">{m.account_delete_desc()}</p>
           <button
             type="button"
-            disabled
-            class="mt-3 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-3 opacity-50"
+            onclick={handleDelete}
+            class="mt-3 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger-hover"
           >
             {m.account_delete()}
           </button>
