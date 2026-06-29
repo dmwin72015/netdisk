@@ -39,7 +39,7 @@
   let textError = $state<string | null>(null);
   let textTruncated = $state(false);
   let loadingText = $state(false);
-  let textWrap = $state(false);
+  let textWrap = $state(true);
 
   let blobUrl = $state<string | null>(null);
   let blobError = $state<string | null>(null);

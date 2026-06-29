@@ -160,7 +160,6 @@ toast.success(m.dir_unlocked());
           return;
         }
         if (!unlocked) return;
-toast.success(m.dir_unlocked());
         void this.refresh(showLoading, force);
       } else {
         toast.error(e instanceof Error ? e.message : m.load_failed());

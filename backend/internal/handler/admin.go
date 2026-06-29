@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/netdisk/server/internal/config"
+	"github.com/netdisk/server/internal/i18n"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/service"
 )
@@ -407,4 +408,65 @@ func (h *AdminHandler) CleanupDeletePhysicalFile(c echo.Context) error {
 		return BizError(err)
 	}
 	return OK(c, result)
+}
+
+func (h *AdminHandler) ListActivityLogs(c echo.Context) error {
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset, _ := strconv.Atoi(c.QueryParam("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	params := service.AdminListActivityLogsParams{
+		Limit:  limit,
+		Offset: offset,
+		Action: c.QueryParam("action"),
+		IP:     c.QueryParam("ip"),
+		Locale: i18n.ResolveLocale(c),
+	}
+
+	if uid := c.QueryParam("user_id"); uid != "" {
+		if id, err := strconv.ParseInt(uid, 10, 64); err == nil {
+			params.UserID = &id
+		}
+	}
+	if from := c.QueryParam("created_from"); from != "" {
+		if t, err := time.Parse(time.RFC3339, from); err == nil {
+			params.CreatedFrom = &t
+		} else if t, err := time.Parse("2006-01-02", from); err == nil {
+			params.CreatedFrom = &t
+		}
+	}
+	if to := c.QueryParam("created_to"); to != "" {
+		if t, err := time.Parse(time.RFC3339, to); err == nil {
+			params.CreatedTo = &t
+		} else if t, err := time.Parse("2006-01-02", to); err == nil {
+			endOfDay := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+			params.CreatedTo = &endOfDay
+		}
+	}
+
+	items, total, err := h.svc.ListActivityLogs(c.Request().Context(), params)
+	if err != nil {
+		return BizError(err)
+	}
+
+	return OK(c, map[string]any{
+		"items":  items,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+func (h *AdminHandler) ListActivityLogActions(c echo.Context) error {
+	locale := i18n.ResolveLocale(c)
+	items, err := h.svc.ListActivityLogActions(c.Request().Context(), locale)
+	if err != nil {
+		return BizError(err)
+	}
+	return OK(c, items)
 }

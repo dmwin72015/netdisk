@@ -57,21 +57,20 @@ class LockManager {
 
   /** Prompt for password and temporarily unlock a directory. */
   async unlock(slug: string, name?: string): Promise<boolean> {
-const password = await pinInput(
-       m.dir_password(),
-       {
-         message: name ? m.dir_password_enter({ name }) : m.dir_password(),
-       },
-     );
-    if (!password) return false;
-    await toast.promise(
-      unlockDirectory(slug, password, settingsManager.directoryUnlockTtlHours),
+    const password = await pinInput(
+      m.dir_password(),
       {
-        loading: m.dir_unlocking(),
-        success: m.dir_unlocked(),
-        error: m.dir_password_wrong(),
+        message: name ? m.dir_password_enter({ name }) : m.dir_password(),
       },
     );
+    if (!password) return false;
+    try {
+      await unlockDirectory(slug, password, settingsManager.directoryUnlockTtlHours);
+    } catch {
+      toast.error(m.dir_password_wrong());
+      return false;
+    }
+    toast.success(m.dir_unlocked());
     this.unlockedSlugs.add(slug);
     this.persistedUnlocks.set(slug, Date.now());
     this.persistUnlocks();

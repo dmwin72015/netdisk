@@ -831,5 +831,22 @@
   "settings_ttl_24h": "24 小时",
   "settings_ttl_forever": "永久（当前登录状态）",
   "notifications": "通知",
-  "text_size_exceeded": "文本大小 ({current}) 超出最大限制 ({max})"
+  "text_size_exceeded": "文本大小 ({current}) 超出最大限制 ({max})",
+  "admin_logs": "日志",
+  "admin_logs_title": "活动日志",
+  "admin_logs_subtitle": "查看所有用户活动日志并支持筛选",
+  "admin_logs_search_user_id": "用户 ID",
+  "admin_logs_search_ip": "IP 地址",
+  "admin_logs_all_actions": "所有操作",
+  "admin_logs_col_id": "ID",
+  "admin_logs_col_user": "用户",
+  "admin_logs_col_action": "操作",
+  "admin_logs_col_resource": "资源",
+  "admin_logs_col_ip": "IP",
+  "admin_logs_col_os": "系统",
+  "admin_logs_col_browser": "浏览器",
+  "admin_logs_col_time": "时间",
+  "admin_logs_no_logs": "暂无活动日志",
+  "admin_logs_user_placeholder": "输入用户 ID...",
+  "admin_logs_ip_placeholder": "输入 IP 地址..."
 }

@@ -27,6 +27,7 @@ const (
 	ActionDirCreate       = "dir.create"
 	ActionDirLock         = "dir.lock"
 	ActionDirUnlock       = "dir.unlock"
+	ActionDirUnlockFailed = "dir.unlock_failed"
 	ActionShareCreate     = "share.create"
 	ActionShareDelete     = "share.delete"
 	ActionAdminCreateUser = "admin.create_user"

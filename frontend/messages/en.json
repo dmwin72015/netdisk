@@ -923,5 +923,22 @@
   "settings_ttl_24h": "24 hours",
   "settings_ttl_forever": "Forever (current session)",
   "notifications": "Notifications",
-  "text_size_exceeded": "Text size ({current}) exceeds the maximum limit ({max})"
+  "text_size_exceeded": "Text size ({current}) exceeds the maximum limit ({max})",
+  "admin_logs": "Logs",
+  "admin_logs_title": "Activity Logs",
+  "admin_logs_subtitle": "View all user activity logs with filtering",
+  "admin_logs_search_user_id": "User ID",
+  "admin_logs_search_ip": "IP Address",
+  "admin_logs_all_actions": "All Actions",
+  "admin_logs_col_id": "ID",
+  "admin_logs_col_user": "User",
+  "admin_logs_col_action": "Action",
+  "admin_logs_col_resource": "Resource",
+  "admin_logs_col_ip": "IP",
+  "admin_logs_col_os": "OS",
+  "admin_logs_col_browser": "Browser",
+  "admin_logs_col_time": "Time",
+  "admin_logs_no_logs": "No activity logs found",
+  "admin_logs_user_placeholder": "Enter user ID...",
+  "admin_logs_ip_placeholder": "Enter IP address..."
 }

@@ -247,3 +247,56 @@ export async function adminCleanupDeletePhysicalFile(physicalFileId: number): Pr
 		body: JSON.stringify({ physicalFileId }),
 	});
 }
+
+export type AdminActivityLog = {
+	id: number;
+	userId: number;
+	username: string;
+	action: string;
+	actionLabel: string;
+	resourceType: string;
+	resourceName: string;
+	ip: string;
+	ipRegion: string;
+	userAgent: string;
+	os: string;
+	browser: string;
+	extra: Record<string, unknown> | null;
+	createdAt: string;
+};
+
+export type AdminActivityLogList = {
+	items: AdminActivityLog[];
+	total: number;
+	limit: number;
+	offset: number;
+};
+
+export async function adminListActivityLogs(
+	limit = 20,
+	offset = 0,
+	action?: string,
+	userId?: string,
+	ip?: string,
+	createdFrom?: string,
+	createdTo?: string
+): Promise<AdminActivityLogList> {
+	const params = new URLSearchParams();
+	params.set('limit', String(limit));
+	params.set('offset', String(offset));
+	if (action) params.set('action', action);
+	if (userId) params.set('user_id', userId);
+	if (ip) params.set('ip', ip);
+	if (createdFrom) params.set('created_from', createdFrom);
+	if (createdTo) params.set('created_to', createdTo);
+	return api<AdminActivityLogList>(`/api/v1/admin/activity-logs?${params}`);
+}
+
+export type AdminActionLabel = {
+	action: string;
+	label: string;
+};
+
+export async function adminListActivityLogActions(): Promise<AdminActionLabel[]> {
+	return api<AdminActionLabel[]>('/api/v1/admin/activity-logs/actions');
+}

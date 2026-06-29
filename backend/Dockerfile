@@ -24,7 +24,7 @@ FROM alpine:3.22
 
 RUN --mount=type=cache,target=/etc/apk/cache,sharing=locked \
     sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
- && apk add ca-certificates ffmpeg tzdata \
+ && apk add ca-certificates ffmpeg tzdata su-exec \
     && addgroup -S netdisk \
     && adduser -S -G netdisk netdisk
 
@@ -32,13 +32,12 @@ WORKDIR /app
 
 COPY --from=builder /out/netdisk-server /usr/local/bin/netdisk-server
 COPY config.docker.yaml /app/config.yaml
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN mkdir -p /data /app/logs \
     && chown -R netdisk:netdisk /data /app/logs
 
-USER netdisk
-
 EXPOSE 8080
 
-ENTRYPOINT ["netdisk-server"]
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["--config", "/app/config.yaml"]

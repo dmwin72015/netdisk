@@ -579,13 +579,38 @@ func (h *FilesHandler) UnlockDirectory(c echo.Context) error {
 	if err := c.Bind(&input); err != nil {
 		return BizError(model.ErrInvalidInput)
 	}
-	if err := h.svc.UnlockDirectory(c.Request().Context(), userID, middleware.SessionID(c), c.Param("slug"), input.Password, input.TTLHours); err != nil {
+
+	slug := c.Param("slug")
+	ctx := c.Request().Context()
+
+	dirInfo, lookupErr := h.svc.GetDirInfo(ctx, userID, slug)
+
+	if err := h.svc.UnlockDirectory(ctx, userID, middleware.SessionID(c), slug, input.Password, input.TTLHours); err != nil {
+		if lookupErr == nil {
+			h.audit.Log(ctx, service.AuditLogInput{
+				UserID: userID, Action: service.ActionDirUnlockFailed,
+				ResourceType: "dir", ResourceName: slug,
+				IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+				Extra: map[string]any{
+					"dirId":   dirInfo.ID,
+					"dirName": dirInfo.FileName,
+					"reason":  err.Error(),
+				},
+			})
+		}
 		return BizError(err)
 	}
-	h.audit.Log(c.Request().Context(), service.AuditLogInput{
-		UserID: userID, Action: service.ActionDirUnlock,
-		ResourceType: "dir", ResourceName: c.Param("slug"),
-		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
-	})
+
+	if lookupErr == nil {
+		h.audit.Log(ctx, service.AuditLogInput{
+			UserID: userID, Action: service.ActionDirUnlock,
+			ResourceType: "dir", ResourceName: slug,
+			IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+			Extra: map[string]any{
+				"dirId":   dirInfo.ID,
+				"dirName": dirInfo.FileName,
+			},
+		})
+	}
 	return OK(c, map[string]string{"message": "directory unlocked"})
 }

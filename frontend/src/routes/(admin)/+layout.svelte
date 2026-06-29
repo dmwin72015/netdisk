@@ -19,6 +19,7 @@
 		X,
 		Activity,
 		Trash2,
+		ScrollText,
 	} from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 	import LanguageDropdown from '$lib/components/LanguageDropdown.svelte';
@@ -50,6 +51,7 @@
 	// Utility function items rendered as a separate section
 	const utilityItems: NavItem[] = [
 		{ href: '/admin/cleanup', match: '/admin/cleanup', label: m.admin_cleanup(), icon: Trash2, key: 'cleanup' },
+		{ href: '/admin/logs', match: '/admin/logs', label: m.admin_logs(), icon: ScrollText, key: 'logs' },
 	];
 
 	function isActive(item: NavItem) {

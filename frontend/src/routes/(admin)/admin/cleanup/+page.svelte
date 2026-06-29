@@ -489,32 +489,35 @@
 </div>
 
 <!-- Delete All confirm dialog -->
-<Dialog open={confirmDeleteAll} onOpenChange={(o) => (confirmDeleteAll = o)}>
-  <div class="p-6">
-    <h2 class="text-lg font-semibold text-ink">{m.admin_cleanup_delete_all_title()}</h2>
-    <p class="mt-2 text-sm text-ink-3">
-      {m.admin_cleanup_delete_all_desc({ n: result?.userFiles.length ?? 0 })}
-    </p>
-    <div class="mt-4 flex justify-end gap-3">
-      <button
-        onclick={() => (confirmDeleteAll = false)}
-        class="rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken"
-      >
-        {m.admin_cleanup_cancel()}
-      </button>
-      <button
-        onclick={handleDeletePhysicalFile}
-        disabled={deleting}
-        class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
-      >
-        {#if deleting}
-          <LoaderCircle size={16} class="animate-spin" />
-        {:else}
-          <Trash2 size={16} class="shrink-0" />
-        {/if}
-        {m.admin_cleanup_delete_all()}
-      </button>
-    </div>
+<Dialog
+  open={confirmDeleteAll}
+  onOpenChange={(o) => (confirmDeleteAll = o)}
+  footer={false}
+  title={m.admin_cleanup_delete_all_title()}
+  bodyClass="p-0"
+>
+  <p class="px-5 pb-4 pt-5 text-sm text-ink-3">
+    {m.admin_cleanup_delete_all_desc({ n: result?.userFiles.length ?? 0 })}
+  </p>
+  <div class="flex justify-end gap-3 px-5 pb-5">
+    <button
+      onclick={() => (confirmDeleteAll = false)}
+      class="rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken"
+    >
+      {m.admin_cleanup_cancel()}
+    </button>
+    <button
+      onclick={handleDeletePhysicalFile}
+      disabled={deleting}
+      class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+    >
+      {#if deleting}
+        <LoaderCircle size={16} class="animate-spin" />
+      {:else}
+        <Trash2 size={16} class="shrink-0" />
+      {/if}
+      {m.admin_cleanup_delete_all()}
+    </button>
   </div>
 </Dialog>
 
@@ -524,37 +527,35 @@
   onOpenChange={(o) => {
     if (!o && !deleting) pendingDeleteUserFile = null;
   }}
+  footer={false}
+  title={m.admin_cleanup_delete_user_file_title()}
+  bodyClass="p-0"
 >
-  <div class="p-6">
-    <h2 class="text-lg font-semibold text-ink">
-      {m.admin_cleanup_delete_user_file_title()}
-    </h2>
-    <p class="mt-2 text-sm text-ink-3">
-      {m.admin_cleanup_delete_user_file_desc({
-        username: pendingDeleteUserFile?.username ?? "",
-        fileName: pendingDeleteUserFile?.fileName ?? "",
-      })}
-    </p>
-    <div class="mt-4 flex justify-end gap-3">
-      <button
-        onclick={() => (pendingDeleteUserFile = null)}
-        disabled={deleting}
-        class="rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-50"
-      >
-        {m.admin_cleanup_cancel()}
-      </button>
-      <button
-        onclick={confirmDeleteUserFile}
-        disabled={deleting}
-        class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
-      >
-        {#if deleting}
-          <LoaderCircle size={16} class="animate-spin" />
-        {:else}
-          <Trash2 size={16} class="shrink-0" />
-        {/if}
-        {m.admin_cleanup_confirm_delete()}
-      </button>
-    </div>
+  <p class="px-5 pb-4 pt-5 text-sm text-ink-3">
+    {m.admin_cleanup_delete_user_file_desc({
+      username: pendingDeleteUserFile?.username ?? "",
+      fileName: pendingDeleteUserFile?.fileName ?? "",
+    })}
+  </p>
+  <div class="flex justify-end gap-3 px-5 pb-5">
+    <button
+      onclick={() => (pendingDeleteUserFile = null)}
+      disabled={deleting}
+      class="rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-50"
+    >
+      {m.admin_cleanup_cancel()}
+    </button>
+    <button
+      onclick={confirmDeleteUserFile}
+      disabled={deleting}
+      class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+    >
+      {#if deleting}
+        <LoaderCircle size={16} class="animate-spin" />
+      {:else}
+        <Trash2 size={16} class="shrink-0" />
+      {/if}
+      {m.admin_cleanup_confirm_delete()}
+    </button>
   </div>
 </Dialog>

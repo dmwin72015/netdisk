@@ -234,6 +234,20 @@ func directoryUnlockExpiry(ttlHours int) (time.Time, bool) {
 	return time.Now().Add(time.Duration(ttlHours) * time.Hour), false
 }
 
+func (s *FilesService) GetDirInfo(ctx context.Context, userID int64, slug string) (sqlc.UserFile, error) {
+	dir, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
+		Slug:   slug,
+		UserID: userID,
+	})
+	if err != nil {
+		return sqlc.UserFile{}, err
+	}
+	if !dir.IsDir || dir.IsTrashed {
+		return sqlc.UserFile{}, model.ErrNotFound
+	}
+	return dir, nil
+}
+
 func (s *FilesService) ResolveParent(ctx context.Context, userID int64, parentSlug string) (sqlc.UserFile, error) {
 	parent, err := s.queries.GetFileBySlugForUser(ctx, sqlc.GetFileBySlugForUserParams{
 		Slug:   parentSlug,

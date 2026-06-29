@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/netdisk/server/internal/db/sqlc"
+	"github.com/netdisk/server/internal/i18n"
 	"github.com/netdisk/server/internal/model"
 	"github.com/netdisk/server/internal/storage"
 )
@@ -858,4 +860,131 @@ func (s *AdminService) CleanupDeletePhysicalFile(ctx context.Context, physicalFi
 		Deleted: true,
 		Message: fmt.Sprintf("Physical file deleted, %d user records cleaned up", len(userFileIDs)),
 	}, nil
+}
+
+type AdminActivityLogItem struct {
+	ID           int64           `json:"id"`
+	UserID       int64           `json:"userId"`
+	Username     string          `json:"username"`
+	Action       string          `json:"action"`
+	ActionLabel  string          `json:"actionLabel"`
+	ResourceType string          `json:"resourceType"`
+	ResourceName string          `json:"resourceName"`
+	IP           string          `json:"ip"`
+	IPRegion     string          `json:"ipRegion"`
+	UserAgent    string          `json:"userAgent"`
+	OS           string          `json:"os"`
+	Browser      string          `json:"browser"`
+	Extra        json.RawMessage `json:"extra"`
+	CreatedAt    time.Time       `json:"createdAt"`
+}
+
+type AdminListActivityLogsParams struct {
+	Limit       int
+	Offset      int
+	UserID      *int64
+	Action      string
+	IP          string
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
+	Locale      string
+}
+
+func (s *AdminService) ListActivityLogs(ctx context.Context, params AdminListActivityLogsParams) ([]AdminActivityLogItem, int, error) {
+	where := "TRUE"
+	args := []any{}
+	argIdx := 1
+
+	if params.UserID != nil {
+		where += fmt.Sprintf(" AND l.user_id = $%d", argIdx)
+		args = append(args, *params.UserID)
+		argIdx++
+	}
+	if params.Action != "" {
+		where += fmt.Sprintf(" AND l.action = $%d", argIdx)
+		args = append(args, params.Action)
+		argIdx++
+	}
+	if params.IP != "" {
+		where += fmt.Sprintf(" AND l.ip = $%d", argIdx)
+		args = append(args, params.IP)
+		argIdx++
+	}
+	if params.CreatedFrom != nil {
+		where += fmt.Sprintf(" AND l.created_at >= $%d", argIdx)
+		args = append(args, *params.CreatedFrom)
+		argIdx++
+	}
+	if params.CreatedTo != nil {
+		where += fmt.Sprintf(" AND l.created_at <= $%d", argIdx)
+		args = append(args, *params.CreatedTo)
+		argIdx++
+	}
+
+	var total int
+	countQ := "SELECT COUNT(*) FROM user_activity_logs l WHERE " + where
+	if err := s.pg.QueryRow(ctx, countQ, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count activity logs: %w", err)
+	}
+
+	q := fmt.Sprintf(`
+		SELECT l.id, l.user_id, COALESCE(u.username, ''),
+		       l.action, COALESCE(l.resource_type, ''), COALESCE(l.resource_name, ''),
+		       COALESCE(l.ip, ''), COALESCE(l.ip_region, ''), COALESCE(l.user_agent, ''),
+		       COALESCE(l.os, ''), COALESCE(l.browser, ''), l.extra, l.created_at
+		FROM user_activity_logs l
+		LEFT JOIN users u ON u.id = l.user_id
+		WHERE %s
+		ORDER BY l.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, where, argIdx, argIdx+1)
+
+	args = append(args, params.Limit, params.Offset)
+	rows, err := s.pg.Query(ctx, q, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list activity logs: %w", err)
+	}
+	defer rows.Close()
+
+	var items []AdminActivityLogItem
+	for rows.Next() {
+		var item AdminActivityLogItem
+		if err := rows.Scan(
+			&item.ID, &item.UserID, &item.Username,
+			&item.Action, &item.ResourceType, &item.ResourceName,
+			&item.IP, &item.IPRegion, &item.UserAgent,
+			&item.OS, &item.Browser, &item.Extra, &item.CreatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan activity log: %w", err)
+		}
+		item.ActionLabel = i18n.ActionLabel(item.Action, params.Locale)
+		items = append(items, item)
+	}
+	return items, total, nil
+}
+
+type AdminActionLabelItem struct {
+	Action string `json:"action"`
+	Label  string `json:"label"`
+}
+
+func (s *AdminService) ListActivityLogActions(ctx context.Context, locale string) ([]AdminActionLabelItem, error) {
+	rows, err := s.pg.Query(ctx, `SELECT DISTINCT action FROM user_activity_logs ORDER BY action`)
+	if err != nil {
+		return nil, fmt.Errorf("list actions: %w", err)
+	}
+	defer rows.Close()
+
+	var items []AdminActionLabelItem
+	for rows.Next() {
+		var action string
+		if err := rows.Scan(&action); err != nil {
+			return nil, fmt.Errorf("scan action: %w", err)
+		}
+		items = append(items, AdminActionLabelItem{
+			Action: action,
+			Label:  i18n.ActionLabel(action, locale),
+		})
+	}
+	return items, nil
 }
