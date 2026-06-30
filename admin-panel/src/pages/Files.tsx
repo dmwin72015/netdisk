@@ -12,6 +12,7 @@ import {
 } from 'antd';
 import { SearchOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useFiles, useDeleteFile, useRestoreFile } from '../api/admin.hooks';
 import type { AdminFile } from '../api/admin';
 import type { ColumnsType } from 'antd/es/table';
@@ -28,32 +29,8 @@ function formatDate(epoch: number): string {
   return new Date(epoch * 1000).toLocaleString();
 }
 
-const CATEGORY_OPTIONS = [
-  { label: 'All', value: '' },
-  { label: 'Document', value: 'document' },
-  { label: 'Image', value: 'image' },
-  { label: 'Video', value: 'video' },
-  { label: 'Audio', value: 'audio' },
-  { label: 'Archive', value: 'archive' },
-  { label: 'Other', value: 'other' },
-];
-
-const TRASHED_OPTIONS = [
-  { label: 'All', value: '' },
-  { label: 'Active', value: 'active' },
-  { label: 'Trashed', value: 'trashed' },
-];
-
-const SORT_OPTIONS = [
-  { label: 'Newest first', value: 'createdAt-desc' },
-  { label: 'Oldest first', value: 'createdAt-asc' },
-  { label: 'Name A-Z', value: 'fileName-asc' },
-  { label: 'Name Z-A', value: 'fileName-desc' },
-  { label: 'Largest first', value: 'fileSize-desc' },
-  { label: 'Smallest first', value: 'fileSize-asc' },
-];
-
 export default function Files() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -75,6 +52,31 @@ export default function Files() {
     sortOrder,
   });
 
+  const CATEGORY_OPTIONS = [
+    { label: t('files.allCategories'), value: '' },
+    { label: t('files.document'), value: 'document' },
+    { label: t('files.image'), value: 'image' },
+    { label: t('files.video'), value: 'video' },
+    { label: t('files.audio'), value: 'audio' },
+    { label: t('files.archive'), value: 'archive' },
+    { label: t('files.other'), value: 'other' },
+  ];
+
+  const TRASHED_OPTIONS = [
+    { label: t('files.allStatus'), value: '' },
+    { label: t('files.active'), value: 'active' },
+    { label: t('files.trashed'), value: 'trashed' },
+  ];
+
+  const SORT_OPTIONS = [
+    { label: t('files.sortNewest'), value: 'createdAt-desc' },
+    { label: t('files.sortOldest'), value: 'createdAt-asc' },
+    { label: t('files.sortNameAsc'), value: 'fileName-asc' },
+    { label: t('files.sortNameDesc'), value: 'fileName-desc' },
+    { label: t('files.sortSizeDesc'), value: 'fileSize-desc' },
+    { label: t('files.sortSizeAsc'), value: 'fileSize-asc' },
+  ];
+
   const deleteFileMut = useDeleteFile();
   const restoreFileMut = useRestoreFile();
 
@@ -84,18 +86,18 @@ export default function Files() {
   const handleDelete = async (id: string) => {
     try {
       await deleteFileMut.mutateAsync(id);
-      message.success('File permanently deleted');
+      message.success(t('files.deleteSuccess'));
     } catch {
-      message.error('Failed to delete file');
+      message.error(t('files.deleteFailed'));
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreFileMut.mutateAsync(id);
-      message.success('File restored');
+      message.success(t('files.restoreSuccess'));
     } catch {
-      message.error('Failed to restore file');
+      message.error(t('files.restoreFailed'));
     }
   };
 
@@ -111,9 +113,9 @@ export default function Files() {
   };
 
   const columns: ColumnsType<AdminFile> = [
-    { title: 'Filename', dataIndex: 'fileName', key: 'fileName', ellipsis: true },
+    { title: t('files.filename'), dataIndex: 'fileName', key: 'fileName', ellipsis: true },
     {
-      title: 'Owner',
+      title: t('files.owner'),
       dataIndex: 'username',
       key: 'username',
       width: 150,
@@ -124,66 +126,66 @@ export default function Files() {
       ),
     },
     {
-      title: 'Type',
+      title: t('files.type'),
       dataIndex: 'fileCategory',
       key: 'fileCategory',
       width: 100,
-      render: (v: string) => <Tag color="blue">{v || 'file'}</Tag>,
+      render: (v: string) => <Tag color="blue">{v || t('files.other')}</Tag>,
     },
     {
-      title: 'Size',
+      title: t('files.size'),
       dataIndex: 'fileSize',
       key: 'fileSize',
       width: 100,
       render: (v: number) => formatBytes(v),
     },
     {
-      title: 'Status',
+      title: t('files.status'),
       key: 'status',
       width: 140,
       render: (_: unknown, record: AdminFile) => (
         <Space>
-          {record.isTrashed && <Tag color="red">Trashed</Tag>}
-          {record.isStarred && <Tag color="gold">Starred</Tag>}
-          {!record.isTrashed && !record.isStarred && <Tag>Normal</Tag>}
+          {record.isTrashed && <Tag color="red">{t('files.deleted')}</Tag>}
+          {record.isStarred && <Tag color="gold">{t('files.starred')}</Tag>}
+          {!record.isTrashed && !record.isStarred && <Tag>{t('files.normal')}</Tag>}
         </Space>
       ),
     },
     {
-      title: 'Uploaded',
+      title: t('files.uploaded'),
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 160,
       render: (v: number) => formatDate(v),
     },
     {
-      title: 'Actions',
+      title: t('files.actions'),
       key: 'actions',
       width: 180,
       render: (_: unknown, record: AdminFile) => (
         <Space>
           {record.isTrashed && (
             <Popconfirm
-              title="Restore file"
-              description="Restore this file from trash?"
+              title={t('files.restore')}
+              description={t('files.restoreConfirm')}
               onConfirm={() => handleRestore(record.id)}
-              okText="Yes"
-              cancelText="No"
+              okText={t('common.yes')}
+              cancelText={t('common.no')}
             >
               <Button type="link" size="small" icon={<UndoOutlined />}>
-                Restore
+                {t('files.restore')}
               </Button>
             </Popconfirm>
           )}
           <Popconfirm
-            title="Permanently delete"
-            description="This action cannot be undone."
+            title={t('files.permanentDelete')}
+            description={t('files.noUndo')}
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
           >
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              Delete
+              {t('common.delete')}
             </Button>
           </Popconfirm>
         </Space>
@@ -204,7 +206,7 @@ export default function Files() {
       >
         <Space wrap>
           <Input
-            placeholder="Search files..."
+            placeholder={t('files.search')}
             prefix={<SearchOutlined />}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -221,7 +223,7 @@ export default function Files() {
             }}
           />
           <Select
-            placeholder="Category"
+            placeholder={t('files.category')}
             allowClear
             value={categoryFilter || ''}
             onChange={(val) => {
@@ -232,7 +234,7 @@ export default function Files() {
             options={CATEGORY_OPTIONS}
           />
           <Select
-            placeholder="Status"
+            placeholder={t('files.statusFilter')}
             allowClear
             value={trashedFilter === undefined ? '' : trashedFilter ? 'trashed' : 'active'}
             onChange={handleTrashedFilter}
@@ -248,12 +250,12 @@ export default function Files() {
             style={{ width: 150 }}
             options={SORT_OPTIONS}
           />
-          <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>Search</Button>
+          <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>{t('files.searchButton')}</Button>
         </Space>
       </div>
       {error && (
         <div style={{ padding: 24 }}>
-          <Result status="error" title="Failed to load files" subTitle={error.message} />
+          <Result status="error" title={t('files.failed')} subTitle={error.message} />
         </div>
       )}
       <Table
@@ -266,7 +268,7 @@ export default function Files() {
           pageSize,
           total,
           showSizeChanger: true,
-          showTotal: (t) => `Total ${t}`,
+          showTotal: (tCount) => t('files.total_0', { count: tCount }),
           onChange: (p, ps) => {
             setPage(p);
             setPageSize(ps);

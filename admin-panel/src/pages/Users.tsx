@@ -21,6 +21,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   useUsers,
   useCreateUser,
@@ -48,6 +49,7 @@ function formatDate(epoch: number): string {
 type SortValue = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
 export default function Users() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -97,18 +99,18 @@ export default function Users() {
   const handleRoleChange = async (userId: string, role: string) => {
     try {
       await updateRoleMut.mutateAsync({ id: userId, role });
-      message.success('Role updated');
+      message.success(t('users.roleUpdated'));
     } catch {
-      message.error('Failed to update role');
+      message.error(t('users.roleFailed'));
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteUserMut.mutateAsync(id);
-      message.success('User deleted');
+      message.success(t('users.userDeleted'));
     } catch {
-      message.error('Failed to delete user');
+      message.error(t('users.deleteFailed'));
     }
   };
 
@@ -116,10 +118,10 @@ export default function Users() {
     if (!storageModal.user) return;
     try {
       await updateStorageMut.mutateAsync({ id: storageModal.user.id, baseBytes: values.baseBytes });
-      message.success('Storage base updated');
+      message.success(t('users.storageUpdated'));
       setStorageModal({ open: false, user: null });
     } catch {
-      message.error('Failed to update storage');
+      message.error(t('users.storageUpdateFailed'));
     }
   };
 
@@ -130,13 +132,13 @@ export default function Users() {
       setCreateModalOpen(false);
       createForm.resetFields();
     } catch {
-      message.error('Failed to create user');
+      message.error(t('users.createFailed'));
     }
   };
 
   const columns: ColumnsType<AdminUser> = [
     {
-      title: 'Username',
+      title: t('users.username'),
       dataIndex: 'username',
       key: 'username',
       render: (text: string, record: AdminUser) => (
@@ -145,9 +147,9 @@ export default function Users() {
         </a>
       ),
     },
-    { title: 'Email', dataIndex: 'email', key: 'email' },
+    { title: t('users.email'), dataIndex: 'email', key: 'email' },
     {
-      title: 'Role',
+      title: t('users.role'),
       dataIndex: 'role',
       key: 'role',
       width: 130,
@@ -157,51 +159,51 @@ export default function Users() {
           size="small"
           style={{ width: 120 }}
           onChange={(val) => handleRoleChange(record.id, val)}
-          options={ROLES.map((r) => ({ label: r, value: r }))}
+          options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))}
         />
       ),
     },
     {
-      title: 'Storage Used',
+      title: t('users.storageLimit'),
       key: 'storage',
       width: 130,
       render: (_: unknown, record: AdminUser) => (
-        <Tooltip title={`Total: ${formatBytes(record.totalBytes)}`}>
+        <Tooltip title={`${t('users.total')}: ${formatBytes(record.totalBytes)}`}>
           {formatBytes(record.usedBytes)}
         </Tooltip>
       ),
     },
     {
-      title: 'Registered',
+      title: t('users.registered'),
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 120,
       render: (v: number) => formatDate(v),
     },
     {
-      title: 'Actions',
+      title: t('users.actions'),
       key: 'actions',
       width: 160,
       render: (_: unknown, record: AdminUser) => (
         <Space>
-          <Tooltip title="View">
+          <Tooltip title={t('users.view')}>
             <EyeOutlined
               style={{ cursor: 'pointer', color: '#1890ff' }}
               onClick={() => navigate(`/admin/users/${record.id}`)}
             />
           </Tooltip>
-          <Tooltip title="Edit Storage Base">
+          <Tooltip title={t('users.editStorageBase')}>
             <EditOutlined
               style={{ cursor: 'pointer', color: '#52c41a' }}
               onClick={() => setStorageModal({ open: true, user: record })}
             />
           </Tooltip>
           <Popconfirm
-            title="Delete user"
-            description="Are you sure?"
+            title={t('users.deleteUser')}
+            description={t('users.deleteConfirm')}
             onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
           >
             <DeleteOutlined style={{ cursor: 'pointer', color: '#ff4d4f' }} />
           </Popconfirm>
@@ -223,7 +225,7 @@ export default function Users() {
       >
         <Space wrap>
           <Input
-            placeholder="Search users..."
+            placeholder={t('users.search')}
             prefix={<SearchOutlined />}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -240,7 +242,7 @@ export default function Users() {
             }}
           />
           <Select
-            placeholder="Filter by role"
+            placeholder={t('users.filterByRole')}
             allowClear
             value={roleFilter}
             onChange={(val) => {
@@ -248,28 +250,28 @@ export default function Users() {
               setPage(1);
             }}
             style={{ width: 150 }}
-            options={ROLES.map((r) => ({ label: r, value: r }))}
+            options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))}
           />
-          <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>Search</Button>
+          <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>{t('users.searchButton')}</Button>
           <Select
             value={sortBy}
             onChange={(val: SortValue) => setSortBy(val)}
             style={{ width: 150 }}
             options={[
-              { label: 'Newest first', value: 'newest' },
-              { label: 'Oldest first', value: 'oldest' },
-              { label: 'Name A-Z', value: 'name-asc' },
-              { label: 'Name Z-A', value: 'name-desc' },
+              { label: t('users.sortNewest'), value: 'newest' },
+              { label: t('users.sortOldest'), value: 'oldest' },
+              { label: t('users.sortNameAsc'), value: 'name-asc' },
+              { label: t('users.sortNameDesc'), value: 'name-desc' },
             ]}
           />
         </Space>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
-          Create User
+          {t('users.createButton')}
         </Button>
       </div>
       {error && (
         <div style={{ padding: 24 }}>
-          <Result status="error" title="Failed to load users" subTitle={error.message} />
+          <Result status="error" title={t('users.failed')} subTitle={error.message} />
         </div>
       )}
       <Table
@@ -282,7 +284,7 @@ export default function Users() {
           pageSize,
           total,
           showSizeChanger: true,
-          showTotal: (t) => `Total ${t}`,
+          showTotal: (tCount) => t('users.total_0', { count: tCount }),
           onChange: (p, ps) => {
             setPage(p);
             setPageSize(ps);
@@ -293,7 +295,7 @@ export default function Users() {
 
       {/* Create User Modal */}
       <Modal
-        title="Create User"
+        title={t('users.createUser')}
         open={createModalOpen}
         onCancel={() => {
           setCreateModalOpen(false);
@@ -305,31 +307,31 @@ export default function Users() {
         <Form form={createForm} layout="vertical" onFinish={handleCreateUser}>
           <Form.Item
             name="username"
-            label="Username"
-            rules={[{ required: true, message: 'Please enter username' }]}
+            label={t('users.username')}
+            rules={[{ required: true, message: t('users.usernameRequired') }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="email"
-            label="Email"
-            rules={[{ required: true, message: 'Please enter email' }]}
+            label={t('users.email')}
+            rules={[{ required: true, message: t('users.emailRequired') }]}
           >
             <Input type="email" />
           </Form.Item>
           <Form.Item
             name="password"
-            label="Password"
-            rules={[{ required: true, message: 'Please enter password' }]}
+            label={t('login.password')}
+            rules={[{ required: true, message: t('users.passwordRequired') }]}
           >
             <Input.Password />
           </Form.Item>
-          <Form.Item name="role" label="Role" initialValue="user">
-            <Select options={ROLES.map((r) => ({ label: r, value: r }))} />
+          <Form.Item name="role" label={t('users.role')} initialValue="user">
+            <Select options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block loading={createUserMut.isPending}>
-              Create
+              {t('common.save')}
             </Button>
           </Form.Item>
         </Form>
@@ -337,7 +339,7 @@ export default function Users() {
 
       {/* Edit Storage Base Modal */}
       <Modal
-        title={`Edit Storage Base - ${storageModal.user?.username}`}
+        title={`${t('users.editStorageBase')} - ${storageModal.user?.username}`}
         open={storageModal.open}
         onCancel={() => setStorageModal({ open: false, user: null })}
         footer={null}
@@ -351,14 +353,14 @@ export default function Users() {
         >
           <Form.Item
             name="baseBytes"
-            label="Base Bytes"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('users.baseBytes')}
+            rules={[{ required: true, message: t('users.baseBytesRequired') }]}
           >
             <InputNumber style={{ width: '100%' }} min={0} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block loading={updateStorageMut.isPending}>
-              Save
+              {t('common.save')}
             </Button>
           </Form.Item>
         </Form>

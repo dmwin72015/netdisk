@@ -15,10 +15,12 @@ import {
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import type { MenuProps } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 const { Header, Sider, Content } = Layout;
 
 export default function AdminLayout() {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem('nd.admin.sidebar') === 'true';
@@ -43,23 +45,23 @@ export default function AdminLayout() {
   };
 
   const menuItems: MenuProps['items'] = [
-    { key: '/admin', icon: <HomeOutlined />, label: 'Home' },
+    { key: '/admin', icon: <HomeOutlined />, label: t('common.home') },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: 'Logout',
+      label: t('common.logout'),
       onClick: handleLogout,
     },
   ];
 
   const sideMenuItems: MenuProps['items'] = [
-    { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard' },
-    { key: '/admin/users', icon: <UserOutlined />, label: 'Users' },
-    { key: '/admin/files', icon: <FileOutlined />, label: 'Files' },
-    { key: '/admin/storage', icon: <DatabaseOutlined />, label: 'Storage' },
-    { key: '/admin/logs', icon: <AuditOutlined />, label: 'Activity Logs' },
-    { key: '/admin/cleanup', icon: <ToolOutlined />, label: 'Cleanup' },
-    { key: '/admin/settings', icon: <SettingOutlined />, label: 'Settings' },
+    { key: '/admin', icon: <DashboardOutlined />, label: t('sidebar.dashboard') },
+    { key: '/admin/users', icon: <UserOutlined />, label: t('sidebar.users') },
+    { key: '/admin/files', icon: <FileOutlined />, label: t('sidebar.files') },
+    { key: '/admin/storage', icon: <DatabaseOutlined />, label: t('sidebar.storage') },
+    { key: '/admin/logs', icon: <AuditOutlined />, label: t('sidebar.activityLogs') },
+    { key: '/admin/cleanup', icon: <ToolOutlined />, label: t('sidebar.cleanup') },
+    { key: '/admin/settings', icon: <SettingOutlined />, label: t('sidebar.settings') },
   ];
 
   const handleMenuClick = (info: { key: string }) => {

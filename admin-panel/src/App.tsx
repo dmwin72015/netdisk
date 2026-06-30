@@ -4,6 +4,7 @@ import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from './components/AdminLayout';
 import LoginPage from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -20,10 +21,11 @@ dayjs.locale('zh-cn');
 
 function ProtectedRoute() {
   const { checking, authorized } = useAuthGuard();
+  const { t } = useTranslation();
   if (checking) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <div>Loading...</div>
+        <div>{t('common.loading')}</div>
       </div>
     );
   }

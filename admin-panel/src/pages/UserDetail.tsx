@@ -2,6 +2,7 @@ import { Spin, Card, Row, Col, Descriptions, Tag, Avatar, Button, Result } from 
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../api/admin.hooks';
+import { useTranslation } from 'react-i18next';
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';
@@ -22,6 +23,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export default function UserDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: user, isLoading, error } = useUser(id!);
@@ -42,11 +44,11 @@ export default function UserDetail() {
           onClick={() => navigate('/admin/users')}
           style={{ marginBottom: 16 }}
         >
-          Back
+          {t('common.back')}
         </Button>
         <Result
           status="error"
-          title="Failed to load user"
+          title={t('userDetail.failed')}
           subTitle={error.message}
         />
       </div>
@@ -61,9 +63,9 @@ export default function UserDetail() {
           onClick={() => navigate('/admin/users')}
           style={{ marginBottom: 16 }}
         >
-          Back
+          {t('common.back')}
         </Button>
-        <div style={{ color: '#999', textAlign: 'center', padding: 40 }}>User not found.</div>
+        <div style={{ color: '#999', textAlign: 'center', padding: 40 }}>{t('userDetail.notFound')}</div>
       </div>
     );
   }
@@ -77,37 +79,37 @@ export default function UserDetail() {
         onClick={() => navigate('/admin/users')}
         style={{ marginBottom: 16 }}
       >
-        Back to Users
+        {t('userDetail.back')}
       </Button>
-      <h2 style={{ marginBottom: 24 }}>User: {user.username}</h2>
+      <h2 style={{ marginBottom: 24 }}>{t('userDetail.title')}: {user.username}</h2>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={8}>
-          <Card title="Basic Info">
+          <Card title={t('userDetail.basicInfo')}>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="Username">{user.username}</Descriptions.Item>
-              <Descriptions.Item label="Slug">{user.slug}</Descriptions.Item>
-              <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
-              <Descriptions.Item label="Role">
+              <Descriptions.Item label={t('users.username')}>{user.username}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.slug')}>{user.slug}</Descriptions.Item>
+              <Descriptions.Item label={t('users.email')}>{user.email}</Descriptions.Item>
+              <Descriptions.Item label={t('users.role')}>
                 <Tag color={ROLE_COLORS[user.role] || 'default'}>{user.role}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Register Method">{user.registerMethod}</Descriptions.Item>
-              <Descriptions.Item label="Status">{user.status}</Descriptions.Item>
-              <Descriptions.Item label="Created">{formatDate(user.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('users.registerMethod')}>{user.registerMethod}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.status')}>{user.status}</Descriptions.Item>
+              <Descriptions.Item label={t('users.registered')}>{formatDate(user.createdAt)}</Descriptions.Item>
             </Descriptions>
             {user.profile && (
               <div style={{ marginTop: 16 }}>
-                <strong>Profile</strong>
+                <strong>{t('userDetail.profile')}</strong>
                 <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
                   {user.profile.displayName && (
-                    <Descriptions.Item label="Display Name">{user.profile.displayName}</Descriptions.Item>
+                    <Descriptions.Item label={t('userDetail.displayName')}>{user.profile.displayName}</Descriptions.Item>
                   )}
                   {user.profile.avatarUrl && (
-                    <Descriptions.Item label="Avatar">
+                    <Descriptions.Item label={t('userDetail.avatar')}>
                       <Avatar src={user.profile.avatarUrl} />
                     </Descriptions.Item>
                   )}
                   {user.profile.bio && (
-                    <Descriptions.Item label="Bio">{user.profile.bio}</Descriptions.Item>
+                    <Descriptions.Item label={t('userDetail.bio')}>{user.profile.bio}</Descriptions.Item>
                   )}
                 </Descriptions>
               </div>
@@ -115,14 +117,14 @@ export default function UserDetail() {
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Storage">
+          <Card title={t('userDetail.storage')}>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="Used">{formatBytes(user.usedBytes)}</Descriptions.Item>
-              <Descriptions.Item label="Base">{formatBytes(user.baseBytes)}</Descriptions.Item>
-              <Descriptions.Item label="Member Bonus">{formatBytes(user.memberBonusBytes)}</Descriptions.Item>
-              <Descriptions.Item label="Pack Bonus">{formatBytes(user.packBytes)}</Descriptions.Item>
-              <Descriptions.Item label="Total">{formatBytes(user.totalBytes)}</Descriptions.Item>
-              <Descriptions.Item label="Usage">
+              <Descriptions.Item label={t('userDetail.used')}>{formatBytes(user.usedBytes)}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.base')}>{formatBytes(user.baseBytes)}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.memberBonus')}>{formatBytes(user.memberBonusBytes)}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.pack')}>{formatBytes(user.packBytes)}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.total')}>{formatBytes(user.totalBytes)}</Descriptions.Item>
+              <Descriptions.Item label={t('userDetail.usage')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1, height: 8, background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
                     <div
@@ -141,7 +143,7 @@ export default function UserDetail() {
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="OAuth Accounts">
+          <Card title={t('userDetail.oauth')}>
             {user.oauthAccounts && user.oauthAccounts.length > 0 ? (
               user.oauthAccounts.map((acc) => (
                 <div key={acc.provider} style={{ marginBottom: 8 }}>
@@ -152,7 +154,7 @@ export default function UserDetail() {
                 </div>
               ))
             ) : (
-              <span style={{ color: '#999' }}>No OAuth accounts</span>
+              <span style={{ color: '#999' }}>{t('userDetail.noOauth')}</span>
             )}
           </Card>
         </Col>

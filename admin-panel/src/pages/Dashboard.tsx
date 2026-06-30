@@ -8,6 +8,7 @@ import {
   HddOutlined,
 } from '@ant-design/icons';
 import { useDashboardStats } from '../api/admin.hooks';
+import { useTranslation } from 'react-i18next';
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';
@@ -18,6 +19,7 @@ function formatBytes(b: number): string {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { data: stats, isLoading, error } = useDashboardStats();
 
   if (isLoading) {
@@ -33,7 +35,7 @@ export default function Dashboard() {
       <div style={{ padding: 24 }}>
         <Result
           status="error"
-          title="Failed to load dashboard"
+          title={t('dashboard.failed')}
           subTitle={error.message}
         />
       </div>
@@ -43,19 +45,19 @@ export default function Dashboard() {
   if (!stats) {
     return (
       <div style={{ padding: 24 }}>
-        <Result status="warning" title="No dashboard data" />
+        <Result status="warning" title={t('dashboard.noData')} />
       </div>
     );
   }
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>Dashboard</h2>
+      <h2 style={{ marginBottom: 24 }}>{t('dashboard.title')}</h2>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="Total Users"
+              title={t('dashboard.totalUsers')}
               value={stats.totalUsers}
               prefix={<UserOutlined />}
             />
@@ -64,7 +66,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="Total Files"
+              title={t('dashboard.totalFiles')}
               value={stats.totalFiles}
               prefix={<FileOutlined />}
             />
@@ -73,7 +75,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="Storage Used"
+              title={t('dashboard.storageUsed')}
               value={stats.storageUsed}
               formatter={(v) => formatBytes(v as number)}
               prefix={<DatabaseOutlined />}
@@ -83,7 +85,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="Total Quota"
+              title={t('dashboard.totalQuota')}
               value={stats.totalStorage}
               formatter={(v) => formatBytes(v as number)}
               prefix={<HddOutlined />}
@@ -93,7 +95,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="New Users Today"
+              title={t('dashboard.newUsersToday')}
               value={stats.newTodayUsers}
               prefix={<UserAddOutlined />}
               valueStyle={{ color: '#52c41a' }}
@@ -103,8 +105,8 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="New Files Today"
-              value={stats.newTodayFiles}
+              title={t('dashboard.newFilesToday')}
+              value={stats.newFilesToday}
               prefix={<FileAddOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -114,19 +116,19 @@ export default function Dashboard() {
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} lg={12}>
-          <Card title="Storage Usage">
+          <Card title={t('dashboard.storageUsage')}>
             <Progress
               percent={Math.round((stats.storageUsed / stats.totalStorage) * 100)}
               status={stats.storageUsed >= stats.totalStorage ? 'exception' : 'active'}
             />
             <div style={{ marginTop: 8, color: '#888' }}>
-              {formatBytes(stats.storageUsed)} used of {formatBytes(stats.totalStorage)}
+              {t('dashboard.usedOf', { used: formatBytes(stats.storageUsed), total: formatBytes(stats.totalStorage) })}
             </div>
           </Card>
         </Col>
         {stats.diskTotal > 0 && (
           <Col xs={24} lg={12}>
-            <Card title="System Disk">
+            <Card title={t('dashboard.systemDisk')}>
               <Progress
                 percent={Math.round((stats.diskUsed / stats.diskTotal) * 100)}
                 strokeColor={
@@ -138,7 +140,7 @@ export default function Dashboard() {
                 }
               />
               <div style={{ marginTop: 8, color: '#888' }}>
-                {formatBytes(stats.diskFree)} free of {formatBytes(stats.diskTotal)}
+                {t('dashboard.freeOf', { free: formatBytes(stats.diskFree), total: formatBytes(stats.diskTotal) })}
               </div>
             </Card>
           </Col>

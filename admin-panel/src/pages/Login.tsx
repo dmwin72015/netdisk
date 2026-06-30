@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface LoginResponse {
   user: {
@@ -14,6 +15,7 @@ interface LoginResponse {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -28,7 +30,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Login failed');
+        throw new Error(err.error || t('login.failed'));
       }
 
       const data = (await res.json()) as { data: LoginResponse };
@@ -38,10 +40,10 @@ export default function LoginPage() {
       if (data.data.user.role === 'admin') {
         navigate('/admin');
       } else {
-        message.error('Admin access required');
+        message.error(t('login.adminRequired'));
       }
     } catch (e) {
-      message.error(e instanceof Error ? e.message : 'Login failed');
+      message.error(e instanceof Error ? e.message : t('login.failed'));
     } finally {
       setLoading(false);
     }
@@ -57,28 +59,28 @@ export default function LoginPage() {
         background: '#f0f2f5',
       }}
     >
-      <Card title="Admin Login" style={{ width: 400 }}>
+      <Card title={t('login.title')} style={{ width: 400 }}>
         <Form name="login" onFinish={onFinish} autoComplete="off" size="large">
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: 'Please input your email!' },
-              { type: 'email', message: 'Invalid email address' },
+              { required: true, message: t('login.emailPlaceholder') },
+              { type: 'email', message: t('login.emailError') },
             ]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Email" />
+            <Input prefix={<UserOutlined />} placeholder={t('login.emailPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: 'Please input your password!' },
+              { required: true, message: t('login.passwordPlaceholder') },
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+            <Input.Password prefix={<LockOutlined />} placeholder={t('login.passwordPlaceholder')} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
-              Log in
+              {loading ? t('login.loggingIn') : t('login.login')}
             </Button>
           </Form.Item>
         </Form>

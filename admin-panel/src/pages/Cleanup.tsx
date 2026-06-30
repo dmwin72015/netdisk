@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
 import {
   useCleanupQuery,
@@ -57,6 +58,7 @@ function saveHistory(mode: string, value: string) {
 }
 
 export default function Cleanup() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'slug' | 'hash'>('slug');
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>(() => loadHistory(mode));
@@ -93,56 +95,56 @@ export default function Cleanup() {
   const handleDeleteUserFile = async (userFileId: number) => {
     try {
       await deleteUserFileMutation.mutateAsync(userFileId);
-      message.success('User file deleted');
+      message.success(t('cleanup.deleteSuccess'));
       queryMutation.mutate({});
     } catch (err: any) {
-      message.error(err?.message || 'Failed to delete user file');
+      message.error(err?.message || t('cleanup.deleteFailed'));
     }
   };
 
   const handleDeletePhysicalFile = async (physicalFileId: number) => {
     try {
       await deletePhysicalFileMutation.mutateAsync(physicalFileId);
-      message.success('Physical file deleted');
+      message.success(t('cleanup.deleteAllSuccess'));
       queryMutation.mutate({});
     } catch (err: any) {
-      message.error(err?.message || 'Failed to delete physical file');
+      message.error(err?.message || t('cleanup.deleteFailed'));
     }
   };
 
   const userFileColumns: ColumnsType<CleanupQueryUserFile> = [
-    { title: 'ID', dataIndex: 'id', key: 'id' },
-    { title: 'Slug', dataIndex: 'slug', key: 'slug', ellipsis: true },
-    { title: 'Filename', dataIndex: 'fileName', key: 'fileName' },
+    { title: t('cleanup.id'), dataIndex: 'id', key: 'id' },
+    { title: t('cleanup.slug'), dataIndex: 'slug', key: 'slug', ellipsis: true },
+    { title: t('cleanup.filename'), dataIndex: 'fileName', key: 'fileName' },
     {
-      title: 'User',
+      title: t('cleanup.user'),
       key: 'user',
       render: (_, record) => (
         <Link to={`/admin/users/${record.userId}`}>{record.username}</Link>
       ),
     },
     {
-      title: 'Size',
+      title: t('cleanup.size'),
       dataIndex: 'fileSize',
       key: 'fileSize',
       render: (size: number) => formatBytes(size),
     },
     {
-      title: 'Created',
+      title: t('cleanup.created'),
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (v: number) => formatDate(v),
     },
     {
-      title: 'Actions',
+      title: t('cleanup.actions'),
       key: 'actions',
       render: (_, record) => (
         <Popconfirm
-          title="Delete this user file?"
+          title={t('cleanup.deleteConfirm')}
           onConfirm={() => handleDeleteUserFile(record.id)}
         >
           <a style={{ color: 'red', cursor: 'pointer' }}>
-            <DeleteOutlined /> Delete
+            <DeleteOutlined /> {t('cleanup.delete')}
           </a>
         </Popconfirm>
       ),
@@ -151,25 +153,25 @@ export default function Cleanup() {
 
   return (
     <div>
-      <h2>File Cleanup</h2>
+      <h2>{t('cleanup.title')}</h2>
 
       <Tabs
         activeKey={mode}
         onChange={handleModeChange}
         items={[
-          { key: 'slug', label: 'By Slug' },
-          { key: 'hash', label: 'By Hash' },
+          { key: 'slug', label: t('cleanup.bySlug') },
+          { key: 'hash', label: t('cleanup.byHash') },
         ]}
       />
 
       <Input.Search
         placeholder={
-          mode === 'slug' ? 'Enter file slug...' : 'Enter file hash...'
+          mode === 'slug' ? t('cleanup.slugPlaceholder') : t('cleanup.hashPlaceholder')
         }
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onSearch={handleSearch}
-        enterButton="Search"
+        enterButton={t('cleanup.search')}
         style={{ marginBottom: 16 }}
       />
 
@@ -199,7 +201,7 @@ export default function Cleanup() {
       {queryMutation.isError && (
         <Result
           status="error"
-          title="Query Failed"
+          title={t('cleanup.queryFailed')}
           subTitle={queryMutation.error?.message}
         />
       )}
@@ -209,45 +211,45 @@ export default function Cleanup() {
           <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col span={8}>
               <Card>
-                <Statistic title="Total Uploads" value={totalUploads} />
+                <Statistic title={t('cleanup.totalUploads')} value={totalUploads} />
               </Card>
             </Col>
             <Col span={8}>
               <Card>
-                <Statistic title="Unique Users" value={uniqueUsers} />
+                <Statistic title={t('cleanup.uniqueUsers')} value={uniqueUsers} />
               </Card>
             </Col>
             <Col span={8}>
               <Card>
-                <Statistic title="Total Size" value={formatBytes(totalSize)} />
+                <Statistic title={t('cleanup.totalSize')} value={formatBytes(totalSize)} />
               </Card>
             </Col>
           </Row>
 
           {result.physicalFile && (
             <Card
-              title="Physical File"
+              title={t('cleanup.physicalFile')}
               style={{ marginBottom: 24 }}
               extra={
                 <Popconfirm
-                  title="Delete this physical file and ALL associated records?"
+                  title={t('cleanup.deleteAllConfirm')}
                   onConfirm={() => handleDeletePhysicalFile(result.physicalFile!.id)}
                 >
                   <a style={{ color: 'red', cursor: 'pointer' }}>
-                    <DeleteOutlined /> Delete All
+                    <DeleteOutlined /> {t('cleanup.deleteAll')}
                   </a>
                 </Popconfirm>
               }
             >
               <Descriptions column={2} bordered size="small">
-                <Descriptions.Item label="ID">{result.physicalFile.id}</Descriptions.Item>
-                <Descriptions.Item label="Hash">{result.physicalFile.fileHash}</Descriptions.Item>
-                <Descriptions.Item label="Size">{formatBytes(result.physicalFile.fileSize)}</Descriptions.Item>
-                <Descriptions.Item label="MIME Type">{result.physicalFile.mimeType}</Descriptions.Item>
-                <Descriptions.Item label="Storage Path">{result.physicalFile.storagePath}</Descriptions.Item>
-                <Descriptions.Item label="On Disk">
+                <Descriptions.Item label={t('cleanup.id')}>{result.physicalFile.id}</Descriptions.Item>
+                <Descriptions.Item label={t('cleanup.hash')}>{result.physicalFile.fileHash}</Descriptions.Item>
+                <Descriptions.Item label={t('cleanup.size')}>{formatBytes(result.physicalFile.fileSize)}</Descriptions.Item>
+                <Descriptions.Item label={t('cleanup.mimeType')}>{result.physicalFile.mimeType}</Descriptions.Item>
+                <Descriptions.Item label={t('cleanup.storagePath')}>{result.physicalFile.storagePath}</Descriptions.Item>
+                <Descriptions.Item label={t('cleanup.onDisk')}>
                   <Tag color={result.physicalFile.fileExists ? 'green' : 'red'}>
-                    {result.physicalFile.fileExists ? 'Yes' : 'No'}
+                    {result.physicalFile.fileExists ? t('cleanup.yes') : t('cleanup.no')}
                   </Tag>
                 </Descriptions.Item>
               </Descriptions>

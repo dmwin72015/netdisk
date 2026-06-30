@@ -1,5 +1,6 @@
 import { Card, Row, Col, Spin, Result, Progress } from 'antd';
 import { useStorageStats } from '../api/admin.hooks';
+import { useTranslation } from 'react-i18next';
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';
@@ -19,18 +20,19 @@ const CATEGORY_COLORS: Record<string, string> = {
   trash: '#ff4d4f',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  video: 'Video',
-  audio: 'Audio',
-  image: 'Image',
-  document: 'Document',
-  archive: 'Archive',
-  other: 'Other',
-  trash: 'Trash',
-};
-
 export default function Storage() {
+  const { t } = useTranslation();
   const { data: categories, isLoading, error } = useStorageStats();
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    video: t('files.video'),
+    audio: t('files.audio'),
+    image: t('files.image'),
+    document: t('files.document'),
+    archive: t('files.archive'),
+    other: t('files.other'),
+    trash: t('storage.trash'),
+  };
 
   if (isLoading) {
     return (
@@ -45,7 +47,7 @@ export default function Storage() {
       <div style={{ padding: 24 }}>
         <Result
           status="error"
-          title="Failed to load storage stats"
+          title={t('storage.failed')}
           subTitle={error.message}
         />
       </div>
@@ -55,7 +57,7 @@ export default function Storage() {
   if (!categories || categories.length === 0) {
     return (
       <div style={{ padding: 24 }}>
-        <Result status="warning" title="No storage data" />
+        <Result status="warning" title={t('storage.noData')} />
       </div>
     );
   }
@@ -67,7 +69,7 @@ export default function Storage() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>Storage Statistics</h2>
+      <h2 style={{ marginBottom: 24 }}>{t('storage.title')}</h2>
       <Row gutter={[16, 16]}>
         {regularCategories.map((stat) => {
           const pct = totalBytes > 0 ? Math.round((stat.totalSize / totalBytes) * 100) : 0;
@@ -77,7 +79,7 @@ export default function Storage() {
                 title={CATEGORY_LABELS[stat.category] || stat.category.charAt(0).toUpperCase() + stat.category.slice(1)}
                 size="small"
               >
-                <div style={{ marginBottom: 8 }}>{stat.fileCount} files</div>
+                <div style={{ marginBottom: 8 }}>{t('storage.files_count', { count: stat.fileCount })}</div>
                 <div style={{ marginBottom: 8, fontSize: 18, fontWeight: 600, color: CATEGORY_COLORS[stat.category] || '#1890ff' }}>
                   {formatBytes(stat.totalSize)}
                 </div>
@@ -88,7 +90,7 @@ export default function Storage() {
                   showInfo={false}
                 />
                 <div style={{ textAlign: 'right', fontSize: 12, color: '#999', marginTop: 4 }}>
-                  {pct}% of total
+                  {t('storage.pctOfTotal', { pct })}
                 </div>
               </Card>
             </Col>
@@ -98,7 +100,7 @@ export default function Storage() {
 
       {trashCategory && (
         <Card
-          title="Trash"
+          title={t('storage.trash')}
           size="small"
           style={{ marginTop: 24 }}
         >
@@ -109,7 +111,7 @@ export default function Storage() {
               </span>
             </Col>
             <Col>
-              <span style={{ color: '#999' }}>{trashCategory.fileCount} files</span>
+              <span style={{ color: '#999' }}>{t('storage.files_count', { count: trashCategory.fileCount })}</span>
             </Col>
             <Col flex="auto">
               <Progress

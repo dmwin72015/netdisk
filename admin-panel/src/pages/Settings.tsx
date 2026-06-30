@@ -14,6 +14,7 @@ import {
   message,
 } from 'antd';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import {
   useSystemConfig,
   useUpdateSystemConfig,
@@ -91,6 +92,7 @@ function formatDisplayValue(item: SystemConfigItem): string {
 }
 
 export default function Settings() {
+  const { t } = useTranslation();
   const { data: configs, isLoading, error } = useSystemConfig();
   const updateConfigMut = useUpdateSystemConfig();
   const resetConfigMut = useResetSystemConfig();
@@ -127,19 +129,19 @@ export default function Settings() {
         newValue = editValue;
       }
       await updateConfigMut.mutateAsync({ [editItem.key]: newValue });
-      message.success('Configuration updated');
+      message.success(t('settings.updated'));
       setEditModalOpen(false);
     } catch {
-      message.error('Failed to update configuration');
+      message.error(t('settings.updateFailed'));
     }
   };
 
   const handleReset = async (key?: string) => {
     try {
       await resetConfigMut.mutateAsync(key);
-      message.success(key ? `Configuration "${key}" reset` : 'All configurations reset');
+      message.success(key ? `${t('settings.resetSuccess')}: "${key}"` : t('settings.resetSuccess'));
     } catch {
-      message.error('Failed to reset configuration');
+      message.error(t('settings.resetFailed'));
     }
   };
 
@@ -156,7 +158,7 @@ export default function Settings() {
       <div style={{ padding: 24 }}>
         <Result
           status="error"
-          title="Failed to load system config"
+          title={t('settings.failed')}
           subTitle={error.message}
         />
       </div>
@@ -166,14 +168,14 @@ export default function Settings() {
   if (!configs || configs.length === 0) {
     return (
       <div style={{ padding: 24 }}>
-        <Result status="warning" title="No configuration found" />
+        <Result status="warning" title={t('settings.noData')} />
       </div>
     );
   }
 
   const columns: ColumnsType<SystemConfigItem> = [
     {
-      title: 'Setting',
+      title: t('settings.setting'),
       key: 'setting',
       render: (_: unknown, record: SystemConfigItem) => (
         <div>
@@ -185,7 +187,7 @@ export default function Settings() {
       ),
     },
     {
-      title: 'Current Value',
+      title: t('settings.currentValue'),
       dataIndex: 'value',
       key: 'value',
       width: 200,
@@ -194,13 +196,13 @@ export default function Settings() {
       ),
     },
     {
-      title: 'Default Value',
+      title: t('settings.defaultValue'),
       key: 'defaultValue',
       width: 150,
       render: () => <span style={{ color: '#999' }}>-</span>,
     },
     {
-      title: 'Type',
+      title: t('settings.type'),
       key: 'type',
       width: 100,
       render: (_: unknown, record: SystemConfigItem) => {
@@ -211,11 +213,11 @@ export default function Settings() {
           bool: 'cyan',
           string: 'green',
         };
-        return <Tag color={colorMap[type]}>{type}</Tag>;
+        return <Tag color={colorMap[type]}>{t(`settings.${type}`)}</Tag>;
       },
     },
     {
-      title: 'Actions',
+      title: t('settings.actions'),
       key: 'actions',
       width: 160,
       render: (_: unknown, record: SystemConfigItem) => (
@@ -226,17 +228,17 @@ export default function Settings() {
             icon={<EditOutlined />}
             onClick={() => openEditModal(record)}
           >
-            Edit
+            {t('settings.edit')}
           </Button>
           <Popconfirm
-            title={`Reset "${record.key}"?`}
-            description="This will reset to the default value."
+            title={t('settings.resetConfirm')}
+            description={t('settings.resetDescription')}
             onConfirm={() => handleReset(record.key)}
-            okText="Yes"
-            cancelText="No"
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
           >
             <Button type="link" size="small" icon={<ReloadOutlined />}>
-              Reset
+              {t('settings.reset')}
             </Button>
           </Popconfirm>
         </Space>
@@ -254,16 +256,16 @@ export default function Settings() {
           alignItems: 'center',
         }}
       >
-        <h2 style={{ margin: 0 }}>System Configuration</h2>
+        <h2 style={{ margin: 0 }}>{t('settings.title')}</h2>
         <Popconfirm
-          title="Reset all configurations?"
-          description="This will reset all settings to their default values."
+          title={t('settings.resetAllConfirm')}
+          description={t('settings.resetAllDescription')}
           onConfirm={() => handleReset()}
-          okText="Yes"
-          cancelText="No"
+          okText={t('common.yes')}
+          cancelText={t('common.no')}
         >
           <Button icon={<ReloadOutlined />} loading={resetConfigMut.isPending}>
-            Reset All
+            {t('settings.resetAll')}
           </Button>
         </Popconfirm>
       </div>
@@ -279,7 +281,7 @@ export default function Settings() {
 
       {/* Edit Modal */}
       <Modal
-        title={`Edit: ${editItem?.key}`}
+        title={`${t('settings.edit')}: ${editItem?.key}`}
         open={editModalOpen}
         onCancel={() => setEditModalOpen(false)}
         onOk={handleEditSave}
@@ -289,7 +291,7 @@ export default function Settings() {
           <Input
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            placeholder="Enter value"
+            placeholder={t('settings.enterValue')}
           />
         )}
         {editType === 'number' && (
@@ -306,8 +308,8 @@ export default function Settings() {
             value={editValue}
             onChange={(v) => setEditValue(v)}
             options={[
-              { label: 'true', value: 'true' },
-              { label: 'false', value: 'false' },
+              { label: t('settings.true'), value: 'true' },
+              { label: t('settings.false'), value: 'false' },
             ]}
           />
         )}
@@ -330,7 +332,7 @@ export default function Settings() {
         )}
         {editType === 'bytes' && editByteNum > 0 && (
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-            Raw bytes: {parseBytesInput(editByteNum, editByteUnit)}
+            {t('settings.rawBytes', { bytes: parseBytesInput(editByteNum, editByteUnit) })}
           </div>
         )}
       </Modal>
