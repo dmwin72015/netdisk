@@ -1,9 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Table, Card, Switch, InputNumber, Button, message, Space, Typography, Input } from 'antd';
-import { SaveOutlined } from '@ant-design/icons';
-import { adminListStorageStats, adminGetSettings, adminUpdateSettings, type AdminSettings } from '../api/admin';
-
-const { Title } = Typography;
+import { Card, Row, Col, Spin, Result, Progress } from 'antd';
+import { useStorageStats } from '../api/admin.hooks';
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';
@@ -13,225 +9,118 @@ function formatBytes(b: number): string {
   return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function parseBytesInput(val: number): number {
-  return Math.round(val * 1024 * 1024 * 1024);
-}
+const CATEGORY_COLORS: Record<string, string> = {
+  video: '#722ed1',
+  audio: '#13c2c2',
+  image: '#1890ff',
+  document: '#52c41a',
+  archive: '#fa8c16',
+  other: '#eb2f96',
+  trash: '#ff4d4f',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  video: 'Video',
+  audio: 'Audio',
+  image: 'Image',
+  document: 'Document',
+  archive: 'Archive',
+  other: 'Other',
+  trash: 'Trash',
+};
 
 export default function Storage() {
-  const [items, setItems] = useState<{ id: string; username: string; usedBytes: number; totalBytes: number }[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'used' | 'name'>('used');
-  const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<AdminSettings | null>(null);
-  const [formValues, setFormValues] = useState({ siteName: '', allowRegistration: true, defaultQuota: 0, maxUploadSize: 0 });
+  const { data: categories, isLoading, error } = useStorageStats();
 
-  useEffect(() => {
-    setLoading(true);
-    adminListStorageStats(100)
-      .then((res) => {
-        setItems(res.items);
-        setTotal(res.total);
-      })
-      .catch(() => message.error('Failed to load storage stats'))
-      .finally(() => setLoading(false));
-  }, []);
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 60 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    adminGetSettings()
-      .then((s) => {
-        setSettings(s);
-        setFormValues({
-          siteName: s.siteName,
-          allowRegistration: s.allowRegistration,
-          defaultQuota: s.defaultQuota,
-          maxUploadSize: s.maxUploadSize,
-        });
-      })
-      .catch(() => message.error('Failed to load settings'));
-  }, []);
+  if (error) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Result
+          status="error"
+          title="Failed to load storage stats"
+          subTitle={error.message}
+        />
+      </div>
+    );
+  }
 
-  const sortedItems = useMemo(() => {
-    const arr = [...items];
-    if (sortBy === 'used') {
-      arr.sort((a, b) => b.usedBytes - a.usedBytes);
-    } else {
-      arr.sort((a, b) => a.username.localeCompare(b.username));
-    }
-    return arr;
-  }, [items, sortBy]);
+  if (!categories || categories.length === 0) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Result status="warning" title="No storage data" />
+      </div>
+    );
+  }
 
-  const maxUsed = Math.max(...items.map((s) => s.usedBytes), 1);
+  const totalBytes = categories.reduce((sum, c) => sum + c.totalSize, 0);
 
-  const handleSaveSettings = async () => {
-    setSaving(true);
-    try {
-      const updated = await adminUpdateSettings({
-        siteName: formValues.siteName,
-        allowRegistration: formValues.allowRegistration,
-        defaultQuota: parseBytesInput(formValues.defaultQuota),
-        maxUploadSize: parseBytesInput(formValues.maxUploadSize),
-      });
-      setSettings(updated);
-      message.success('Settings saved');
-    } catch {
-      message.error('Failed to save settings');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const columns = [
-    { title: 'Username', dataIndex: 'username', key: 'username', sorter: (a: typeof items[0], b: typeof items[0]) => a.username.localeCompare(b.username) },
-    {
-      title: 'Used',
-      dataIndex: 'usedBytes',
-      key: 'usedBytes',
-      sorter: (a: typeof items[0], b: typeof items[0]) => b.usedBytes - a.usedBytes,
-      render: (v: number) => formatBytes(v),
-    },
-    {
-      title: 'Total',
-      dataIndex: 'totalBytes',
-      key: 'totalBytes',
-      render: (v: number) => formatBytes(v),
-    },
-    {
-      title: 'Usage',
-      key: 'usage',
-      render: (_: unknown, record: { usedBytes: number; totalBytes: number }) => {
-        const pct = record.totalBytes > 0 ? Math.round((record.usedBytes / record.totalBytes) * 100) : 0;
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ flex: 1, height: 8, background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  width: `${pct}%`,
-                  background: pct > 80 ? '#ff4d4f' : '#1890ff',
-                  borderRadius: 4,
-                }}
-              />
-            </div>
-            <span style={{ minWidth: 40, textAlign: 'right' }}>{pct}%</span>
-          </div>
-        );
-      },
-    },
-  ];
+  const trashCategory = categories.find((c) => c.category === 'trash');
+  const regularCategories = categories.filter((c) => c.category !== 'trash');
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          Storage Statistics
-          {sortBy === 'used' ? ' (sorted by usage)' : ' (sorted by name)'}
-        </Title>
-        <Space>
-          <span style={{ color: '#666' }}>Sort:</span>
-          <Button
-            type={sortBy === 'used' ? 'primary' : 'default'}
-            size="small"
-            onClick={() => setSortBy('used')}
-          >
-            By Usage
-          </Button>
-          <Button
-            type={sortBy === 'name' ? 'primary' : 'default'}
-            size="small"
-            onClick={() => setSortBy('name')}
-          >
-            By Name
-          </Button>
-        </Space>
-      </div>
-
-      <Card title="Top 20 Storage Usage" style={{ marginBottom: 24 }}>
-        {sortedItems.slice(0, 20).length === 0 && (
-          <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>No data</div>
-        )}
-        {sortedItems.slice(0, 20).map((s) => {
-          const pct = (s.usedBytes / maxUsed) * 100;
-          const usagePct = s.totalBytes > 0 ? Math.round((s.usedBytes / s.totalBytes) * 100) : 0;
+      <h2 style={{ marginBottom: 24 }}>Storage Statistics</h2>
+      <Row gutter={[16, 16]}>
+        {regularCategories.map((stat) => {
+          const pct = totalBytes > 0 ? Math.round((stat.totalSize / totalBytes) * 100) : 0;
           return (
-            <div key={s.id} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span>{s.username}</span>
-                <span style={{ color: '#666', fontSize: 12 }}>
-                  {formatBytes(s.usedBytes)} / {formatBytes(s.totalBytes)} ({usagePct}%)
-                </span>
-              </div>
-              <div style={{ height: 18, background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${pct}%`,
-                    background: usagePct > 80 ? '#ff4d4f' : '#1890ff',
-                    borderRadius: 4,
-                    transition: 'width 0.3s',
-                    minWidth: usagePct > 0 ? 2 : 0,
-                  }}
+            <Col xs={24} sm={12} lg={8} key={stat.category}>
+              <Card
+                title={CATEGORY_LABELS[stat.category] || stat.category.charAt(0).toUpperCase() + stat.category.slice(1)}
+                size="small"
+              >
+                <div style={{ marginBottom: 8 }}>{stat.fileCount} files</div>
+                <div style={{ marginBottom: 8, fontSize: 18, fontWeight: 600, color: CATEGORY_COLORS[stat.category] || '#1890ff' }}>
+                  {formatBytes(stat.totalSize)}
+                </div>
+                <Progress
+                  percent={pct}
+                  strokeColor={CATEGORY_COLORS[stat.category] || '#1890ff'}
+                  size="small"
+                  showInfo={false}
                 />
-              </div>
-            </div>
+                <div style={{ textAlign: 'right', fontSize: 12, color: '#999', marginTop: 4 }}>
+                  {pct}% of total
+                </div>
+              </Card>
+            </Col>
           );
         })}
-      </Card>
+      </Row>
 
-      <Card title={`All Users (${total})`}>
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={sortedItems}
-          loading={loading}
-          pagination={{ pageSize: 20, showTotal: (t) => `Total ${t}` }}
+      {trashCategory && (
+        <Card
+          title="Trash"
           size="small"
-        />
-      </Card>
-
-      <Card title="System Settings" style={{ marginTop: 24 }}>
-        {settings && (
-          <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <span>Allow Registration</span>
-              <Switch
-                checked={formValues.allowRegistration}
-                onChange={(v) => setFormValues((f) => ({ ...f, allowRegistration: v }))}
+          style={{ marginTop: 24 }}
+        >
+          <Row gutter={16} align="middle">
+            <Col>
+              <span style={{ color: CATEGORY_COLORS.trash, fontSize: 18, fontWeight: 600 }}>
+                {formatBytes(trashCategory.totalSize)}
+              </span>
+            </Col>
+            <Col>
+              <span style={{ color: '#999' }}>{trashCategory.fileCount} files</span>
+            </Col>
+            <Col flex="auto">
+              <Progress
+                percent={totalBytes > 0 ? Math.round((trashCategory.totalSize / totalBytes) * 100) : 0}
+                strokeColor={CATEGORY_COLORS.trash}
+                size="small"
               />
-            </Space>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', width: '100%' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', marginBottom: 4, color: '#666' }}>Site Name</label>
-                <Input
-                  value={formValues.siteName}
-                  onChange={(e) => setFormValues((f) => ({ ...f, siteName: e.target.value }))}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', marginBottom: 4, color: '#666' }}>Default Quota (GB)</label>
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0}
-                  value={formValues.defaultQuota}
-                  onChange={(v) => setFormValues((f) => ({ ...f, defaultQuota: v ?? 0 }))}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', marginBottom: 4, color: '#666' }}>Max Upload Size (GB)</label>
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0}
-                  value={formValues.maxUploadSize}
-                  onChange={(v) => setFormValues((f) => ({ ...f, maxUploadSize: v ?? 0 }))}
-                />
-              </div>
-            </div>
-            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSaveSettings}>
-              Save Settings
-            </Button>
-          </Space>
-        )}
-      </Card>
+            </Col>
+          </Row>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Spin, Card, Row, Col, Descriptions, Tag, Avatar, Button, message } from 'antd';
+import { Spin, Card, Row, Col, Descriptions, Tag, Avatar, Button, Result } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { adminGetUser, type AdminUser } from '../api/admin';
+import { useUser } from '../api/admin.hooks';
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';
@@ -25,19 +24,9 @@ const ROLE_COLORS: Record<string, string> = {
 export default function UserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [user, setUser] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: user, isLoading, error } = useUser(id!);
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    adminGetUser(id)
-      .then(setUser)
-      .catch(() => message.error('Failed to load user'))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div style={{ textAlign: 'center', padding: 60 }}>
         <Spin size="large" />
@@ -45,13 +34,36 @@ export default function UserDetail() {
     );
   }
 
-  if (!user) {
+  if (error) {
     return (
-      <div>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/users')} style={{ marginBottom: 16 }}>
+      <div style={{ padding: 24 }}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/admin/users')}
+          style={{ marginBottom: 16 }}
+        >
           Back
         </Button>
-        <div>User not found.</div>
+        <Result
+          status="error"
+          title="Failed to load user"
+          subTitle={error.message}
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/admin/users')}
+          style={{ marginBottom: 16 }}
+        >
+          Back
+        </Button>
+        <div style={{ color: '#999', textAlign: 'center', padding: 40 }}>User not found.</div>
       </div>
     );
   }
@@ -59,8 +71,12 @@ export default function UserDetail() {
   const usagePct = user.totalBytes > 0 ? Math.round((user.usedBytes / user.totalBytes) * 100) : 0;
 
   return (
-    <div>
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/users')} style={{ marginBottom: 16 }}>
+    <div style={{ padding: 24 }}>
+      <Button
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/admin/users')}
+        style={{ marginBottom: 16 }}
+      >
         Back to Users
       </Button>
       <h2 style={{ marginBottom: 24 }}>User: {user.username}</h2>
@@ -103,6 +119,8 @@ export default function UserDetail() {
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Used">{formatBytes(user.usedBytes)}</Descriptions.Item>
               <Descriptions.Item label="Base">{formatBytes(user.baseBytes)}</Descriptions.Item>
+              <Descriptions.Item label="Member Bonus">{formatBytes(user.memberBonusBytes)}</Descriptions.Item>
+              <Descriptions.Item label="Pack Bonus">{formatBytes(user.packBytes)}</Descriptions.Item>
               <Descriptions.Item label="Total">{formatBytes(user.totalBytes)}</Descriptions.Item>
               <Descriptions.Item label="Usage">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

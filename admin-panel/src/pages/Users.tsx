@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Table,
   Input,
@@ -12,16 +12,22 @@ import {
   Popconfirm,
   Tooltip,
 } from 'antd';
-import { SearchOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  EditOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-  adminListUsers,
-  adminUpdateRole,
-  adminUpdateStorageBase,
-  adminDeleteUser,
-  adminDeleteUsers,
-  type AdminUser,
-} from '../api/admin';
+  useUsers,
+  useCreateUser,
+  useUpdateUserRole,
+  useUpdateStorageBase,
+  useDeleteUser,
+} from '../api/admin.hooks';
+import type { AdminUser, CreateUserInput } from '../api/admin';
 import type { ColumnsType } from 'antd/es/table';
 
 const ROLES = ['admin', 'user'];
@@ -38,96 +44,93 @@ function formatDate(epoch: number): string {
   return new Date(epoch * 1000).toLocaleDateString();
 }
 
+type SortValue = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
+
 export default function Users() {
   const navigate = useNavigate();
-  const [data, setData] = useState<AdminUser[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState<SortValue>('newest');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [storageModal, setStorageModal] = useState<{ open: boolean; user: AdminUser | null }>({
     open: false,
     user: null,
   });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [storageForm] = Form.useForm();
+  const [createForm] = Form.useForm();
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const res = await adminListUsers(pageSize, (page - 1) * pageSize);
-      let items = res.items;
-      if (roleFilter) {
-        items = items.filter((u) => u.role === roleFilter);
-      }
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        items = items.filter(
-          (u) =>
-            u.username.toLowerCase().includes(q) ||
-            u.email.toLowerCase().includes(q)
-        );
-      }
-      setData(items);
-      setTotal(res.total);
-    } catch {
-      message.error('Failed to load users');
-    } finally {
-      setLoading(false);
+  const { data, isLoading } = useUsers({
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+    ...(roleFilter ? { role: roleFilter } : {}),
+  });
+
+  const createUserMut = useCreateUser();
+  const updateRoleMut = useUpdateUserRole();
+  const updateStorageMut = useUpdateStorageBase();
+  const deleteUserMut = useDeleteUser();
+
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+
+  // Client-side sort
+  const sortedUsers = [...users].sort((a, b) => {
+    switch (sortBy) {
+      case 'newest':
+        return b.createdAt - a.createdAt;
+      case 'oldest':
+        return a.createdAt - b.createdAt;
+      case 'name-asc':
+        return a.username.localeCompare(b.username);
+      case 'name-desc':
+        return b.username.localeCompare(a.username);
+      default:
+        return 0;
     }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [page, pageSize]);
+  });
 
   const handleRoleChange = async (userId: string, role: string) => {
     try {
-      const updated = await adminUpdateRole(userId, role);
-      setData((prev) =>
-        prev.map((u) => (u.id === userId ? updated : u))
-      );
+      await updateRoleMut.mutateAsync({ id: userId, role });
       message.success('Role updated');
     } catch {
       message.error('Failed to update role');
-      loadData();
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await adminDeleteUser(id);
+      await deleteUserMut.mutateAsync(id);
       message.success('User deleted');
-      setData((prev) => prev.filter((u) => u.id !== id));
-      setTotal((t) => t - 1);
     } catch {
       message.error('Failed to delete user');
-    }
-  };
-
-  const handleBatchDelete = async () => {
-    if (selectedRowKeys.length === 0) return;
-    try {
-      await adminDeleteUsers(selectedRowKeys.map(String));
-      message.success(`${selectedRowKeys.length} users deleted`);
-      setSelectedRowKeys([]);
-      loadData();
-    } catch {
-      message.error('Failed to batch delete');
     }
   };
 
   const handleStorageSave = async (values: { baseBytes: number }) => {
     if (!storageModal.user) return;
     try {
-      const updated = await adminUpdateStorageBase(storageModal.user.id, values.baseBytes);
-      setData((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      await updateStorageMut.mutateAsync({ id: storageModal.user.id, baseBytes: values.baseBytes });
       message.success('Storage base updated');
       setStorageModal({ open: false, user: null });
     } catch {
       message.error('Failed to update storage');
+    }
+  };
+
+  const handleCreateUser = async (values: CreateUserInput) => {
+    try {
+      await createUserMut.mutateAsync(values);
+      message.success('User created');
+      setCreateModalOpen(false);
+      createForm.resetFields();
+    } catch {
+      message.error('Failed to create user');
     }
   };
 
@@ -137,7 +140,9 @@ export default function Users() {
       dataIndex: 'username',
       key: 'username',
       render: (text: string, record: AdminUser) => (
-        <a onClick={() => navigate(`/users/${record.id}`)} style={{ cursor: 'pointer' }}>{text}</a>
+        <a onClick={() => navigate(`/admin/users/${record.id}`)} style={{ cursor: 'pointer' }}>
+          {text}
+        </a>
       ),
     },
     { title: 'Email', dataIndex: 'email', key: 'email' },
@@ -176,13 +181,19 @@ export default function Users() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 120,
+      width: 160,
       render: (_: unknown, record: AdminUser) => (
         <Space>
           <Tooltip title="View">
             <EyeOutlined
               style={{ cursor: 'pointer', color: '#1890ff' }}
-              onClick={() => navigate(`/users/${record.id}`)}
+              onClick={() => navigate(`/admin/users/${record.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title="Edit Storage Base">
+            <EditOutlined
+              style={{ cursor: 'pointer', color: '#52c41a' }}
+              onClick={() => setStorageModal({ open: true, user: record })}
             />
           </Tooltip>
           <Popconfirm
@@ -219,14 +230,19 @@ export default function Users() {
           <Input
             placeholder="Search users..."
             prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             onPressEnter={() => {
+              setSearchQuery(searchInput);
               setPage(1);
-              loadData();
             }}
             style={{ width: 220 }}
             allowClear
+            onClear={() => {
+              setSearchInput('');
+              setSearchQuery('');
+              setPage(1);
+            }}
           />
           <Select
             placeholder="Filter by role"
@@ -239,26 +255,28 @@ export default function Users() {
             style={{ width: 150 }}
             options={ROLES.map((r) => ({ label: r, value: r }))}
           />
-          <Button onClick={() => { setPage(1); loadData(); }}>Search</Button>
+          <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>Search</Button>
+          <Select
+            value={sortBy}
+            onChange={(val: SortValue) => setSortBy(val)}
+            style={{ width: 150 }}
+            options={[
+              { label: 'Newest first', value: 'newest' },
+              { label: 'Oldest first', value: 'oldest' },
+              { label: 'Name A-Z', value: 'name-asc' },
+              { label: 'Name Z-A', value: 'name-desc' },
+            ]}
+          />
         </Space>
-        {selectedRowKeys.length > 0 && (
-          <Popconfirm
-            title={`Delete ${selectedRowKeys.length} users?`}
-            onConfirm={handleBatchDelete}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button danger icon={<DeleteOutlined />}>
-              Batch Delete ({selectedRowKeys.length})
-            </Button>
-          </Popconfirm>
-        )}
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+          Create User
+        </Button>
       </div>
       <Table
         rowKey="id"
         columns={columns}
-        dataSource={data}
-        loading={loading}
+        dataSource={sortedUsers}
+        loading={isLoading}
         rowSelection={rowSelection}
         pagination={{
           current: page,
@@ -273,23 +291,74 @@ export default function Users() {
         }}
         size="small"
       />
+
+      {/* Create User Modal */}
+      <Modal
+        title="Create User"
+        open={createModalOpen}
+        onCancel={() => {
+          setCreateModalOpen(false);
+          createForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={createForm} layout="vertical" onFinish={handleCreateUser}>
+          <Form.Item
+            name="username"
+            label="Username"
+            rules={[{ required: true, message: 'Please enter username' }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ required: true, message: 'Please enter email' }]}
+          >
+            <Input type="email" />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label="Password"
+            rules={[{ required: true, message: 'Please enter password' }]}
+          >
+            <Input.Password />
+          </Form.Item>
+          <Form.Item name="role" label="Role" initialValue="user">
+            <Select options={ROLES.map((r) => ({ label: r, value: r }))} />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block loading={createUserMut.isPending}>
+              Create
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Storage Base Modal */}
       <Modal
         title={`Edit Storage Base - ${storageModal.user?.username}`}
         open={storageModal.open}
         onCancel={() => setStorageModal({ open: false, user: null })}
         footer={null}
+        destroyOnClose
       >
-        <Form form={storageForm} layout="vertical" onFinish={handleStorageSave}>
+        <Form
+          form={storageForm}
+          layout="vertical"
+          onFinish={handleStorageSave}
+          initialValues={{ baseBytes: storageModal.user?.baseBytes }}
+        >
           <Form.Item
             name="baseBytes"
             label="Base Bytes"
-            initialValue={storageModal.user?.baseBytes}
             rules={[{ required: true, message: 'Required' }]}
           >
             <InputNumber style={{ width: '100%' }} min={0} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block>
+            <Button type="primary" htmlType="submit" block loading={updateStorageMut.isPending}>
               Save
             </Button>
           </Form.Item>

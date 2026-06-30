@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Table,
   Input,
@@ -9,8 +9,10 @@ import {
   Popconfirm,
   Tag,
 } from 'antd';
-import { SearchOutlined, DeleteOutlined } from '@ant-design/icons';
-import { adminListFiles, adminDeleteFiles, type AdminFile } from '../api/admin';
+import { SearchOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { useFiles, useDeleteFile, useRestoreFile } from '../api/admin.hooks';
+import type { AdminFile } from '../api/admin';
 import type { ColumnsType } from 'antd/es/table';
 
 function formatBytes(b: number): string {
@@ -25,61 +27,106 @@ function formatDate(epoch: number): string {
   return new Date(epoch * 1000).toLocaleString();
 }
 
+const CATEGORY_OPTIONS = [
+  { label: 'All', value: '' },
+  { label: 'Document', value: 'document' },
+  { label: 'Image', value: 'image' },
+  { label: 'Video', value: 'video' },
+  { label: 'Audio', value: 'audio' },
+  { label: 'Archive', value: 'archive' },
+  { label: 'Other', value: 'other' },
+];
+
+const TRASHED_OPTIONS = [
+  { label: 'All', value: '' },
+  { label: 'Active', value: 'active' },
+  { label: 'Trashed', value: 'trashed' },
+];
+
+const SORT_OPTIONS = [
+  { label: 'Newest first', value: 'createdAt-desc' },
+  { label: 'Oldest first', value: 'createdAt-asc' },
+  { label: 'Name A-Z', value: 'fileName-asc' },
+  { label: 'Name Z-A', value: 'fileName-desc' },
+  { label: 'Largest first', value: 'fileSize-desc' },
+  { label: 'Smallest first', value: 'fileSize-asc' },
+];
+
 export default function Files() {
-  const [data, setData] = useState<AdminFile[]>([]);
-  const [total, setTotal] = useState(0);
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [userFilter, setUserFilter] = useState<string | undefined>(undefined);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
+  const [trashedFilter, setTrashedFilter] = useState<boolean | undefined>(undefined);
+  const [sortValue, setSortValue] = useState('createdAt-desc');
 
-  const loadData = async () => {
-    setLoading(true);
+  const [sortBy, sortOrder] = sortValue.split('-') as [string, 'asc' | 'desc'];
+
+  const { data, isLoading } = useFiles({
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+    ...(categoryFilter ? { fileCategory: categoryFilter } : {}),
+    ...(trashedFilter !== undefined ? { isTrashed: trashedFilter } : {}),
+    sortBy,
+    sortOrder,
+  });
+
+  const deleteFileMut = useDeleteFile();
+  const restoreFileMut = useRestoreFile();
+
+  const files = data?.items ?? [];
+  const total = data?.total ?? 0;
+
+  const handleDelete = async (id: string) => {
     try {
-      const res = await adminListFiles(pageSize, (page - 1) * pageSize);
-      let items = res.items;
-      if (userFilter) {
-        items = items.filter((f) => f.userId === userFilter);
-      }
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        items = items.filter((f) => f.fileName.toLowerCase().includes(q));
-      }
-      setData(items);
-      setTotal(res.total);
+      await deleteFileMut.mutateAsync(id);
+      message.success('File permanently deleted');
     } catch {
-      message.error('Failed to load files');
-    } finally {
-      setLoading(false);
+      message.error('Failed to delete file');
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [page, pageSize]);
-
-  const handleBatchDelete = async () => {
-    if (selectedRowKeys.length === 0) return;
+  const handleRestore = async (id: string) => {
     try {
-      await adminDeleteFiles(selectedRowKeys.map(String));
-      message.success(`${selectedRowKeys.length} files deleted`);
-      setSelectedRowKeys([]);
-      loadData();
+      await restoreFileMut.mutateAsync(id);
+      message.success('File restored');
     } catch {
-      message.error('Failed to delete files');
+      message.error('Failed to restore file');
     }
+  };
+
+  const handleTrashedFilter = (val: string) => {
+    if (val === '' || val === undefined) {
+      setTrashedFilter(undefined);
+    } else if (val === 'active') {
+      setTrashedFilter(false);
+    } else {
+      setTrashedFilter(true);
+    }
+    setPage(1);
   };
 
   const columns: ColumnsType<AdminFile> = [
     { title: 'Filename', dataIndex: 'fileName', key: 'fileName', ellipsis: true },
-    { title: 'User', dataIndex: 'username', key: 'username', width: 150 },
+    {
+      title: 'Owner',
+      dataIndex: 'username',
+      key: 'username',
+      width: 150,
+      render: (text: string, record: AdminFile) => (
+        <a onClick={() => navigate(`/admin/users/${record.userId}`)} style={{ cursor: 'pointer' }}>
+          {text}
+        </a>
+      ),
+    },
     {
       title: 'Type',
       dataIndex: 'fileCategory',
       key: 'fileCategory',
-      width: 120,
+      width: 100,
       render: (v: string) => <Tag color="blue">{v || 'file'}</Tag>,
     },
     {
@@ -108,20 +155,40 @@ export default function Files() {
       width: 160,
       render: (v: number) => formatDate(v),
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 180,
+      render: (_: unknown, record: AdminFile) => (
+        <Space>
+          {record.isTrashed && (
+            <Popconfirm
+              title="Restore file"
+              description="Restore this file from trash?"
+              onConfirm={() => handleRestore(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button type="link" size="small" icon={<UndoOutlined />}>
+                Restore
+              </Button>
+            </Popconfirm>
+          )}
+          <Popconfirm
+            title="Permanently delete"
+            description="This action cannot be undone."
+            onConfirm={() => handleDelete(record.id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
-
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
-  };
-
-  const userOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    data.forEach((f) => {
-      if (!map.has(f.userId)) map.set(f.userId, f.username);
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ label: name, value: id }));
-  }, [data]);
 
   return (
     <div>
@@ -138,41 +205,56 @@ export default function Files() {
           <Input
             placeholder="Search files..."
             prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onPressEnter={() => { setPage(1); loadData(); }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onPressEnter={() => {
+              setSearchQuery(searchInput);
+              setPage(1);
+            }}
             style={{ width: 220 }}
             allowClear
+            onClear={() => {
+              setSearchInput('');
+              setSearchQuery('');
+              setPage(1);
+            }}
           />
           <Select
-            placeholder="Filter by user"
+            placeholder="Category"
             allowClear
-            value={userFilter}
-            onChange={(val) => { setUserFilter(val); setPage(1); }}
-            style={{ width: 180 }}
-            options={userOptions}
+            value={categoryFilter || ''}
+            onChange={(val) => {
+              setCategoryFilter(val || undefined);
+              setPage(1);
+            }}
+            style={{ width: 130 }}
+            options={CATEGORY_OPTIONS}
           />
-          <Button onClick={() => { setPage(1); loadData(); }}>Search</Button>
+          <Select
+            placeholder="Status"
+            allowClear
+            value={trashedFilter === undefined ? '' : trashedFilter ? 'trashed' : 'active'}
+            onChange={handleTrashedFilter}
+            style={{ width: 130 }}
+            options={TRASHED_OPTIONS}
+          />
+          <Select
+            value={sortValue}
+            onChange={(val: string) => {
+              setSortValue(val);
+              setPage(1);
+            }}
+            style={{ width: 150 }}
+            options={SORT_OPTIONS}
+          />
+          <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>Search</Button>
         </Space>
-        {selectedRowKeys.length > 0 && (
-          <Popconfirm
-            title={`Delete ${selectedRowKeys.length} files?`}
-            onConfirm={handleBatchDelete}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button danger icon={<DeleteOutlined />}>
-              Batch Delete ({selectedRowKeys.length})
-            </Button>
-          </Popconfirm>
-        )}
       </div>
       <Table
         rowKey="id"
         columns={columns}
-        dataSource={data}
-        loading={loading}
-        rowSelection={rowSelection}
+        dataSource={files}
+        loading={isLoading}
         pagination={{
           current: page,
           pageSize,
