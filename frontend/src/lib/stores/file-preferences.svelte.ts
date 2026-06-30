@@ -58,6 +58,14 @@ export function exportPreferences(): UserSettings {
   return settingsManager.snapshot;
 }
 
+export function getThemePreference() {
+  return settingsManager.theme;
+}
+
+export function setThemePreference(value: UserSettings["theme"]) {
+  void settingsManager.update("theme", value);
+}
+
 export async function importPreferences(settings: Partial<UserSettings>) {
   await settingsManager.importJSON(JSON.stringify(settings));
   return settingsManager.snapshot;

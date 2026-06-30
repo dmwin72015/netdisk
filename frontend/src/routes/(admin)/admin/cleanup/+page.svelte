@@ -232,7 +232,7 @@
         <!-- Search history dropdown -->
         {#if showHistory && searchHistory.getHistory(mode).length > 0}
           <div
-            class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-line bg-white shadow-pop"
+            class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
           >
             <div class="px-3 py-2 text-xs font-medium text-ink-4 flex items-center gap-1.5 border-b border-line">
               <Clock size={12} />
@@ -276,7 +276,7 @@
           (mode === "slug" && !slug.trim()) ||
           (mode === "hash" && !hash.trim())
         }
-        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-on transition-colors hover:bg-primary/90 disabled:opacity-50"
       >
         {#if querying}
           <LoaderCircle size={16} class="animate-spin" />
@@ -370,7 +370,7 @@
           <button
             onclick={() => (confirmDeleteAll = true)}
             disabled={deleting}
-            class="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+            class="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-primary-on transition-colors hover:bg-danger/90 disabled:opacity-50"
           >
             <Trash2 size={13} />
             {m.admin_cleanup_delete_all()}
@@ -408,7 +408,7 @@
                       sideOffset={8}
                       align="end"
                       triggerClass="cursor-pointer hover:text-ink transition-colors"
-                      contentClass="w-72 rounded-xl border border-line bg-white shadow-dialog p-4"
+                      contentClass="w-72 rounded-xl border border-line bg-surface shadow-dialog p-4"
                     >
                       {#snippet trigger()}
                         <span class="inline-flex items-center gap-1.5">
@@ -509,7 +509,7 @@
     <button
       onclick={handleDeletePhysicalFile}
       disabled={deleting}
-      class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+      class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-danger/90 disabled:opacity-50"
     >
       {#if deleting}
         <LoaderCircle size={16} class="animate-spin" />
@@ -548,7 +548,7 @@
     <button
       onclick={confirmDeleteUserFile}
       disabled={deleting}
-      class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+      class="inline-flex items-center gap-2 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-danger/90 disabled:opacity-50"
     >
       {#if deleting}
         <LoaderCircle size={16} class="animate-spin" />

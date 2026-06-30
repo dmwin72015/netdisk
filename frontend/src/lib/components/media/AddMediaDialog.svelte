@@ -117,7 +117,7 @@
 					type="text"
 					bind:value={searchQuery}
 					placeholder={m.search_files()}
-					class="w-full rounded-lg border border-line bg-surface-muted py-2 pl-9 pr-3 text-sm text-ink-2 outline-none transition-colors placeholder:text-ink-4 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+					class="w-full rounded-lg border border-line bg-surface-sunken py-2 pl-9 pr-3 text-sm text-ink-2 outline-none transition-colors placeholder:text-ink-4 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
 				/>
 			</div>
 		</div>
@@ -146,8 +146,8 @@
 				<div class="space-y-1">
 					{#each filteredVideos as v (v.slug)}
 						{@const isSelected = !!selected[v.slug]}
-						<button type="button" onclick={() => toggle(v.slug)} class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-muted {isSelected ? 'bg-primary-soft' : ''}">
-							<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {isSelected ? 'border-primary bg-primary text-white' : 'border-line'}">
+						<button type="button" onclick={() => toggle(v.slug)} class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-sunken {isSelected ? 'bg-primary-soft' : ''}">
+							<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {isSelected ? 'border-primary bg-primary text-primary-on' : 'border-line'}">
 								{#if isSelected}
 									<Check size={12} />
 								{/if}
@@ -192,7 +192,7 @@
 				<button type="button" onclick={() => { open = false; onClose(); }} class="rounded-lg px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken">
 					{m.cancel()}
 				</button>
-				<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50">
+				<button type="button" onclick={submit} disabled={selectedCount() === 0 || submitting} class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-50">
 					{#if submitting}
 						<LoaderCircle size={14} class="animate-spin" />
 					{/if}

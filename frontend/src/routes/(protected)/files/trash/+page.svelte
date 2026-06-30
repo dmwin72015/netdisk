@@ -114,7 +114,7 @@
  <button
  type="button"
  onclick={handleRestoreAll}
- class="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-muted"
+ class="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-sunken"
  >
  <RotateCcw size={14} />
  {m.restore_all()}
@@ -122,7 +122,7 @@
  <button
  type="button"
  onclick={handleEmptyTrash}
- class="flex h-8 items-center gap-1.5 rounded-lg border border-danger bg-white px-3 text-sm text-danger transition-colors hover:border-danger hover:bg-danger-soft"
+ class="flex h-8 items-center gap-1.5 rounded-lg border border-danger bg-surface px-3 text-sm text-danger transition-colors hover:border-danger hover:bg-danger-soft"
  >
  <Trash2 size={14} />
  {m.empty_trash()}
@@ -149,7 +149,7 @@
  </div>
  {:else}
  <div
- class="overflow-hidden rounded-xl border border-line-soft bg-white "
+ class="overflow-hidden rounded-xl border border-line-soft bg-surface "
  >
  <table class="w-full table-fixed text-sm">
  <thead>
@@ -172,7 +172,7 @@
  <tbody>
  {#each files as f (f.slug)}
  <tr
- class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-muted/80"
+ class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-sunken/80"
  >
  <td class="px-4 py-2.5">
  <div class="flex items-center gap-2.5">

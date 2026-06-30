@@ -102,7 +102,7 @@
 				type="text"
 				bind:value={fileName}
 				placeholder={m.paste_filename_placeholder()}
-				class="mt-1.5 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+				class="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
 
@@ -142,7 +142,7 @@
 		<button
 			type="button"
 			onclick={() => { open = false; }}
-			class="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken"
 		>
 			<X size={14} /> {m.cancel()}
 		</button>
@@ -150,7 +150,7 @@
 			type="button"
 			onclick={handleConfirm}
 			disabled={!fileName.trim() || !!sizeError}
-			class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+			class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 		>
 			<Check size={14} /> {m.confirm()}
 		</button>

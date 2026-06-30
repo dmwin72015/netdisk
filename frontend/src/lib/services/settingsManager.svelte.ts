@@ -2,8 +2,10 @@ import { browser } from "$app/environment";
 import {
   getUserSettings,
   saveUserSettings,
+  type ThemePreference,
   type UserSettings,
 } from "$lib/api/settings";
+import { themeManager, normalizeThemePreference } from "$lib/services/themeManager.svelte";
 import {
   UPLOAD_FILE_CONCURRENCY,
   UPLOAD_FILE_CONCURRENCY_DEFAULT,
@@ -18,12 +20,14 @@ const LS_SHOW_SYSTEM_DIRS = "nd.files.showSystemDirs";
 const LS_UPLOAD_CONCURRENCY = "nd.files.uploadConcurrency";
 const LS_DUPLICATE_STRATEGY = "nd.files.duplicateStrategy";
 const LS_DIRECTORY_UNLOCK_TTL = "nd.files.directoryUnlockTtlHours";
+const LS_THEME = "nd.appearance.theme";
 
 const DEFAULTS: UserSettings = {
   showSystemDirs: true,
   uploadConcurrency: UPLOAD_FILE_CONCURRENCY_DEFAULT,
   duplicateStrategy: "prompt",
   directoryUnlockTtlHours: 2,
+  theme: "system",
 };
 
 function lsGet(key: string): string | null {
@@ -60,6 +64,7 @@ class SettingsManager {
   uploadConcurrency = $state<number>(DEFAULTS.uploadConcurrency);
   duplicateStrategy = $state<string>(DEFAULTS.duplicateStrategy);
   directoryUnlockTtlHours = $state<number>(DEFAULTS.directoryUnlockTtlHours);
+  theme = $state<ThemePreference>(themeManager.theme);
 
   private serverLoaded = false;
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -77,6 +82,12 @@ class SettingsManager {
 
     const tv = lsGet(LS_DIRECTORY_UNLOCK_TTL);
     if (tv) this.directoryUnlockTtlHours = normalizeTtl(parseInt(tv, 10));
+
+    const thv = lsGet(LS_THEME);
+    if (thv) {
+      this.theme = normalizeThemePreference(thv);
+      themeManager.applyFromServer(this.theme);
+    }
   }
 
   /** Load settings from server, merge with local. Call once at app startup. */
@@ -114,6 +125,7 @@ class SettingsManager {
       uploadConcurrency: this.uploadConcurrency,
       duplicateStrategy: this.duplicateStrategy,
       directoryUnlockTtlHours: this.directoryUnlockTtlHours,
+      theme: this.theme,
     };
   }
 
@@ -152,12 +164,17 @@ class SettingsManager {
       this.directoryUnlockTtlHours = normalizeTtl(
         Number(settings.directoryUnlockTtlHours),
       );
+    if (settings.theme) {
+      this.theme = normalizeThemePreference(settings.theme);
+      themeManager.applyFromServer(this.theme);
+    }
 
     if (persistLocal) {
       lsSet(LS_SHOW_SYSTEM_DIRS, String(this.showSystemDirs));
       lsSet(LS_UPLOAD_CONCURRENCY, String(this.uploadConcurrency));
       lsSet(LS_DUPLICATE_STRATEGY, this.duplicateStrategy);
       lsSet(LS_DIRECTORY_UNLOCK_TTL, String(this.directoryUnlockTtlHours));
+      lsSet(LS_THEME, this.theme);
     }
   }
 
@@ -178,6 +195,11 @@ class SettingsManager {
       case "directoryUnlockTtlHours":
         this.directoryUnlockTtlHours = normalizeTtl(value as number);
         lsSet(LS_DIRECTORY_UNLOCK_TTL, String(this.directoryUnlockTtlHours));
+        break;
+      case "theme":
+        this.theme = normalizeThemePreference(value as ThemePreference);
+        lsSet(LS_THEME, this.theme);
+        themeManager.applyFromServer(this.theme);
         break;
     }
     this.schedulePersist();

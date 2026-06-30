@@ -87,7 +87,7 @@
 		</div>
 
 		<div class="auth-card-wrap mx-auto w-full max-w-[420px]">
-			<div class="auth-card rounded-xl border border-line bg-white p-5 shadow-dialog sm:p-6">
+			<div class="auth-card rounded-xl border border-line bg-surface p-5 shadow-dialog sm:p-6">
 				<div class="mb-5">
 					<div class="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-on">
 						<UserRound size={20} />
@@ -104,7 +104,7 @@
 				<form onsubmit={submit} class="space-y-3.5">
 					<label class="block">
 						<span class="text-sm font-medium text-ink-2">{m.username()}</span>
-						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-muted/80 px-3.5 py-2.5 transition focus-within:border-primary">
+						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-sunken/80 px-3.5 py-2.5 transition focus-within:border-primary">
 							<UserRound size={16} class="shrink-0 text-ink-4" />
 							<input
 								type="text"
@@ -119,7 +119,7 @@
 					</label>
 					<label class="block">
 						<span class="text-sm font-medium text-ink-2">{m.email()}</span>
-						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-muted/80 px-3.5 py-2.5 transition focus-within:border-primary">
+						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-sunken/80 px-3.5 py-2.5 transition focus-within:border-primary">
 							<Mail size={16} class="shrink-0 text-ink-4" />
 							<input
 								type="email"
@@ -132,7 +132,7 @@
 					</label>
 					<label class="block">
 						<span class="text-sm font-medium text-ink-2">{m.password()}</span>
-						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-muted/80 px-3.5 py-2.5 transition focus-within:border-primary">
+						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-sunken/80 px-3.5 py-2.5 transition focus-within:border-primary">
 							<KeyRound size={16} class="shrink-0 text-ink-4" />
 							<input
 								type="password"

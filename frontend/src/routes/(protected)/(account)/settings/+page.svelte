@@ -8,6 +8,8 @@
     setDuplicateStrategy,
     getDirectoryUnlockTtlHours,
     setDirectoryUnlockTtlHours,
+    getThemePreference,
+    setThemePreference,
     exportPreferences,
     importPreferences,
   } from "$lib/stores/file-preferences.svelte";
@@ -74,7 +76,7 @@
         {m.language()}
       </h2>
     </div>
-    <div class="rounded-xl border border-line-soft bg-white">
+    <div class="rounded-xl border border-line-soft bg-surface">
       <div class="flex items-center justify-between gap-4 px-5 py-4">
         <div class="min-w-0">
           <p class="text-sm font-medium text-ink-2">{m.language()}</p>
@@ -83,7 +85,7 @@
           </p>
         </div>
         <LanguageDropdown
-          triggerClass="flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
+          triggerClass="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken"
         />
       </div>
     </div>
@@ -97,7 +99,30 @@
         {m.display_settings()}
       </h2>
     </div>
-    <div class="rounded-xl border border-line-soft bg-white">
+    <div class="rounded-xl border border-line-soft bg-surface">
+      <div class="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-4">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-ink-2">{m.theme_settings()}</p>
+          <p class="mt-1 text-xs leading-5 text-ink-3">
+            {m.theme_settings_desc()}
+          </p>
+        </div>
+        <select
+          value={getThemePreference()}
+          onchange={(e) =>
+            setThemePreference(
+              (e.currentTarget as HTMLSelectElement).value as
+                | "system"
+                | "light"
+                | "dark",
+            )}
+          class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="system">{m.theme_system()}</option>
+          <option value="light">{m.theme_light()}</option>
+          <option value="dark">{m.theme_dark()}</option>
+        </select>
+      </div>
       <div class="flex items-center justify-between gap-4 px-5 py-4">
         <div class="min-w-0">
           <p class="text-sm font-medium text-ink-2">{m.show_system_dirs()}</p>
@@ -124,7 +149,7 @@
         {m.settings_dir_lock()}
       </h2>
     </div>
-    <div class="rounded-xl border border-line-soft bg-white">
+    <div class="rounded-xl border border-line-soft bg-surface">
       <div class="flex items-center justify-between gap-4 px-5 py-4">
         <div class="min-w-0">
 <p class="text-sm font-medium text-ink-2">{m.settings_password_ttl()}</p>
@@ -138,7 +163,7 @@
             setDirectoryUnlockTtlHours(
               parseInt((e.currentTarget as HTMLSelectElement).value, 10),
             )}
-          class="rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           {#each ttlOptions as option}
             <option value={option.value}>{option.label}</option>
@@ -156,7 +181,7 @@
         {m.settings_backup()}
       </h2>
     </div>
-    <div class="rounded-xl border border-line-soft bg-white">
+    <div class="rounded-xl border border-line-soft bg-surface">
       <div
         class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
       >
@@ -170,7 +195,7 @@
           <button
             type="button"
             onclick={downloadSettingsJson}
-            class="rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-muted"
+            class="rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-sunken"
           >
             {m.settings_export_json()}
           </button>
@@ -178,7 +203,7 @@
             type="button"
             disabled={importing}
             onclick={() => importInput?.click()}
-            class="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+            class="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             {importing ? m.settings_importing() : m.settings_import_from_json()}
           </button>
@@ -202,7 +227,7 @@
         {m.upload_title()}
       </h2>
     </div>
-    <div class="rounded-xl border border-line-soft bg-white">
+    <div class="rounded-xl border border-line-soft bg-surface">
       <div class="flex items-center justify-between gap-4 px-5 py-4">
         <div class="min-w-0">
           <p class="text-sm font-medium text-ink-2">{m.upload_concurrency()}</p>
@@ -239,7 +264,7 @@
         {m.duplicate_strategy()}
       </h2>
     </div>
-    <div class="rounded-xl border border-line-soft bg-white">
+    <div class="rounded-xl border border-line-soft bg-surface">
       <div class="border-b border-line-soft px-5 py-4">
         <p class="text-sm leading-5 text-ink-3">
           {m.duplicate_strategy_desc()}

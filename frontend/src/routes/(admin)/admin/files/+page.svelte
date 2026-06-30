@@ -216,7 +216,7 @@
 					</tr>
 				{:else}
 					{#each files as f (f.id)}
-						<tr class="transition-colors hover:bg-surface-muted" class:opacity-60={f.isTrashed}>
+						<tr class="transition-colors hover:bg-surface-sunken" class:opacity-60={f.isTrashed}>
 							<td class="w-[320px] px-4 py-3">
 								<div class="flex items-center gap-2">
 									<MimeIcon

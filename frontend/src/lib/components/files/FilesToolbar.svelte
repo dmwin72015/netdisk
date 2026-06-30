@@ -35,7 +35,7 @@
       type="button"
       onclick={() => fileManager.toggleSelectAll()}
       class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors {fileManager.allSelected
-        ? 'border-primary bg-primary text-white'
+        ? 'border-primary bg-primary text-primary-on'
         : 'border-line hover:border-primary'}"
       aria-label={m.select_all()}
     >
@@ -51,7 +51,7 @@
   <!-- Right: sort + view mode -->
   <div class="flex items-center gap-2">
     <Dropdown
-      triggerClass="flex h-8 min-w-[120px] items-center justify-between gap-1.5 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-3 transition-colors hover:border-line hover:bg-surface-muted"
+      triggerClass="flex h-8 min-w-[120px] items-center justify-between gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-sm text-ink-3 transition-colors hover:border-line hover:bg-surface-sunken"
       contentClass="min-w-40"
     >
       {#snippet trigger()}
@@ -94,7 +94,7 @@
         onclick={() => fileManager.setViewMode("list")}
         class="p-1.5 transition-colors {fileManager.viewMode.current === 'list'
           ? 'bg-primary-soft text-primary'
-          : 'bg-white text-ink-4 hover:bg-surface-muted hover:text-ink-3'}"
+          : 'bg-surface text-ink-4 hover:bg-surface-sunken hover:text-ink-3'}"
       >
         <LayoutList size={15} />
       </button>
@@ -103,7 +103,7 @@
         onclick={() => fileManager.setViewMode("grid")}
         class="p-1.5 transition-colors {fileManager.viewMode.current === 'grid'
           ? 'bg-primary-soft text-primary'
-          : 'bg-white text-ink-4 hover:bg-surface-muted hover:text-ink-3'}"
+          : 'bg-surface text-ink-4 hover:bg-surface-sunken hover:text-ink-3'}"
       >
         <LayoutGrid size={15} />
       </button>

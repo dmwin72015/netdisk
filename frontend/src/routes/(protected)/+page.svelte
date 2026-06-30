@@ -94,7 +94,7 @@
 					{@const Icon = link.icon}
 					<a
 						href={link.href}
-						class="border-line bg-surface hover:bg-surface-muted group flex items-center gap-3 rounded-lg border px-3.5 py-3 transition-colors duration-150"
+						class="border-line bg-surface hover:bg-surface-sunken group flex items-center gap-3 rounded-lg border px-3.5 py-3 transition-colors duration-150"
 					>
 						<span class="bg-surface-sunken group-hover:bg-surface flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 {link.iconClass}">
 							<Icon size={18} strokeWidth={1.75} />
@@ -181,7 +181,7 @@
 					{#each recentFiles as file (file.slug)}
 						<a
 							href={getFileUrl(file)}
-							class="border-line bg-surface hover:bg-surface-muted group flex flex-col items-center rounded-lg border p-3.5 transition-colors duration-150"
+							class="border-line bg-surface hover:bg-surface-sunken group flex flex-col items-center rounded-lg border p-3.5 transition-colors duration-150"
 							title={file.fileName}
 						>
 							<MimeIcon mimeType={file.mimeType} name={file.fileName} isDir={file.isDir} category={file.fileCategory} size={32} />

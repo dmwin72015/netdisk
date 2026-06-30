@@ -173,7 +173,7 @@
 			duration-200"
   />
   <Dialog.Content
-    class="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-white shadow-dialog fixed left-1/2 top-[15vh] z-50 -translate-x-1/2
+    class="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-dialog fixed left-1/2 top-[15vh] z-50 -translate-x-1/2
 			data-[state=open]:animate-in data-[state=closed]:animate-out
 			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
@@ -181,7 +181,7 @@
   >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div
-      class="w-full overflow-hidden rounded-xl border border-line bg-white shadow-dialog"
+      class="w-full overflow-hidden rounded-xl border border-line bg-surface shadow-dialog"
       onclick={(e) => e.stopPropagation()}
       onkeydown={() => {}}
     >
@@ -215,7 +215,7 @@
             onclick={() => selectCategory(cat.key)}
             class="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors {selectedCategory ===
             cat.key
-              ? 'bg-primary text-white'
+              ? 'bg-primary text-primary-on'
               : 'bg-surface-sunken text-ink-3 hover:bg-line hover:text-ink-2'}"
           >
             {cat.label}

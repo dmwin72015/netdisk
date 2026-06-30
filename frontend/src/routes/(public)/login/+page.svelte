@@ -146,7 +146,7 @@
 		</div>
 
 		<div class="auth-card-wrap mx-auto w-full max-w-[420px]">
-			<div class="auth-card rounded-xl border border-line bg-white p-5 shadow-dialog sm:p-6">
+			<div class="auth-card rounded-xl border border-line bg-surface p-5 shadow-dialog sm:p-6">
 				<div class="mb-5">
 					<div class="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-on">
 						<LockKeyhole size={20} />
@@ -163,7 +163,7 @@
 				<form onsubmit={submit} class="space-y-3.5">
 					<label class="block">
 						<span class="text-sm font-medium text-ink-2">{m.email()}</span>
-						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-muted/80 px-3.5 py-2.5 transition focus-within:border-primary">
+						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-sunken/80 px-3.5 py-2.5 transition focus-within:border-primary">
 							<Mail size={16} class="shrink-0 text-ink-4" />
 							<input
 								type="email"
@@ -176,7 +176,7 @@
 					</label>
 					<label class="block">
 						<span class="text-sm font-medium text-ink-2">{m.password()}</span>
-						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-muted/80 px-3.5 py-2.5 transition focus-within:border-primary">
+						<span class="mt-1.5 flex items-center gap-3 rounded-lg border border-line bg-surface-sunken/80 px-3.5 py-2.5 transition focus-within:border-primary">
 							<LockKeyhole size={16} class="shrink-0 text-ink-4" />
 							<input
 								type="password"
@@ -205,7 +205,7 @@
 						<div class="w-full border-t border-line"></div>
 					</div>
 					<div class="relative flex justify-center text-xs">
-						<span class="bg-white px-2 text-ink-4">or continue with</span>
+						<span class="bg-surface px-2 text-ink-4">or continue with</span>
 					</div>
 				</div>
 
@@ -213,7 +213,7 @@
 					<button
 						onclick={() => oauthLogin('2libra')}
 						disabled={oauthBusy}
-						class="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-sm font-medium text-ink-2 transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+						class="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-sm font-medium text-ink-2 transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-60"
 					>
 						{#if oauthBusy}
 							<ExternalLink size={16} class="animate-pulse" />
@@ -225,7 +225,7 @@
 					<button
 						onclick={() => oauthLogin('github')}
 						disabled={oauthBusy}
-						class="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-2.5 text-sm font-medium text-ink-2 transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+						class="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-sm font-medium text-ink-2 transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-60"
 					>
 						{#if oauthBusy}
 							<ExternalLink size={16} class="animate-pulse" />

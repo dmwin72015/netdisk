@@ -25,10 +25,10 @@
 	let accountOpen = $state(false);
 </script>
 
-<header class="sticky top-0 z-40 border-b border-line bg-white/80 backdrop-blur-sm">
+<header class="sticky top-0 z-40 border-b border-line bg-surface/80 backdrop-blur-sm">
 	<div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
 		<a href="/" class="flex items-center gap-2 font-semibold text-ink transition-colors hover:text-primary">
-			<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+			<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-on">
 				<HardDrive size={18} />
 			</div>
 			<span class="text-base">Netdisk</span>
@@ -111,7 +111,7 @@
 					</Dropdown>
 				{:else}
 					<a href="/login" class="rounded-lg px-3 py-1.5 text-ink-3 transition-colors hover:bg-surface-sunken hover:text-ink">{m.nav_login()}</a>
-					<a href="/register" class="rounded-lg bg-primary px-3 py-1.5 text-white transition-colors hover:bg-primary-hover">{m.nav_register()}</a>
+					<a href="/register" class="rounded-lg bg-primary px-3 py-1.5 text-primary-on transition-colors hover:bg-primary-hover">{m.nav_register()}</a>
 				{/if}
 			{/if}
 

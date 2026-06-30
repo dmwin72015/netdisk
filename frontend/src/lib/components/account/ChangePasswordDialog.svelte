@@ -84,7 +84,7 @@
         type="password"
         bind:value={oldPassword}
         placeholder={m.account_old_password_placeholder()}
-        class="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
       />
     </div>
     <div>
@@ -96,7 +96,7 @@
         type="password"
         bind:value={newPassword}
         placeholder={m.account_new_password_placeholder()}
-        class="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
       />
     </div>
     <div>
@@ -108,7 +108,7 @@
         type="password"
         bind:value={confirmPassword}
         placeholder={m.account_confirm_password_placeholder()}
-        class="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-2 placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 placeholder:text-ink-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
       />
     </div>
     {#if error}

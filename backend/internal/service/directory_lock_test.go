@@ -57,3 +57,31 @@ func TestNormalizeUserSettings_UnlockTTL(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeUserSettings_Theme(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "system", input: "system", want: "system"},
+		{name: "light", input: "light", want: "light"},
+		{name: "dark", input: "dark", want: "dark"},
+		{name: "empty defaults to system", input: "", want: "system"},
+		{name: "invalid defaults to system", input: "midnight", want: "system"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			settings := NormalizeUserSettings(UserSettings{
+				ShowSystemDirs:          true,
+				UploadConcurrency:       3,
+				DuplicateStrategy:       "prompt",
+				DirectoryUnlockTTLHours: DefaultDirectoryUnlockTTLHours,
+				Theme:                   tt.input,
+			})
+			if settings.Theme != tt.want {
+				t.Errorf("Theme = %q, want %q", settings.Theme, tt.want)
+			}
+		})
+	}
+}

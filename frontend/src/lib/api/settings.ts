@@ -1,10 +1,13 @@
 import { api } from './client';
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+
 export type UserSettings = {
 	showSystemDirs: boolean;
 	uploadConcurrency: number;
 	duplicateStrategy: string;
 	directoryUnlockTtlHours: number;
+	theme: ThemePreference;
 };
 
 export async function getUserSettings() {

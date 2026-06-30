@@ -113,7 +113,7 @@
 			<div class="flex h-16 items-center justify-between gap-3 border-b border-line px-5">
 				<a href="/admin" class="flex items-center gap-3">
 					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-admin">
-						<Shield size={16} class="text-white" />
+						<Shield size={16} class="text-primary-on" />
 					</div>
 					<div>
 						<span class="text-sm font-semibold text-ink">NetDisk</span>

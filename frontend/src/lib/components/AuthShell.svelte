@@ -13,10 +13,10 @@
 			height: 100dvh;
 			min-height: 600px;
 			background:
-				radial-gradient(ellipse 55% 50% at 38% 30%, rgba(37, 99, 235, 0.14) 0%, transparent 55%),
-				radial-gradient(ellipse 70% 55% at 35% 50%, rgba(37, 99, 235, 0.06) 0%, transparent 55%),
-				#f5f7fb;
-			color: #020617;
+				radial-gradient(ellipse 55% 50% at 38% 30%, color-mix(in srgb, var(--color-primary) 14%, transparent) 0%, transparent 55%),
+				radial-gradient(ellipse 70% 55% at 35% 50%, color-mix(in srgb, var(--color-primary) 7%, transparent) 0%, transparent 55%),
+				var(--color-surface-muted);
+			color: var(--color-ink);
 		}
 
 		.auth-shell__inner {
@@ -99,17 +99,17 @@
 
 <div class="auth-shell">
 	<div class="bg-surface-muted"></div>
-	<div class="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(#0f172a_1px,transparent_1px),linear-gradient(90deg,#0f172a_1px,transparent_1px)] [background-size:42px_42px]"></div>
+	<div class="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(color-mix(in_srgb,var(--color-ink)_8%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_srgb,var(--color-ink)_8%,transparent)_1px,transparent_1px)] [background-size:42px_42px]"></div>
 	<div class="auth-shell__inner">
 		<div class="auth-shell__bar">
 			<a href="/" class="flex items-center gap-2 text-sm font-semibold text-ink">
-				<span class="flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-white">
+				<span class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-on">
 					<HardDrive size={18} />
 				</span>
 				<span>Netdisk</span>
 			</a>
 			<LanguageDropdown
-				triggerClass="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-2 text-xs font-medium text-ink-3 shadow-pop backdrop-blur transition-colors hover:bg-white hover:text-ink data-[state=open]:bg-white data-[state=open]:text-ink"
+				triggerClass="flex items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3 py-2 text-xs font-medium text-ink-3 shadow-pop backdrop-blur transition-colors hover:bg-surface hover:text-ink data-[state=open]:bg-surface data-[state=open]:text-ink"
 				contentClass="min-w-[124px]"
 			/>
 		</div>

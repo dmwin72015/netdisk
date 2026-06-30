@@ -197,7 +197,7 @@
     <button
       type="button"
       onclick={selectRoot}
-      class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-muted {selectedSlug ===
+      class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-sunken {selectedSlug ===
       ''
         ? 'bg-primary-soft'
         : ''}"
@@ -236,7 +236,7 @@
       <div class="space-y-1">
         {#each selectableDirs as dir (dir.slug)}
           <div
-            class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-muted {selectedSlug ===
+            class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-sunken {selectedSlug ===
             dir.slug
               ? 'bg-primary-soft'
               : ''}"
@@ -264,7 +264,7 @@
                 e.stopPropagation();
                 void enterDir(dir);
               }}
-              class="rounded-md px-2 py-1 text-xs text-ink-3 transition-colors hover:bg-white hover:text-primary"
+              class="rounded-md px-2 py-1 text-xs text-ink-3 transition-colors hover:bg-surface hover:text-primary"
             >
               {m.open_folder()}
             </button>
@@ -311,7 +311,7 @@
         type="button"
         onclick={confirmMove}
         disabled={submitting}
-        class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+        class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {#if submitting}
           <LoaderCircle size={14} class="animate-spin" />

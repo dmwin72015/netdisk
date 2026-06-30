@@ -42,7 +42,7 @@
 			duration-200"
 	/>
 	<Dialog.Content
-		class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl bg-white p-6 shadow-dialog
+		class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl bg-surface p-6 shadow-dialog
 			data-[state=open]:animate-in data-[state=closed]:animate-out
 			data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 			data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
@@ -79,14 +79,14 @@
 		</div>
 
 		<div class="mt-6 flex justify-end gap-2">
-			<Dialog.Close class="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-muted">
+			<Dialog.Close class="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-sunken">
 				{m.cancel()}
 			</Dialog.Close>
 			<button
 				type="button"
 				onclick={submit}
 				disabled={!title.trim() || submitting}
-				class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if submitting}
 					<LoaderCircle size={15} class="animate-spin" />

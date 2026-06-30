@@ -247,7 +247,7 @@
       <a
         href={authedDlUrl}
         download={name}
-        class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+        class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
       >
         {m.download_file()}
       </a>
@@ -324,7 +324,7 @@
       </div>
     {:else if formattedTextContent !== null}
       <div
-        class="flex items-center justify-end gap-2 border-b border-line-soft bg-surface-muted/60 px-4 py-2"
+        class="flex items-center justify-end gap-2 border-b border-line-soft bg-surface-sunken/60 px-4 py-2"
       >
         <button
           type="button"

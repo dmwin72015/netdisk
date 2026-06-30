@@ -68,7 +68,7 @@
         <button
           type="button"
           onclick={() => goto("/tasks")}
-          class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+          class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
         >
           {m.view_tasks()}
           <ExternalLink class="size-3.5" />
@@ -80,7 +80,7 @@
     >
       <button
         type="button"
-        class="rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
+        class="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken"
         onclick={() => {
           open = false;
         }}
@@ -120,7 +120,7 @@
     >
       <button
         type="button"
-        class="rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
+        class="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken"
         onclick={() => {
           open = false;
         }}
@@ -131,7 +131,7 @@
         type="button"
         onclick={handleSubmit}
         disabled={!url.trim() || submitting}
-        class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+        class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         {#if submitting}
           <LoaderCircle size={15} class="animate-spin" />

@@ -125,7 +125,7 @@
       {#each files as f, i (f.id)}
         {@const isSelected = !!fileManager.selectedIds[f.id]}
         <tr
-          class="group border-b border-line transition-colors last:border-0 hover:bg-surface-muted/80 {f.isDir ||
+          class="group border-b border-line transition-colors last:border-0 hover:bg-surface-sunken/80 {f.isDir ||
           canPreview(f)
             ? 'cursor-pointer'
             : ''} {isSelected ? 'bg-primary-soft/50' : ''}"
@@ -142,7 +142,7 @@
                   aria-checked={isSelected}
                   tabindex="-1"
                   class="flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors {isSelected
-                    ? 'border-primary bg-primary text-white opacity-100'
+                    ? 'border-primary bg-primary text-primary-on opacity-100'
                     : 'border-line opacity-0 group-hover:opacity-100 hover:border-primary'}"
                   onclick={(e) => {
                     e.stopPropagation();
@@ -162,7 +162,7 @@
               {/if}
               {#if showThumbnail(f)}
                 <span
-                  class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-muted"
+                  class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded bg-surface-sunken"
                 >
                   <LazyThumbnail
                     src={authedThumbnailUrl(f)}
@@ -259,7 +259,7 @@
     class="fixed bottom-6 left-1/2 z-50 max-w-[calc(100vw-1rem)] -translate-x-1/2"
   >
     <div
-      class="flex items-center gap-2 overflow-x-auto rounded-full border border-line-soft bg-white/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
+      class="flex items-center gap-2 overflow-x-auto rounded-full border border-line-soft bg-surface/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
       transition:fly={{ y: 16, duration: 180, opacity: 0 }}
     >
       <span class="shrink-0 px-3 text-sm font-medium text-ink-2"

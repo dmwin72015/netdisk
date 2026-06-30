@@ -301,7 +301,7 @@
 					{m.admin_config_cancel()}
 				</button>
 				<button
-					class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+					class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-50"
 					onclick={saveEdit}
 					disabled={saving}
 				>

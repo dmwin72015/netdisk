@@ -163,7 +163,7 @@
 									inputs[i].select();
 								}
 							}}
-							class="h-12 w-10 rounded-lg border border-line bg-white text-center text-lg font-mono font-medium text-ink outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary/20"
+							class="h-12 w-10 rounded-lg border border-line bg-surface text-center text-lg font-mono font-medium text-ink outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary/20"
 							aria-label="Digit {i + 1}"
 						/>
 					{/each}
@@ -181,7 +181,7 @@
 						type="button"
 						onclick={onConfirm}
 						disabled={getConfirmDisabled()}
-						class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-primary-hover disabled:opacity-40 disabled:hover:bg-primary"
+						class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors duration-150 hover:bg-primary-hover disabled:opacity-40 disabled:hover:bg-primary"
 					>
 						{pending?.opts.confirmText ?? m.confirm()}
 					</button>

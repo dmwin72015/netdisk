@@ -9,12 +9,14 @@
 	import { browser } from '$app/environment';
 	import { getStoredUser } from '$lib/api/client';
 	import { user, authReady } from '$lib/stores/auth';
+	import { themeManager } from '$lib/services/themeManager.svelte';
 
 	let { children, data } = $props();
 	let isAuthPage = $derived(data.isAuthPage);
 
 	if (browser) {
 		onMount(() => {
+			themeManager.init();
 			user.set(getStoredUser());
 			authReady.set(true);
 		});
@@ -34,4 +36,4 @@
 
 <AppDialog />
 <PinInputDialog />
-<Toast />
+<Toast theme={themeManager.resolvedTheme} />

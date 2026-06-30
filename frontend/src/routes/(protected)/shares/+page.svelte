@@ -174,7 +174,7 @@
 	}
 
 	function expiryClass(share: ShareItem) {
-		if (!share.expiresAt) return 'bg-surface-muted text-ink-3';
+		if (!share.expiresAt) return 'bg-surface-sunken text-ink-3';
 		const remaining = new Date(share.expiresAt).getTime() - Date.now();
 		const days = remaining / 86400000;
 		if (days > 7) return 'bg-success-soft text-success';
@@ -194,10 +194,10 @@
 			<h1 class="text-xl font-semibold text-ink">{m.shares_title()}</h1>
 			<p class="mt-1 text-sm text-ink-3">{m.shares_subtitle()}</p>
 		</div>
-		<div class="rounded-full bg-white px-3 py-1.5 text-sm text-ink-3 ">{m.shares_total({ total: String(total) })}</div>
+		<div class="rounded-full bg-surface px-3 py-1.5 text-sm text-ink-3 ">{m.shares_total({ total: String(total) })}</div>
 	</div>
 
-	<section class="overflow-hidden rounded-xl border border-line bg-white">
+	<section class="overflow-hidden rounded-xl border border-line bg-surface">
 		{#if loading}
 			<div class="flex items-center justify-center py-24">
 				<LoaderCircle size={24} class="animate-spin text-ink-4" />
@@ -252,7 +252,7 @@
 								<div class={expanded ? 'max-h-48 overflow-y-auto' : ''}>
 									<div class="flex flex-wrap gap-1.5">
 										{#each displayFiles as sf}
-											<button type="button" onclick={() => navigateToFile(sf)} class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-surface-muted px-2 py-1 text-xs text-ink-3 transition-colors hover:bg-primary-soft hover:text-primary">
+											<button type="button" onclick={() => navigateToFile(sf)} class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-surface-sunken px-2 py-1 text-xs text-ink-3 transition-colors hover:bg-primary-soft hover:text-primary">
 												<File size={12} /> {sf.fileName}
 											</button>
 										{/each}
@@ -272,7 +272,7 @@
 
 							<div class="flex min-w-0 gap-2">
 								<input readonly value={shareLink(share.slug)} class="h-9 min-w-0 flex-1 rounded-lg border {isPrivate ? 'border-line bg-surface-sunken/50' : 'border-success bg-success-soft/50'} px-3 text-xs {isPrivate ? 'text-ink-2' : 'text-success'} placeholder-ink-4 outline-none" />
-								<button type="button" onclick={() => copyShareLink(share)} class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-muted">
+								<button type="button" onclick={() => copyShareLink(share)} class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-sunken">
 									<Copy size={14} /> {m.share_copy_link()}
 								</button>
 							</div>
@@ -283,7 +283,7 @@
 							<div class="flex gap-2">
 								<Dropdown
 									disabled={isDisabled}
-									triggerClass="flex h-9 min-w-0 flex-1 items-center gap-1 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-2 transition-colors {isDisabled ? 'cursor-not-allowed opacity-50' : 'hover:border-line hover:bg-surface-sunken'}"
+									triggerClass="flex h-9 min-w-0 flex-1 items-center gap-1 rounded-lg border border-line bg-surface px-2.5 text-sm text-ink-2 transition-colors {isDisabled ? 'cursor-not-allowed opacity-50' : 'hover:border-line hover:bg-surface-sunken'}"
 									contentClass="min-w-[180px]"
 								>
 									{#snippet trigger()}
@@ -296,19 +296,19 @@
 										</DropdownBase.Item>
 									{/each}
 								</Dropdown>
-								<button type="button" onclick={() => saveExpiry(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60">
+								<button type="button" onclick={() => saveExpiry(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-on hover:bg-primary-hover disabled:opacity-60">
 									{#if savingSlug === share.slug}<LoaderCircle size={14} class="animate-spin" />{/if}
 									{m.share_save()}
 								</button>
 							</div>
 							{#if choice === 'custom'}
-								<input type="datetime-local" value={customExpiries[share.slug] ?? ''} oninput={(event) => setCustomExpiry(share.slug, (event.currentTarget as HTMLInputElement).value)} disabled={isDisabled} class="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50" />
+								<input type="datetime-local" value={customExpiries[share.slug] ?? ''} oninput={(event) => setCustomExpiry(share.slug, (event.currentTarget as HTMLInputElement).value)} disabled={isDisabled} class="h-9 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50" />
 							{/if}
 
-							<button type="button" onclick={() => confirmCancel(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-danger bg-white px-3 text-sm text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">
+							<button type="button" onclick={() => confirmCancel(share)} disabled={isDisabled || savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-danger bg-surface px-3 text-sm text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">
 								<Ban size={14} /> {m.share_cancel_share()}
 							</button>
-							<button type="button" onclick={() => { deleteTarget = share; deleteDescription = m.share_confirm_delete_desc({ name: cancelNames(share) }); showDeleteDialog = true; }} disabled={savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-danger px-3 text-sm font-medium text-white hover:bg-danger-hover disabled:cursor-not-allowed disabled:opacity-50">
+							<button type="button" onclick={() => { deleteTarget = share; deleteDescription = m.share_confirm_delete_desc({ name: cancelNames(share) }); showDeleteDialog = true; }} disabled={savingSlug === share.slug} class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-danger px-3 text-sm font-medium text-primary-on hover:bg-danger-hover disabled:cursor-not-allowed disabled:opacity-50">
 								<Trash2 size={14} /> {m.share_delete_share()}
 							</button>
 						</div>

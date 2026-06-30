@@ -71,7 +71,7 @@
 	});
 </script>
 
-<div class="rounded-xl border border-line-soft bg-white p-6 ">
+<div class="rounded-xl border border-line-soft bg-surface p-6 ">
 	<h2 class="mb-5 flex items-center gap-2 text-sm font-medium text-ink-3">
 		<HardDrive size={16} /> {m.drive_storage()}
 	</h2>
@@ -124,9 +124,9 @@
 							<span class="cursor-default text-ink underline decoration-dotted decoration-line underline-offset-2">{getLabel(cat.category)}</span>
 							<span class="text-ink-3">{pct}%</span>
 							<!-- Tooltip -->
-							<div class="pointer-events-none absolute -top-1 left-0 z-10 -translate-y-full whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs text-white opacity-0 shadow-pop transition-opacity group-hover:opacity-100">
+							<div class="pointer-events-none absolute -top-1 left-0 z-10 -translate-y-full whitespace-nowrap rounded-md bg-surface-sunken px-2 py-1 text-xs text-ink opacity-0 shadow-pop transition-opacity group-hover:opacity-100">
 								{m.total_items({ total: cat.count })}
-								<div class="absolute left-3 top-full h-0 w-0 border-4 border-transparent border-t-gray-900"></div>
+								<div class="absolute left-3 top-full h-0 w-0 border-4 border-transparent border-t-line"></div>
 							</div>
 						</div>
 					{/each}

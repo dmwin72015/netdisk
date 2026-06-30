@@ -79,10 +79,10 @@
 	<title>{info ? (isMultiFile ? m.share_files_count({ count: String(info.files.length) }) : info.files[0]?.fileName) : m.share_page_title()}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-[#f5f7fb] px-4 py-10 text-ink">
+<div class="min-h-screen bg-surface-muted px-4 py-10 text-ink">
 	<div class="mx-auto max-w-4xl space-y-5">
 		<div class="flex items-center gap-3">
-			<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-pop">
+			<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-on shadow-pop">
 				<ShieldCheck size={20} />
 			</div>
 			<div>
@@ -91,7 +91,7 @@
 			</div>
 		</div>
 
-		<section class="overflow-hidden rounded-xl border border-line bg-white">
+		<section class="overflow-hidden rounded-xl border border-line bg-surface">
 			{#if loading}
 				<div class="flex items-center justify-center py-24">
 					<LoaderCircle size={26} class="animate-spin text-ink-4" />
@@ -117,7 +117,7 @@
 							placeholder={m.share_enter_password()}
 							class="h-11 w-full rounded-xl border border-line px-4 text-center text-sm tracking-widest outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 						/>
-						<button type="submit" disabled={verifying} class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60">
+						<button type="submit" disabled={verifying} class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-60">
 							{#if verifying}<LoaderCircle size={16} class="animate-spin" />{/if}
 							{m.share_verify_btn()}
 						</button>
@@ -131,7 +131,7 @@
 					<div class="border-t border-line-soft">
 						{#each info.files as fileItem}
 							<div class="flex items-center gap-4 px-6 py-4 {info.files.length > 1 ? 'border-b border-line-soft last:border-b-0' : ''}">
-								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-4">
+								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-ink-4">
 									<File size={18} />
 								</div>
 								<div class="min-w-0 flex-1">
@@ -140,11 +140,11 @@
 								</div>
 								<div class="flex gap-2">
 									{#if isPreviewable(fileItem.mimeType)}
-										<a href={fileViewUrl(fileItem.fileSlug)} target="_blank" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-muted">
+										<a href={fileViewUrl(fileItem.fileSlug)} target="_blank" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-sunken">
 											{m.share_preview()}
 										</a>
 									{/if}
-									<a href={fileDownloadUrl(fileItem.fileSlug)} class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover">
+									<a href={fileDownloadUrl(fileItem.fileSlug)} class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-on hover:bg-primary-hover">
 										<Download size={15} /> {m.download()}
 									</a>
 								</div>

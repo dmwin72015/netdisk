@@ -22,7 +22,7 @@
 		{side}
 		{sideOffset}
 		class={cn(
-			'z-50 rounded-md bg-ink px-3 py-1.5 text-sm text-white',
+			'z-50 rounded-md border border-line bg-surface-sunken px-3 py-1.5 text-sm text-ink',
 			'data-[state=open]:animate-in data-[state=closed]:animate-out',
 			'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
 			'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
@@ -32,6 +32,6 @@
 		{...restProps}
 	>
 		{@render children()}
-		<Tooltip.Arrow class="text-ink" />
+		<Tooltip.Arrow class="text-surface-sunken" />
 	</Tooltip.Content>
 </Tooltip.Portal>

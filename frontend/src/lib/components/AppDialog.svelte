@@ -101,7 +101,7 @@
 						<div
 							{...props}
 							bind:this={contentEl}
-							class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line-soft bg-white p-6 shadow-dialog data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200"
+							class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line-soft bg-surface p-6 shadow-dialog data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200"
 						>
 							<Dialog.Title class="text-sm font-medium leading-5 text-ink-2">
 								{pending?.opts.title ?? ''}
@@ -130,7 +130,7 @@
 								<button
 									type="button"
 									onclick={onConfirm}
-									class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+									class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
 								>
 									{pending?.opts.confirmText ?? m.confirm()}
 								</button>
@@ -156,7 +156,7 @@
 						<div
 							{...props}
 							bind:this={contentEl}
-							class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line-soft bg-white p-6 shadow-dialog data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200"
+							class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line-soft bg-surface p-6 shadow-dialog data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200"
 						>
 							<AlertDialog.Title class="text-sm font-medium leading-5 text-ink-2">
 								{pending?.opts.title ?? ''}
@@ -187,7 +187,7 @@
 								</AlertDialog.Cancel>
 								<AlertDialog.Action
 									onclick={onConfirm}
-									class="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger"
+									class="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-danger"
 								>
 									{pending?.opts.confirmText ?? m.confirm()}
 								</AlertDialog.Action>

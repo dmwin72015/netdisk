@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Lock, LockOpen, Check } from "@lucide/svelte";
   import { fade } from "svelte/transition";
-  import { fmtSize } from "$lib/utils/format";
+  import { fmtSize, fmtTime } from "$lib/utils/format";
   import type { NormalizedFile } from "$lib/types/file";
   import { fileManager } from "$lib/services/fileManager.svelte";
   import { lockManager } from "$lib/services/lockManager.svelte";
@@ -62,7 +62,7 @@
 >
   {#each files as f, i (f.id)}
     <div
-      class="group relative flex flex-col items-center rounded-xl border border-line-soft bg-white p-4 transition-all hover:border-line hover:{f.isDir ||
+      class="group relative flex flex-col items-center rounded-xl border border-line-soft bg-surface p-4 transition-all hover:border-line hover:{f.isDir ||
       canPreview(f)
         ? 'cursor-pointer'
         : ''}"
@@ -92,8 +92,8 @@
           aria-checked={isSelected}
           tabindex="-1"
           class="absolute left-1.5 top-1.5 z-10 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border transition-colors {isSelected
-            ? 'border-primary bg-primary text-white opacity-100'
-            : 'border-line bg-white/90 opacity-0 backdrop-blur group-hover:opacity-100 hover:border-primary'}"
+            ? 'border-primary bg-primary text-primary-on opacity-100'
+            : 'border-line bg-surface/90 opacity-0 backdrop-blur group-hover:opacity-100 hover:border-primary'}"
           onclick={(e) => {
             e.stopPropagation();
             fileManager.toggleSelect(f.id);
@@ -126,13 +126,13 @@
           {onCopyLink}
           {onCopyHash}
           {onShare}
-          triggerClass="rounded-lg bg-white/90 p-1 text-ink-4 backdrop-blur transition-colors hover:bg-white hover:text-ink-3"
+          triggerClass="rounded-lg bg-surface/90 p-1 text-ink-4 backdrop-blur transition-colors hover:bg-surface hover:text-ink-3"
         />
       </div>
       {#if showThumbnail(f)}
         <LazyThumbnail
           src={authedThumbnailUrl(f)}
-          containerClass="flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-line-soft bg-surface-muted"
+          containerClass="flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-line-soft bg-surface-sunken"
           imgClass="h-full w-full object-cover"
           onError={() => markThumbnailFailed(f.id)}
         />
@@ -175,7 +175,11 @@
         {/if}
       </div>
       <p class="mt-0.5 text-xs text-ink-4">
-        {f.isDir ? "" : fmtSize(f.size)}
+        {#if f.isDir}
+          {fmtTime(f.updatedAt)}
+        {:else}
+          {fmtSize(f.size)} · {fmtTime(f.updatedAt)}
+        {/if}
       </p>
     </div>
   {/each}

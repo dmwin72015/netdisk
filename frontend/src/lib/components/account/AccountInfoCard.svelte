@@ -25,11 +25,11 @@
 	}
 </script>
 
-<div class="rounded-xl border border-line-soft bg-white p-6">
+<div class="rounded-xl border border-line-soft bg-surface p-6">
 	<h2 class="mb-4 text-sm font-medium text-ink-3">{m.account_info()}</h2>
 	<div class="grid gap-4 sm:grid-cols-2">
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken">
 				<User size={16} class="text-ink-4" />
 			</div>
 			<div>
@@ -38,7 +38,7 @@
 			</div>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken">
 				<Shield size={16} class="text-ink-4" />
 			</div>
 			<div>
@@ -47,7 +47,7 @@
 			</div>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken">
 				<Crown size={16} class="text-ink-4" />
 			</div>
 			<div>
@@ -59,7 +59,7 @@
 			</div>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted">
+			<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken">
 				<Calendar size={16} class="text-ink-4" />
 			</div>
 			<div>

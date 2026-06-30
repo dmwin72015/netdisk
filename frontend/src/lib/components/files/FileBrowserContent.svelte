@@ -71,7 +71,7 @@
     <button
       type="button"
       onclick={navigateHome}
-      class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+      class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
     >
       {m.back_to_root()}
     </button>
@@ -129,7 +129,7 @@
   >
     <Popover
       bind:open={showFabMenu}
-      triggerClass="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-pop transition-colors hover:bg-primary-hover active:bg-primary-active"
+      triggerClass="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-on shadow-pop transition-colors hover:bg-primary-hover active:bg-primary-active"
       contentClass="min-w-40 p-1.5"
       sideOffset={8}
       align="end"

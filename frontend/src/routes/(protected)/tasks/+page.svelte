@@ -202,7 +202,7 @@
 			<DatePicker bind:value={endDate} placeholderText={m.end_date()} />
 			<Dropdown
 				bind:open={statusFilterOpen}
-				triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-muted data-[state=open]:border-primary data-[state=open]:bg-white"
+				triggerClass="flex h-8 w-[6.75rem] items-center justify-between gap-2 rounded-lg border border-line bg-surface px-2.5 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-sunken data-[state=open]:border-primary data-[state=open]:bg-surface"
 				contentClass="min-w-36"
 				sideOffset={6}
 				align="end"
@@ -225,12 +225,12 @@
 				{/each}
 			</Dropdown>
 			<button type="button" onclick={applyDateFilter}
-				class="flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover">
+				class="flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover">
 				{m.filter()}
 			</button>
 			{#if startDate || endDate || statusFilter}
 				<button type="button" onclick={clearDateFilter}
-					class="flex h-8 items-center rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-muted">
+					class="flex h-8 items-center rounded-lg border border-line px-3 text-sm text-ink-3 transition-colors hover:bg-surface-sunken">
 					{m.reset()}
 				</button>
 			{/if}
@@ -249,19 +249,19 @@
 			{#if selected.size > 0}
 				<div class="flex items-center gap-3 rounded-lg border border-line-soft bg-surface-muted px-4 py-2">
 					<span class="text-sm text-ink-3">{m.selected_count({ count: String(selected.size) })}</span>
-					<button type="button" onclick={handleDeleteSelected} class="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-danger-hover">
+					<button type="button" onclick={handleDeleteSelected} class="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-primary-on transition-colors hover:bg-danger-hover">
 						<Trash2 size={12} />
 						{m.delete_btn()}
 					</button>
 				</div>
 			{/if}
 
-			<div class="overflow-hidden rounded-xl border border-line-soft bg-white ">
+			<div class="overflow-hidden rounded-xl border border-line-soft bg-surface ">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-line-soft text-left text-xs font-medium text-ink-4">
 							<th class="w-10 px-4 py-2.5">
-								<button type="button" onclick={toggleSelectAll} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {allSelected ? 'border-primary bg-primary text-white' : 'border-line'}">
+								<button type="button" onclick={toggleSelectAll} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {allSelected ? 'border-primary bg-primary text-primary-on' : 'border-line'}">
 									{#if allSelected}
 										<Check size={12} />
 									{/if}
@@ -280,9 +280,9 @@
 						{#each tasks as task (task.slug)}
 							{@const StatusIcon = statusIcon(task.status)}
 							{@const progress = taskProgress(task)}
-							<tr class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-muted/80">
+							<tr class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-sunken/80">
 								<td class="px-4 py-2.5">
-									<button type="button" onclick={() => toggleSelect(task.slug)} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {selected.has(task.slug) ? 'border-primary bg-primary text-white' : 'border-line'}">
+									<button type="button" onclick={() => toggleSelect(task.slug)} class="flex h-5 w-5 shrink-0 items-center justify-center rounded border {selected.has(task.slug) ? 'border-primary bg-primary text-primary-on' : 'border-line'}">
 										{#if selected.has(task.slug)}
 											<Check size={12} />
 										{/if}
@@ -358,7 +358,7 @@
 												type="button"
 												onclick={() => handleRetry(task)}
 												disabled={retrying[task.slug]}
-												class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+												class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-50"
 											>
 												{#if retrying[task.slug]}
 													<LoaderCircle size={12} class="animate-spin" />
@@ -392,7 +392,7 @@
 						<button
 							type="button"
 							onclick={() => goToPage(i + 1)}
-							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors {i + 1 === currentPage ? 'bg-primary font-medium text-white' : 'text-ink-3 hover:bg-surface-sunken'}"
+							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors {i + 1 === currentPage ? 'bg-primary font-medium text-primary-on' : 'text-ink-3 hover:bg-surface-sunken'}"
 						>
 							{i + 1}
 						</button>

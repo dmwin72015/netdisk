@@ -116,7 +116,7 @@
       {:else}
         <div class="space-y-2">
           {#each devices as device}
-            <div class="flex items-center gap-3 rounded-lg border border-line-soft bg-white px-4 py-3">
+            <div class="flex items-center gap-3 rounded-lg border border-line-soft bg-surface px-4 py-3">
               <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-ink-3">
                 {#if isMobile(device.userAgent)}
                   <Smartphone size={18} />

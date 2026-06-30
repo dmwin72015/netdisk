@@ -170,7 +170,7 @@
 
     <!-- Calendar popover: horizontal months -->
     <DateRangePicker.Content
-      class="z-50 rounded-xl border border-line-soft bg-white p-3 shadow-pop
+      class="z-50 rounded-xl border border-line-soft bg-surface p-3 shadow-pop
         data-[state=open]:animate-in data-[state=closed]:animate-out
         data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
         data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
@@ -226,9 +226,9 @@
                             <DateRangePicker.Day
                               class={cn(
                                 "inline-flex h-8 w-8 items-center justify-center text-sm transition-colors",
-                                (isStart(date) || isEnd(date)) && "bg-[#165DFF] text-white rounded-full",
+                                (isStart(date) || isEnd(date)) && "bg-primary text-primary-on rounded-full",
                                 !isStart(date) && !isEnd(date) && "rounded-lg",
-                                isInRange(date) && !isStart(date) && !isEnd(date) && "bg-[#E6F4FF]",
+                                isInRange(date) && !isStart(date) && !isEnd(date) && "bg-primary-soft",
                                 !isStart(date) && !isEnd(date) && !isInRange(date) && "hover:bg-surface-sunken",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                                 "data-[outside-month]:text-ink-4",

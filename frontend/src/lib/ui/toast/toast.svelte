@@ -1,13 +1,18 @@
 <script lang="ts">
-	import { Toaster } from 'svelte-sonner';
+  import { Toaster } from 'svelte-sonner';
 
-	let { closeButton = true, ...rest }: { closeButton?: boolean; [key: string]: any } = $props();
+  let {
+    closeButton = true,
+    theme = 'light',
+    ...rest
+  }: { closeButton?: boolean; theme?: 'light' | 'dark' | 'system'; [key: string]: any } = $props();
 </script>
 
 <Toaster
-	position="top-right"
-	richColors
-	{closeButton}
-	toastOptions={{ duration: 3000 }}
-	{...rest}
+  position="top-right"
+  richColors
+  {closeButton}
+  {theme}
+  toastOptions={{ duration: 3000 }}
+  {...rest}
 />

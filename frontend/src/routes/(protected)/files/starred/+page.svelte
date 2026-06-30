@@ -92,7 +92,7 @@
 					type="button"
 					onclick={handleUnstarAll}
 					disabled={unstarringAll}
-					class="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-muted"
+					class="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm text-ink-2 transition-colors hover:border-line hover:bg-surface-sunken"
 				>
 					{#if unstarringAll}
 						<LoaderCircle size={14} class="animate-spin" />
@@ -112,7 +112,7 @@
 				<p class="text-sm text-ink-4">{m.starred_empty()}</p>
 			</div>
 		{:else}
-			<div class="overflow-hidden rounded-xl border border-line-soft bg-white ">
+			<div class="overflow-hidden rounded-xl border border-line-soft bg-surface ">
 				<table class="w-full table-fixed text-sm">
 					<thead>
 						<tr class="border-b border-line-soft text-left text-xs text-ink-4">
@@ -125,7 +125,7 @@
 					</thead>
 					<tbody>
 						{#each files as f (f.slug)}
-							<tr class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-muted/80">
+							<tr class="border-b border-line-soft transition-colors last:border-0 hover:bg-surface-sunken/80">
 								<td class="px-4 py-2.5">
 									<div class="flex items-center gap-2.5">
 										<span class="shrink-0"><MimeIcon mimeType={f.mimeType} name={f.fileName} isDir={f.isDir} size={18} /></span>

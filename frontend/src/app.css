@@ -1,12 +1,10 @@
 /*
- * NetDisk · Design System (Quiet Workshop)
- * ----------------------------------------
- * Source of truth: /DESIGN.md
- *
+ * NetDisk · Design System (Clean Modern)
+ * --------------------------------------
  * Token strategy:
- *  - Cool-gray neutrals on hue ~252° (NOT Tailwind default gray)
- *  - One accent (Workshop Blue) appearing on ≤10% of any screen
- *  - Flat-at-rest surfaces; shadows only on floating layers
+ *  - Runtime light/dark color variables behind stable Tailwind tokens
+ *  - One friendly indigo accent for primary interactions
+ *  - Clean slate neutrals with soft surfaces and readable contrast
  *  - 150–200ms ease-out-quart for all state transitions
  */
 
@@ -23,41 +21,41 @@
  * --------------------------------------------------------*/
 @theme {
 	/* Color: brand */
-	--color-primary: #2563eb;
-	--color-primary-hover: #1d4ed8;
-	--color-primary-active: #1e40af;
-	--color-primary-soft: #eff6ff;
-	--color-primary-softer: #dbeafe;
-	--color-primary-on: #ffffff;
+	--color-primary: var(--theme-primary);
+	--color-primary-hover: var(--theme-primary-hover);
+	--color-primary-active: var(--theme-primary-active);
+	--color-primary-soft: var(--theme-primary-soft);
+	--color-primary-softer: var(--theme-primary-softer);
+	--color-primary-on: var(--theme-primary-on);
 
-	/* Color: cool-ink ramp (hue ~252) */
-	--color-ink: #0f172a;
-	--color-ink-2: #334155;
-	--color-ink-3: #64748b;
-	--color-ink-4: #94a3b8;
-	--color-ink-5: #cbd5e1;
+	/* Color: ink ramp */
+	--color-ink: var(--theme-ink);
+	--color-ink-2: var(--theme-ink-2);
+	--color-ink-3: var(--theme-ink-3);
+	--color-ink-4: var(--theme-ink-4);
+	--color-ink-5: var(--theme-ink-5);
 
 	/* Color: surfaces & lines */
-	--color-surface: #f8fafc;
-	--color-surface-muted: #ffffff;
-	--color-surface-sunken: #f1f5f9;
-	--color-line: #e2e8f0;
-	--color-line-soft: #f1f5f9;
-	--color-overlay: rgba(15, 23, 42, 0.5);
+	--color-surface: var(--theme-surface);
+	--color-surface-muted: var(--theme-surface-muted);
+	--color-surface-sunken: var(--theme-surface-sunken);
+	--color-line: var(--theme-line);
+	--color-line-soft: var(--theme-line-soft);
+	--color-overlay: var(--theme-overlay);
 
 	/* Color: status */
-	--color-success: #16a34a;
-	--color-success-soft: #f0fdf4;
-	--color-warning: #d97706;
-	--color-warning-soft: #fffbeb;
-	--color-danger: #dc2626;
-	--color-danger-hover: #b91c1c;
-	--color-danger-active: #991b1b;
-	--color-danger-soft: #fef2f2;
-	--color-info: #0284c7;
-	--color-info-soft: #f0f9ff;
-	--color-star: #eab308;
-	--color-admin: #d97706;
+	--color-success: var(--theme-success);
+	--color-success-soft: var(--theme-success-soft);
+	--color-warning: var(--theme-warning);
+	--color-warning-soft: var(--theme-warning-soft);
+	--color-danger: var(--theme-danger);
+	--color-danger-hover: var(--theme-danger-hover);
+	--color-danger-active: var(--theme-danger-active);
+	--color-danger-soft: var(--theme-danger-soft);
+	--color-info: var(--theme-info);
+	--color-info-soft: var(--theme-info-soft);
+	--color-star: var(--theme-star);
+	--color-admin: var(--theme-admin);
 
 	/* Radii */
 	--radius-xs: 4px;
@@ -81,15 +79,13 @@
 	--duration-base: 200ms;
 	--duration-overlay: 240ms;
 
-	/* Shadows (floating layers only — see Elevation rules) */
-	--shadow-pop:
-		0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.08);
-	--shadow-dialog:
-		0 10px 38px rgba(15, 23, 42, 0.18), 0 10px 20px rgba(15, 23, 42, 0.10);
-	--shadow-toast: 0 8px 24px rgba(15, 23, 42, 0.12);
+	/* Shadows */
+	--shadow-pop: var(--theme-shadow-pop);
+	--shadow-dialog: var(--theme-shadow-dialog);
+	--shadow-toast: var(--theme-shadow-toast);
 
 	/* Ring (focus-visible default) */
-	--ring-focus: 0 0 0 3px rgba(37, 99, 235, 0.22);
+	--ring-focus: var(--theme-ring-focus);
 
 	/* Tighten heading letter-spacing for Inter at display sizes */
 	--tracking-display: -0.015em;
@@ -97,12 +93,85 @@
 }
 
 /* ----------------------------------------------------------
- * Base layer — body, focus ring, scrollbar
+ * Base layer — theme variables, body, focus ring, scrollbar
  * --------------------------------------------------------*/
 :root {
 	color-scheme: light;
-	/* Compatibility aliases for any leftover --color-primary-* usage */
+	--theme-primary: #6366f1;
+	--theme-primary-hover: #4f46e5;
+	--theme-primary-active: #4338ca;
+	--theme-primary-soft: #eef2ff;
+	--theme-primary-softer: #e0e7ff;
+	--theme-primary-on: #ffffff;
+	--theme-ink: #18181b;
+	--theme-ink-2: #3f3f46;
+	--theme-ink-3: #71717a;
+	--theme-ink-4: #a1a1aa;
+	--theme-ink-5: #d4d4d8;
+	--theme-surface-muted: #ffffff;
+	--theme-surface: #ffffff;
+	--theme-surface-sunken: #f4f4f5;
+	--theme-line: #e4e4e7;
+	--theme-line-soft: #f4f4f5;
+	--theme-overlay: rgba(24, 24, 27, 0.48);
+	--theme-success: #16a34a;
+	--theme-success-soft: #f0fdf4;
+	--theme-warning: #d97706;
+	--theme-warning-soft: #fffbeb;
+	--theme-danger: #ef4444;
+	--theme-danger-hover: #dc2626;
+	--theme-danger-active: #b91c1c;
+	--theme-danger-soft: #fef2f2;
+	--theme-info: #0ea5e9;
+	--theme-info-soft: #f0f9ff;
+	--theme-star: #eab308;
+	--theme-admin: #8b5cf6;
+	--theme-shadow-pop:
+		0 1px 2px rgba(24, 24, 27, 0.06), 0 8px 24px rgba(24, 24, 27, 0.08);
+	--theme-shadow-dialog:
+		0 18px 54px rgba(24, 24, 27, 0.18), 0 8px 22px rgba(24, 24, 27, 0.10);
+	--theme-shadow-toast: 0 10px 28px rgba(24, 24, 27, 0.12);
+	--theme-ring-focus: 0 0 0 3px rgba(99, 102, 241, 0.24);
 	--color-primary-light: var(--color-primary-soft);
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--theme-primary: #818cf8;
+	--theme-primary-hover: #a5b4fc;
+	--theme-primary-active: #6366f1;
+	--theme-primary-soft: rgba(129, 140, 248, 0.16);
+	--theme-primary-softer: rgba(129, 140, 248, 0.10);
+	--theme-primary-on: #0b1020;
+	--theme-ink: #e7edf6;
+	--theme-ink-2: #cbd5e1;
+	--theme-ink-3: #94a3b8;
+	--theme-ink-4: #64748b;
+	--theme-ink-5: #475569;
+	--theme-surface-muted: #0b1120;
+	--theme-surface: #141c2b;
+	--theme-surface-sunken: #1d2738;
+	--theme-line: #283449;
+	--theme-line-soft: rgba(148, 163, 184, 0.16);
+	--theme-overlay: rgba(2, 6, 23, 0.72);
+	--theme-success: #34d399;
+	--theme-success-soft: rgba(52, 211, 153, 0.14);
+	--theme-warning: #fbbf24;
+	--theme-warning-soft: rgba(251, 191, 36, 0.15);
+	--theme-danger: #f87171;
+	--theme-danger-hover: #fca5a5;
+	--theme-danger-active: #ef4444;
+	--theme-danger-soft: rgba(248, 113, 113, 0.15);
+	--theme-info: #38bdf8;
+	--theme-info-soft: rgba(56, 189, 248, 0.14);
+	--theme-star: #facc15;
+	--theme-admin: #a78bfa;
+	--theme-shadow-pop:
+		0 1px 2px rgba(0, 0, 0, 0.42), 0 8px 24px rgba(0, 0, 0, 0.40);
+	--theme-shadow-dialog:
+		0 20px 60px rgba(0, 0, 0, 0.58), 0 10px 26px rgba(0, 0, 0, 0.42);
+	--theme-shadow-toast: 0 12px 32px rgba(0, 0, 0, 0.46);
+	--theme-ring-focus: 0 0 0 3px rgba(129, 140, 248, 0.32);
 }
 
 html,
@@ -140,11 +209,11 @@ output {
 
 /* Selection color tuned to brand */
 ::selection {
-	background: var(--color-primary-softer);
+	background: var(--color-primary-soft);
 	color: var(--color-ink);
 }
 
-/* Scrollbar — kept thin like before, retuned to cool-gray ramp */
+/* Scrollbar — kept thin and retuned to current ink ramp */
 ::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;

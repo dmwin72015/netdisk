@@ -51,7 +51,7 @@
 			<button
 				type="button"
 				onclick={() => (showCreate = true)}
-				class="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+				class="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover"
 			>
 				<Plus size={15} />
 				{m.albums_create()}

@@ -117,7 +117,7 @@
 	<div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
 		<div class="space-y-5">
 			{#if files.length > 0}
-				<div class="rounded-xl border border-line-soft bg-surface-muted px-4 py-3">
+				<div class="rounded-xl border border-line-soft bg-surface-sunken px-4 py-3">
 					{#if files.length === 1}
 						<p class="truncate text-sm font-medium text-ink">{files[0].name}</p>
 						<p class="mt-1 text-xs text-ink-3">{fmtSize(totalSize)} · {files[0].mimeType || m.share_unknown_type()}</p>
@@ -147,7 +147,7 @@
 							<button
 								type="button"
 								onclick={() => (expiryOption = value as ExpiryOption)}
-								class="rounded-lg border px-3 py-2 text-sm transition-colors {expiryOption === value ? 'border-primary bg-primary-soft text-primary' : 'border-line bg-white text-ink-3 hover:border-line'}"
+								class="rounded-lg border px-3 py-2 text-sm transition-colors {expiryOption === value ? 'border-primary bg-primary-soft text-primary' : 'border-line bg-surface text-ink-3 hover:border-line'}"
 							>
 								{label}
 							</button>
@@ -177,7 +177,7 @@
 								maxlength="16"
 								class="h-10 min-w-0 flex-1 rounded-lg border border-line px-3 text-sm uppercase outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 							/>
-							<button type="button" onclick={refreshPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-muted">
+							<button type="button" onclick={refreshPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-sunken">
 								<RefreshCw size={14} /> {m.share_refresh_code()}
 							</button>
 						</div>
@@ -186,7 +186,7 @@
 
 				<div class="flex justify-end gap-2 border-t border-line-soft pt-4">
 					<button type="button" onclick={() => (open = false)} class="h-9 rounded-lg px-4 text-sm text-ink-3 hover:bg-surface-sunken">{m.cancel()}</button>
-					<button type="button" onclick={submitShare} disabled={creating} class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60">
+					<button type="button" onclick={submitShare} disabled={creating} class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-on hover:bg-primary-hover disabled:opacity-60">
 						{#if creating}<LoaderCircle size={15} class="animate-spin" />{/if}
 {m.share_create_link()}
 					</button>
@@ -196,8 +196,8 @@
 					<div>
 						<p class="mb-2 text-sm font-medium text-ink-2">{m.share_link_label()}</p>
 						<div class="flex gap-2">
-							<input readonly value={shareLink} class="h-10 min-w-0 flex-1 rounded-lg border border-line bg-surface-muted px-3 text-sm text-ink-2" />
-							<button type="button" onclick={copyLink} class="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover">
+							<input readonly value={shareLink} class="h-10 min-w-0 flex-1 rounded-lg border border-line bg-surface-sunken px-3 text-sm text-ink-2" />
+							<button type="button" onclick={copyLink} class="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-on hover:bg-primary-hover">
 								{#if copied}<Check size={14} />{:else}<Copy size={14} />{/if} {m.share_copy()}
 							</button>
 						</div>
@@ -206,8 +206,8 @@
 						<div>
 							<p class="mb-2 text-sm font-medium text-ink-2">{m.share_password_label()}</p>
 							<div class="flex gap-2">
-								<input readonly value={passwordCode} class="h-10 w-32 rounded-lg border border-line bg-surface-muted px-3 text-sm tracking-widest text-ink-2" />
-								<button type="button" onclick={copyPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-muted">
+								<input readonly value={passwordCode} class="h-10 w-32 rounded-lg border border-line bg-surface-sunken px-3 text-sm tracking-widest text-ink-2" />
+								<button type="button" onclick={copyPasswordCode} class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-3 hover:bg-surface-sunken">
 									<Copy size={14} /> {m.share_copy_password()}
 								</button>
 							</div>
@@ -218,7 +218,7 @@
 			{/if}
 		</div>
 
-		<aside class="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-line bg-surface-muted p-4">
+		<aside class="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-line bg-surface-sunken p-4">
 			{#if qrCodeUrl}
 				<img src={qrCodeUrl} alt={m.share_qr_code()} class="h-44 w-44 rounded-lg bg-white p-2 " />
 			{:else if shareLink}

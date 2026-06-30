@@ -54,7 +54,7 @@
 {#if items.length > 0}
 	<div class="fixed bottom-4 right-4 z-40 w-80 sm:w-96">
 		{#if open}
-			<div class="flex flex-col rounded-xl border border-line bg-white shadow-pop" style="max-height: {MAX_HEIGHT * 100}vh;">
+			<div class="flex flex-col rounded-xl border border-line bg-surface shadow-pop" style="max-height: {MAX_HEIGHT * 100}vh;">
 				<div
 					onpointerdown={startResize}
 					role="separator"
@@ -149,7 +149,7 @@
 				</div>
 			</div>
 		{:else}
-			<button type="button" onclick={() => (open = true)} class="flex w-full items-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5 shadow-pop transition-colors hover:bg-surface-muted">
+			<button type="button" onclick={() => (open = true)} class="flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5 shadow-pop transition-colors hover:bg-surface-sunken">
 				{#if hasActive}
 					<LoaderCircle size={16} class="animate-spin text-primary" />
 				{:else}

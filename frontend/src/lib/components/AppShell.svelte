@@ -238,7 +238,7 @@
           onclick={() => {
             searchOpen = true;
           }}
-          class="border-line bg-surface-sunken text-ink-3 hover:border-ink-5 hover:bg-surface-muted hover:text-ink-2 hidden h-9 max-w-xl flex-1 items-center gap-2 rounded-lg border px-3 text-sm transition-colors duration-150 md:flex"
+          class="border-line bg-surface-sunken text-ink-3 hover:border-ink-5 hover:bg-surface-sunken hover:text-ink-2 hidden h-9 max-w-xl flex-1 items-center gap-2 rounded-lg border px-3 text-sm transition-colors duration-150 md:flex"
         >
           <Search size={15} strokeWidth={1.75} />
           <span class="flex-1 text-left">{m.search_files()}…</span>

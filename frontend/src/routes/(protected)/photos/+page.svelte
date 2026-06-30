@@ -155,7 +155,7 @@
       <span class="text-xs text-ink-4">{m.photos_total({ total })}</span>
       <div class="flex items-center gap-2">
         <Dropdown
-          triggerClass="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 text-sm text-ink-3 transition-colors hover:bg-surface-muted"
+          triggerClass="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-sm text-ink-3 transition-colors hover:bg-surface-sunken"
           contentClass="min-w-[180px]"
         >
           {#snippet trigger()}
@@ -224,7 +224,7 @@
                   ></div>
                   {#if photo.isStarred}
                     <div
-                      class="pointer-events-none absolute right-1 top-1 rounded-full bg-white/80 p-0.5"
+                      class="pointer-events-none absolute right-1 top-1 rounded-full bg-surface/80 p-0.5"
                     >
                       <svg
                         viewBox="0 0 24 24"
@@ -259,7 +259,7 @@
               ></div>
               {#if photo.isStarred}
                 <div
-                  class="pointer-events-none absolute right-1 top-1 rounded-full bg-white/80 p-0.5"
+                  class="pointer-events-none absolute right-1 top-1 rounded-full bg-surface/80 p-0.5"
                 >
                   <svg
                     viewBox="0 0 24 24"

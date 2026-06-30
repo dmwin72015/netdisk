@@ -68,7 +68,7 @@
 >
 	<div class={cn('relative', className)}>
 		<DatePicker.Input
-			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-muted px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary"
+			class="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface-sunken px-2.5 text-sm text-ink-2 outline-none transition-colors hover:border-line focus-within:border-primary"
 			onclick={openCalendar}
 		>
 			{#snippet children({ segments })}
@@ -95,7 +95,7 @@
 
 		<DatePicker.Portal>
 			<DatePicker.Content
-				class="z-50 rounded-xl border border-line-soft bg-white p-3 shadow-pop
+				class="z-50 rounded-xl border border-line-soft bg-surface p-3 shadow-pop
 					data-[state=open]:animate-in data-[state=closed]:animate-out
 					data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0
 					data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95
@@ -138,7 +138,7 @@
 													<DatePicker.Day
 														class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
 															hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-															data-[selected]:bg-primary data-[selected]:text-white data-[selected]:hover:bg-primary-hover
+															data-[selected]:bg-primary data-[selected]:text-primary-on data-[selected]:hover:bg-primary-hover
 															data-[outside-month]:text-ink-4 data-[today]:font-medium data-[today]:text-primary
 															data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
 													>

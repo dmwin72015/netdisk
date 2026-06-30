@@ -85,13 +85,13 @@
 	}
 </script>
 
-<div class="rounded-xl border border-line-soft bg-white p-6 ">
+<div class="rounded-xl border border-line-soft bg-surface p-6 ">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-sm font-medium text-ink-3">{m.profile_info()}</h2>
 		{#if !editing}
 			<button
 				onclick={startEdit}
-				class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-ink-3 transition-colors hover:bg-surface-muted hover:text-ink"
+				class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-ink-3 transition-colors hover:bg-surface-sunken hover:text-ink"
 			>
 				<Pencil size={14} />
 				{m.edit()}
@@ -116,7 +116,7 @@
 						</div>
 					{/if}
 					<label
-						class="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-ink text-white hover:bg-ink-2 transition-colors"
+						class="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-ink text-primary-on hover:bg-ink-2 transition-colors"
 					>
 						<Camera size={14} />
 						<input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange={onAvatarSelect} />
@@ -153,14 +153,14 @@
 					<button
 						onclick={handleSave}
 						disabled={saving}
-						class="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-ink-2 disabled:opacity-50 transition-colors"
+						class="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-primary-on hover:bg-ink-2 disabled:opacity-50 transition-colors"
 					>
 						<Save size={14} />
 						{saving ? m.saving() : m.save()}
 					</button>
 					<button
 						onclick={cancelEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-muted"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-sunken"
 					>
 						<X size={14} />
 						{m.cancel()}

@@ -340,7 +340,7 @@
             aria-checked={allSelected}
             tabindex="-1"
             class="flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors {allSelected
-              ? 'border-primary bg-primary text-white'
+              ? 'border-primary bg-primary text-primary-on'
               : 'border-line hover:border-primary'}"
             onclick={toggleSelectAll}
             onkeydown={(e) => {
@@ -413,7 +413,7 @@
                 role="checkbox"
                 aria-checked={isSelected}
                 tabindex="-1"
-                class="absolute left-2 top-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-primary bg-primary text-white opacity-100"
+                class="absolute left-2 top-2 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-primary bg-primary text-primary-on opacity-100"
                 onclick={(e) => {
                   e.stopPropagation();
                   toggleSelect(item.mediaSlug);
@@ -543,7 +543,7 @@
         class="fixed bottom-6 left-1/2 z-50 max-w-[calc(100vw-1rem)] -translate-x-1/2"
       >
         <div
-          class="flex items-center gap-2 overflow-x-auto rounded-full border border-line-soft bg-white/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
+          class="flex items-center gap-2 overflow-x-auto rounded-full border border-line-soft bg-surface/95 px-3 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur"
           transition:fly={{ y: 16, duration: 180, opacity: 0 }}
         >
           <span class="shrink-0 px-3 text-sm font-medium text-ink-2"
@@ -582,7 +582,7 @@
     >
       <Popover
         bind:open={showFabMenu}
-        triggerClass="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-pop transition-colors hover:bg-primary-hover active:bg-primary-active"
+        triggerClass="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-on shadow-pop transition-colors hover:bg-primary-hover active:bg-primary-active"
         contentClass="min-w-40 p-1.5"
         sideOffset={8}
         align="end"

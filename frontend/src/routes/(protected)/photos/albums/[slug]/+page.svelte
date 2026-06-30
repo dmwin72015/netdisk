@@ -105,7 +105,7 @@
 						<button
 							type="button"
 							onclick={() => handleRemove(photo.slug)}
-							class="absolute right-1.5 top-1.5 rounded-full bg-white/80 p-1.5 text-ink-4 opacity-0 shadow transition-opacity hover:text-danger group-hover:opacity-100"
+							class="absolute right-1.5 top-1.5 rounded-full bg-surface/80 p-1.5 text-ink-4 opacity-0 shadow transition-opacity hover:text-danger group-hover:opacity-100"
 							title={m.albums_remove_photo()}
 						>
 							<Trash2 size={12} />

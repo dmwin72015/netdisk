@@ -12,6 +12,7 @@ import (
 const (
 	DefaultDirectoryUnlockTTLHours = 2
 	PermanentDirectoryUnlockTTL    = -1
+	DefaultThemePreference         = "system"
 )
 
 type UserSettings struct {
@@ -19,6 +20,7 @@ type UserSettings struct {
 	UploadConcurrency       int    `json:"uploadConcurrency"`
 	DuplicateStrategy       string `json:"duplicateStrategy"`
 	DirectoryUnlockTTLHours int    `json:"directoryUnlockTtlHours"`
+	Theme                   string `json:"theme,omitempty"`
 }
 
 func DefaultUserSettings() UserSettings {
@@ -27,6 +29,7 @@ func DefaultUserSettings() UserSettings {
 		UploadConcurrency:       3,
 		DuplicateStrategy:       "prompt",
 		DirectoryUnlockTTLHours: DefaultDirectoryUnlockTTLHours,
+		Theme:                   DefaultThemePreference,
 	}
 }
 
@@ -44,6 +47,11 @@ func NormalizeUserSettings(settings UserSettings) UserSettings {
 	case 1, 2, 6, 24, PermanentDirectoryUnlockTTL:
 	default:
 		settings.DirectoryUnlockTTLHours = defaults.DirectoryUnlockTTLHours
+	}
+	switch settings.Theme {
+	case "system", "light", "dark":
+	default:
+		settings.Theme = defaults.Theme
 	}
 	return settings
 }

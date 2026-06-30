@@ -123,7 +123,7 @@
       <!-- Account binding -->
       <section>
         <h2 class="mb-4 text-sm font-semibold text-ink">{m.account_binding()}</h2>
-        <div class="space-y-0 divide-y divide-line-soft rounded-lg border border-line-soft bg-white">
+        <div class="space-y-0 divide-y divide-line-soft rounded-lg border border-line-soft bg-surface">
           <!-- Email -->
           <div class="flex items-center gap-3 px-4 py-3">
             {#if profile.email}
@@ -161,7 +161,7 @@
       <section>
         <h2 class="mb-1 text-sm font-semibold text-ink">{m.account_third_party()}</h2>
         <p class="mb-4 text-xs text-ink-4">{m.account_third_party_desc()}</p>
-        <div class="space-y-0 divide-y divide-line-soft rounded-lg border border-line-soft bg-white">
+        <div class="space-y-0 divide-y divide-line-soft rounded-lg border border-line-soft bg-surface">
           {#each ["github", "2libra"] as provider}
             {@const bound = hasOAuth(provider)}
             {@const info = getOAuth(provider)}
@@ -203,12 +203,12 @@
       <!-- Delete account -->
       <section>
         <h2 class="mb-4 text-sm font-semibold text-ink">{m.account_delete()}</h2>
-        <div class="rounded-lg border border-line-soft bg-white px-4 py-4">
+        <div class="rounded-lg border border-line-soft bg-surface px-4 py-4">
           <p class="text-sm text-ink-3">{m.account_delete_desc()}</p>
           <button
             type="button"
             onclick={handleDelete}
-            class="mt-3 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger-hover"
+            class="mt-3 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-danger-hover"
           >
             {m.account_delete()}
           </button>

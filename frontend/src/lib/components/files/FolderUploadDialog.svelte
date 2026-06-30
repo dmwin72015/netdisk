@@ -142,7 +142,7 @@
         <span
           class="flex h-4 w-4 items-center justify-center rounded border {selected.size ===
           files.length
-            ? 'border-primary bg-primary text-white'
+            ? 'border-primary bg-primary text-primary-on'
             : 'border-line'}"
         >
           {#if selected.size === files.length}
@@ -160,13 +160,13 @@
         <button
           type="button"
           onclick={() => toggle(i)}
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-muted"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface-sunken"
         >
           <span
             class="flex h-4 w-4 shrink-0 items-center justify-center rounded border {selected.has(
               i,
             )
-              ? 'border-primary bg-primary text-white'
+              ? 'border-primary bg-primary text-primary-on'
               : 'border-line'}"
           >
             {#if selected.has(i)}
@@ -197,7 +197,7 @@
       <button
         type="button"
         onclick={onCancel}
-        class="rounded-lg border border-line bg-white px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-muted"
+        class="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken"
       >
         {m.cancel()}
       </button>
@@ -205,7 +205,7 @@
         type="button"
         onclick={handleConfirm}
         disabled={selectedCount === 0}
-        class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+        class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {m.upload_files()} ({selectedCount})
       </button>
