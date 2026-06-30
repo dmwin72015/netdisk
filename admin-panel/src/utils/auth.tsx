@@ -20,7 +20,7 @@ export function useAuthGuard() {
         return;
       }
       const user = JSON.parse(raw) as StoredUser;
-      if (user.role !== 'admin') {
+      if (!user.role || user.role !== 'admin') {
         message.error('Admin only');
         navigate('/login');
         return;

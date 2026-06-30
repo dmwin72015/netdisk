@@ -48,7 +48,7 @@ export default function UserDetail() {
   if (!user) {
     return (
       <div>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/users')} style={{ marginBottom: 16 }}>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/users')} style={{ marginBottom: 16 }}>
           Back
         </Button>
         <div>User not found.</div>
@@ -60,7 +60,7 @@ export default function UserDetail() {
 
   return (
     <div>
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/users')} style={{ marginBottom: 16 }}>
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/users')} style={{ marginBottom: 16 }}>
         Back to Users
       </Button>
       <h2 style={{ marginBottom: 24 }}>User: {user.username}</h2>

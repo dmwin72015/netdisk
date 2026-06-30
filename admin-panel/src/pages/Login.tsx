@@ -35,8 +35,8 @@ export default function LoginPage() {
       localStorage.setItem('nd.access', data.data.tokens.accessToken);
       localStorage.setItem('nd.user', JSON.stringify(data.data.user));
 
-      if (data.user.role === 'admin') {
-        navigate('/');
+      if (data.data.user.role === 'admin') {
+        navigate('/admin');
       } else {
         message.error('Admin access required');
       }

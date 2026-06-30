@@ -41,7 +41,7 @@ export default function AdminLayout() {
   };
 
   const menuItems: MenuProps['items'] = [
-    { key: '/', icon: <HomeOutlined />, label: 'Home' },
+    { key: '/admin', icon: <HomeOutlined />, label: 'Home' },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -51,11 +51,11 @@ export default function AdminLayout() {
   ];
 
   const sideMenuItems: MenuProps['items'] = [
-    { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
-    { key: '/users', icon: <UserOutlined />, label: 'Users' },
-    { key: '/files', icon: <FileOutlined />, label: 'Files' },
-    { key: '/storage', icon: <DatabaseOutlined />, label: 'Storage' },
-    { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
+    { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard' },
+    { key: '/admin/users', icon: <UserOutlined />, label: 'Users' },
+    { key: '/admin/files', icon: <FileOutlined />, label: 'Files' },
+    { key: '/admin/storage', icon: <DatabaseOutlined />, label: 'Storage' },
+    { key: '/admin/settings', icon: <SettingOutlined />, label: 'Settings' },
   ];
 
   const handleMenuClick = (info: { key: string }) => {

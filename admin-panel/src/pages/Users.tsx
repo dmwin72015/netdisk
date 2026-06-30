@@ -24,7 +24,7 @@ import {
 } from '../api/admin';
 import type { ColumnsType } from 'antd/es/table';
 
-const ROLES = ['admin', 'user', 'moderator'];
+const ROLES = ['admin', 'user'];
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';

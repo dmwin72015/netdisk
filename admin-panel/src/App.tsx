@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
@@ -25,7 +25,7 @@ function ProtectedRoute() {
       </div>
     );
   }
-  return authorized ? <AdminLayout /> : null;
+  return authorized ? <Outlet /> : null;
 }
 
 function App() {
@@ -43,12 +43,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin" element={<ProtectedRoute />}>
-            <Route index element={<Navigate to="/" replace />} />
-            <Route path="" element={<Navigate to="/" replace />} />
-            <Route path="dashboard" element={<Navigate to="/" replace />} />
-            <Route path="" element={<AdminLayout />}>
-              <Route path="" element={<Navigate to="/" replace />} />
-              <Route path="" element={<Dashboard />} />
+            <Route element={<AdminLayout />}>
+              <Route index element={<Dashboard />} />
               <Route path="users" element={<Users />} />
               <Route path="users/:id" element={<UserDetail />} />
               <Route path="files" element={<Files />} />
