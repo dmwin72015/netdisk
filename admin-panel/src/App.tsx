@@ -13,6 +13,7 @@ import Files from './pages/Files';
 import Storage from './pages/Storage';
 import Settings from './pages/Settings';
 import ActivityLogs from './pages/ActivityLogs';
+import Cleanup from './pages/Cleanup';
 import { useAuthGuard } from './utils/auth';
 
 dayjs.locale('zh-cn');
@@ -52,6 +53,7 @@ function App() {
               <Route path="storage" element={<Storage />} />
               <Route path="settings" element={<Settings />} />
               <Route path="logs" element={<ActivityLogs />} />
+              <Route path="cleanup" element={<Cleanup />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
