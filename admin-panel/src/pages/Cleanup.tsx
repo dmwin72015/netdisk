@@ -10,14 +10,14 @@ import {
   Row,
   Spin,
   Statistic,
-  Table,
   Tabs,
   Tag,
 } from 'antd';
+import { ProTable } from '@ant-design/pro-components';
+import type { ProColumns } from '@ant-design/pro-components';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { ColumnsType } from 'antd/es/table';
 import {
   useCleanupQuery,
   useDeleteUserFile,
@@ -112,13 +112,14 @@ export default function Cleanup() {
     }
   };
 
-  const userFileColumns: ColumnsType<CleanupQueryUserFile> = [
-    { title: t('cleanup.id'), dataIndex: 'id', key: 'id' },
-    { title: t('cleanup.slug'), dataIndex: 'slug', key: 'slug', ellipsis: true },
-    { title: t('cleanup.filename'), dataIndex: 'fileName', key: 'fileName' },
+  const userFileColumns: ProColumns<CleanupQueryUserFile>[] = [
+    { title: t('cleanup.id'), dataIndex: 'id', hideInSearch: true },
+    { title: t('cleanup.slug'), dataIndex: 'slug', ellipsis: true, hideInSearch: true },
+    { title: t('cleanup.filename'), dataIndex: 'fileName', hideInSearch: true },
     {
       title: t('cleanup.user'),
       key: 'user',
+      hideInSearch: true,
       render: (_, record) => (
         <Link to={`/admin/users/${record.userId}`}>{record.username}</Link>
       ),
@@ -126,18 +127,19 @@ export default function Cleanup() {
     {
       title: t('cleanup.size'),
       dataIndex: 'fileSize',
-      key: 'fileSize',
+      hideInSearch: true,
       render: (size: number) => formatBytes(size),
     },
     {
       title: t('cleanup.created'),
       dataIndex: 'createdAt',
-      key: 'createdAt',
+      hideInSearch: true,
       render: (v: number) => formatDate(v),
     },
     {
       title: t('cleanup.actions'),
       key: 'actions',
+      hideInSearch: true,
       render: (_, record) => (
         <Popconfirm
           title={t('cleanup.deleteConfirm')}
@@ -257,11 +259,13 @@ export default function Cleanup() {
           )}
 
           {result.userFiles.length > 0 && (
-            <Table
+            <ProTable
               rowKey="id"
               columns={userFileColumns}
               dataSource={result.userFiles}
               pagination={false}
+              search={false}
+              options={false}
               size="small"
             />
           )}

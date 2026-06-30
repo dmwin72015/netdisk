@@ -1,27 +1,22 @@
 import { useState } from 'react';
 import {
-  Table,
   Button,
   Modal,
   Select,
   Input,
   InputNumber,
   Space,
-  Spin,
-  Result,
   Popconfirm,
   Tag,
   message,
 } from 'antd';
+import { ProTable } from '@ant-design/pro-components';
+import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import {
-  useSystemConfig,
-  useUpdateSystemConfig,
-  useResetSystemConfig,
-} from '../api/admin.hooks';
+import { useUpdateSystemConfig, useResetSystemConfig } from '../api/admin.hooks';
+import { fetchSystemConfig } from '../api/admin';
 import type { SystemConfigItem } from '../api/admin';
-import type { ColumnsType } from 'antd/es/table';
 
 const UNIT_OPTIONS = [
   { label: 'B', value: 'B' },
@@ -93,7 +88,6 @@ function formatDisplayValue(item: SystemConfigItem): string {
 
 export default function Settings() {
   const { t } = useTranslation();
-  const { data: configs, isLoading, error } = useSystemConfig();
   const updateConfigMut = useUpdateSystemConfig();
   const resetConfigMut = useResetSystemConfig();
 
@@ -145,38 +139,11 @@ export default function Settings() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: 60 }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 24 }}>
-        <Result
-          status="error"
-          title={t('settings.failed')}
-          subTitle={error.message}
-        />
-      </div>
-    );
-  }
-
-  if (!configs || configs.length === 0) {
-    return (
-      <div style={{ padding: 24 }}>
-        <Result status="warning" title={t('settings.noData')} />
-      </div>
-    );
-  }
-
-  const columns: ColumnsType<SystemConfigItem> = [
+  const columns: ProColumns<SystemConfigItem>[] = [
     {
       title: t('settings.setting'),
       key: 'setting',
+      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => (
         <div>
           {record.description && (
@@ -189,22 +156,22 @@ export default function Settings() {
     {
       title: t('settings.currentValue'),
       dataIndex: 'value',
-      key: 'value',
       width: 200,
+      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => (
         <code>{formatDisplayValue(record)}</code>
       ),
     },
     {
       title: t('settings.defaultValue'),
-      key: 'defaultValue',
       width: 150,
+      hideInSearch: true,
       render: () => <span style={{ color: '#999' }}>-</span>,
     },
     {
       title: t('settings.type'),
-      key: 'type',
       width: 100,
+      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => {
         const type = inferType(record);
         const colorMap: Record<ConfigType, string> = {
@@ -218,8 +185,8 @@ export default function Settings() {
     },
     {
       title: t('settings.actions'),
-      key: 'actions',
       width: 160,
+      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => (
         <Space>
           <Button
@@ -247,36 +214,33 @@ export default function Settings() {
   ];
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-          alignItems: 'center',
-        }}
-      >
-        <h2 style={{ margin: 0 }}>{t('settings.title')}</h2>
-        <Popconfirm
-          title={t('settings.resetAllConfirm')}
-          description={t('settings.resetAllDescription')}
-          onConfirm={() => handleReset()}
-          okText={t('common.yes')}
-          cancelText={t('common.no')}
-        >
-          <Button icon={<ReloadOutlined />} loading={resetConfigMut.isPending}>
-            {t('settings.resetAll')}
-          </Button>
-        </Popconfirm>
-      </div>
-
-      <Table
+    <>
+      <ProTable<SystemConfigItem>
         rowKey="key"
         columns={columns}
-        dataSource={configs}
-        loading={isLoading}
+        request={async () => {
+          const data = await fetchSystemConfig();
+          return { data, success: true, total: data.length };
+        }}
         pagination={false}
         size="small"
+        options={false}
+        search={false}
+        headerTitle={t('settings.title')}
+        toolBarRender={() => [
+          <Popconfirm
+            key="resetAll"
+            title={t('settings.resetAllConfirm')}
+            description={t('settings.resetAllDescription')}
+            onConfirm={() => handleReset()}
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
+          >
+            <Button icon={<ReloadOutlined />} loading={resetConfigMut.isPending}>
+              {t('settings.resetAll')}
+            </Button>
+          </Popconfirm>,
+        ]}
       />
 
       {/* Edit Modal */}
@@ -336,6 +300,6 @@ export default function Settings() {
           </div>
         )}
       </Modal>
-    </div>
+    </>
   );
 }

@@ -1,4 +1,5 @@
-import { Spin, Card, Row, Col, Descriptions, Tag, Avatar, Button, Result } from 'antd';
+import { Spin, Card, Row, Col, Tag, Avatar, Button, Result } from 'antd';
+import { ProDescriptions } from '@ant-design/pro-components';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '../api/admin.hooks';
@@ -85,46 +86,46 @@ export default function UserDetail() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={8}>
           <Card title={t('userDetail.basicInfo')}>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={t('users.username')}>{user.username}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.slug')}>{user.slug}</Descriptions.Item>
-              <Descriptions.Item label={t('users.email')}>{user.email}</Descriptions.Item>
-              <Descriptions.Item label={t('users.role')}>
+            <ProDescriptions column={1} size="small" style={{ margin: 0 }}>
+              <ProDescriptions.Item label={t('users.username')}>{user.username}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.slug')}>{user.slug}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('users.email')}>{user.email}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('users.role')}>
                 <Tag color={ROLE_COLORS[user.role] || 'default'}>{user.role}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label={t('users.registerMethod')}>{user.registerMethod}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.status')}>{user.status}</Descriptions.Item>
-              <Descriptions.Item label={t('users.registered')}>{formatDate(user.createdAt)}</Descriptions.Item>
-            </Descriptions>
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label={t('users.registerMethod')}>{user.registerMethod}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.status')}>{user.status}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('users.registered')}>{formatDate(user.createdAt)}</ProDescriptions.Item>
+            </ProDescriptions>
             {user.profile && (
               <div style={{ marginTop: 16 }}>
                 <strong>{t('userDetail.profile')}</strong>
-                <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
+                <ProDescriptions column={1} size="small" style={{ marginTop: 8 }}>
                   {user.profile.displayName && (
-                    <Descriptions.Item label={t('userDetail.displayName')}>{user.profile.displayName}</Descriptions.Item>
+                    <ProDescriptions.Item label={t('userDetail.displayName')}>{user.profile.displayName}</ProDescriptions.Item>
                   )}
                   {user.profile.avatarUrl && (
-                    <Descriptions.Item label={t('userDetail.avatar')}>
+                    <ProDescriptions.Item label={t('userDetail.avatar')}>
                       <Avatar src={user.profile.avatarUrl} />
-                    </Descriptions.Item>
+                    </ProDescriptions.Item>
                   )}
                   {user.profile.bio && (
-                    <Descriptions.Item label={t('userDetail.bio')}>{user.profile.bio}</Descriptions.Item>
+                    <ProDescriptions.Item label={t('userDetail.bio')}>{user.profile.bio}</ProDescriptions.Item>
                   )}
-                </Descriptions>
+                </ProDescriptions>
               </div>
             )}
           </Card>
         </Col>
         <Col xs={24} lg={8}>
           <Card title={t('userDetail.storage')}>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={t('userDetail.used')}>{formatBytes(user.usedBytes)}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.base')}>{formatBytes(user.baseBytes)}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.memberBonus')}>{formatBytes(user.memberBonusBytes)}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.pack')}>{formatBytes(user.packBytes)}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.total')}>{formatBytes(user.totalBytes)}</Descriptions.Item>
-              <Descriptions.Item label={t('userDetail.usage')}>
+            <ProDescriptions column={1} size="small">
+              <ProDescriptions.Item label={t('userDetail.used')}>{formatBytes(user.usedBytes)}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.base')}>{formatBytes(user.baseBytes)}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.memberBonus')}>{formatBytes(user.memberBonusBytes)}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.pack')}>{formatBytes(user.packBytes)}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.total')}>{formatBytes(user.totalBytes)}</ProDescriptions.Item>
+              <ProDescriptions.Item label={t('userDetail.usage')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1, height: 8, background: '#f5f5f5', borderRadius: 4, overflow: 'hidden' }}>
                     <div
@@ -138,8 +139,8 @@ export default function UserDetail() {
                   </div>
                   <span>{usagePct}%</span>
                 </div>
-              </Descriptions.Item>
-            </Descriptions>
+              </ProDescriptions.Item>
+            </ProDescriptions>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
