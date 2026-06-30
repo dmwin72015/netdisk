@@ -1,9 +1,11 @@
-import { Card, Row, Col, Statistic, Spin, Result } from 'antd';
+import { Card, Row, Col, Statistic, Spin, Result, Progress } from 'antd';
 import {
   UserOutlined,
   FileOutlined,
   DatabaseOutlined,
-  FireOutlined,
+  UserAddOutlined,
+  FileAddOutlined,
+  HddOutlined,
 } from '@ant-design/icons';
 import { useDashboardStats } from '../api/admin.hooks';
 
@@ -50,7 +52,7 @@ export default function Dashboard() {
     <div>
       <h2 style={{ marginBottom: 24 }}>Dashboard</h2>
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Total Users"
@@ -59,7 +61,7 @@ export default function Dashboard() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Total Files"
@@ -68,26 +70,79 @@ export default function Dashboard() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Storage Used"
-              value={stats.totalStorage}
+              value={stats.storageUsed}
               formatter={(v) => formatBytes(v as number)}
               prefix={<DatabaseOutlined />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title="Today Active"
-              value={stats.todayActive}
-              prefix={<FireOutlined />}
-              valueStyle={{ color: '#cf1322' }}
+              title="Total Quota"
+              value={stats.totalStorage}
+              formatter={(v) => formatBytes(v as number)}
+              prefix={<HddOutlined />}
             />
           </Card>
         </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <Card>
+            <Statistic
+              title="New Users Today"
+              value={stats.newTodayUsers}
+              prefix={<UserAddOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <Card>
+            <Statistic
+              title="New Files Today"
+              value={stats.newTodayFiles}
+              prefix={<FileAddOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="Storage Usage">
+            <Progress
+              percent={Math.round((stats.storageUsed / stats.totalStorage) * 100)}
+              status={stats.storageUsed >= stats.totalStorage ? 'exception' : 'active'}
+            />
+            <div style={{ marginTop: 8, color: '#888' }}>
+              {formatBytes(stats.storageUsed)} used of {formatBytes(stats.totalStorage)}
+            </div>
+          </Card>
+        </Col>
+        {stats.diskTotal > 0 && (
+          <Col xs={24} lg={12}>
+            <Card title="System Disk">
+              <Progress
+                percent={Math.round((stats.diskUsed / stats.diskTotal) * 100)}
+                strokeColor={
+                  stats.diskUsed / stats.diskTotal < 0.7
+                    ? '#52c41a'
+                    : stats.diskUsed / stats.diskTotal < 0.9
+                      ? '#faad14'
+                      : '#ff4d4f'
+                }
+              />
+              <div style={{ marginTop: 8, color: '#888' }}>
+                {formatBytes(stats.diskFree)} free of {formatBytes(stats.diskTotal)}
+              </div>
+            </Card>
+          </Col>
+        )}
       </Row>
     </div>
   );

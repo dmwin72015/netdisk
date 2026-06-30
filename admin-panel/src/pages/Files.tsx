@@ -8,6 +8,7 @@ import {
   message,
   Popconfirm,
   Tag,
+  Result,
 } from 'antd';
 import { SearchOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -64,7 +65,7 @@ export default function Files() {
 
   const [sortBy, sortOrder] = sortValue.split('-') as [string, 'asc' | 'desc'];
 
-  const { data, isLoading } = useFiles({
+  const { data, isLoading, error } = useFiles({
     limit: pageSize,
     offset: (page - 1) * pageSize,
     ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
@@ -250,6 +251,11 @@ export default function Files() {
           <Button onClick={() => { setSearchQuery(searchInput); setPage(1); }}>Search</Button>
         </Space>
       </div>
+      {error && (
+        <div style={{ padding: 24 }}>
+          <Result status="error" title="Failed to load files" subTitle={error.message} />
+        </div>
+      )}
       <Table
         rowKey="id"
         columns={columns}

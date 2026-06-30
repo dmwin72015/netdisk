@@ -11,6 +11,7 @@ import {
   message,
   Popconfirm,
   Tooltip,
+  Result,
 } from 'antd';
 import {
   SearchOutlined,
@@ -54,7 +55,6 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortValue>('newest');
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [storageModal, setStorageModal] = useState<{ open: boolean; user: AdminUser | null }>({
     open: false,
     user: null,
@@ -63,7 +63,7 @@ export default function Users() {
   const [storageForm] = Form.useForm();
   const [createForm] = Form.useForm();
 
-  const { data, isLoading } = useUsers({
+  const { data, isLoading, error } = useUsers({
     limit: pageSize,
     offset: (page - 1) * pageSize,
     ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
@@ -210,11 +210,6 @@ export default function Users() {
     },
   ];
 
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
-  };
-
   return (
     <div>
       <div
@@ -272,12 +267,16 @@ export default function Users() {
           Create User
         </Button>
       </div>
+      {error && (
+        <div style={{ padding: 24 }}>
+          <Result status="error" title="Failed to load users" subTitle={error.message} />
+        </div>
+      )}
       <Table
         rowKey="id"
         columns={columns}
         dataSource={sortedUsers}
         loading={isLoading}
-        rowSelection={rowSelection}
         pagination={{
           current: page,
           pageSize,

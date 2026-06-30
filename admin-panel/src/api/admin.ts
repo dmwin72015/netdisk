@@ -174,15 +174,20 @@ export type AdminDashboardStats = {
   totalUsers: number;
   totalFiles: number;
   totalStorage: number;
-  todayActive: number;
+  storageUsed: number;
+  newTodayUsers: number;
+  newTodayFiles: number;
+  diskTotal: number;
+  diskUsed: number;
+  diskFree: number;
 };
 
 // ─── Storage ───────────────────────────────────────────────────
 
 export type CategoryStat = {
   category: string;
-  fileCount: number;
-  totalSize: number;
+  bytes: number;
+  count: number;
 };
 
 // ─── System Config ─────────────────────────────────────────────
