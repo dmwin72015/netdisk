@@ -6,7 +6,7 @@ import {
   FileOutlined,
   DatabaseOutlined,
   SettingOutlined,
-  ScrollTextOutlined,
+  AuditOutlined,
   ToolOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -57,7 +57,7 @@ export default function AdminLayout() {
     { key: '/admin/users', icon: <UserOutlined />, label: 'Users' },
     { key: '/admin/files', icon: <FileOutlined />, label: 'Files' },
     { key: '/admin/storage', icon: <DatabaseOutlined />, label: 'Storage' },
-    { key: '/admin/logs', icon: <ScrollTextOutlined />, label: 'Activity Logs' },
+    { key: '/admin/logs', icon: <AuditOutlined />, label: 'Activity Logs' },
     { key: '/admin/cleanup', icon: <ToolOutlined />, label: 'Cleanup' },
     { key: '/admin/settings', icon: <SettingOutlined />, label: 'Settings' },
   ];
