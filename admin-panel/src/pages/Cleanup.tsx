@@ -59,18 +59,20 @@ function saveHistory(mode: string, value: string) {
 export default function Cleanup() {
   const [mode, setMode] = useState<'slug' | 'hash'>('slug');
   const [input, setInput] = useState('');
+  const [history, setHistory] = useState<string[]>(() => loadHistory(mode));
   const queryMutation = useCleanupQuery();
   const deleteUserFileMutation = useDeleteUserFile();
   const deletePhysicalFileMutation = useDeletePhysicalFile();
-
-  const history = loadHistory(mode);
 
   const handleSearch = useCallback(
     async (value: string) => {
       const trimmed = value.trim();
       if (!trimmed) return;
       saveHistory(mode, trimmed);
-      await queryMutation.mutateAsync({});
+      setHistory(loadHistory(mode));
+      await queryMutation.mutateAsync(
+        mode === 'slug' ? { slug: trimmed } : { hash: trimmed },
+      );
     },
     [mode, queryMutation],
   );
@@ -82,20 +84,13 @@ export default function Cleanup() {
 
   const result = queryMutation.data;
 
-  const totalUploads = result
-    ? result.totalUserFiles + result.totalPhysicalFiles
-    : 0;
-  const uniqueUsers = result
-    ? new Set(result.userFiles.map((f) => f.userId)).size
-    : 0;
+  const totalUploads = result?.totalUploads ?? 0;
+  const uniqueUsers = result?.uniqueUsers ?? 0;
   const totalSize = result
-    ? [
-        ...result.userFiles.map((f) => f.fileSize),
-        ...result.physicalFiles.map((f) => f.fileSize),
-      ].reduce((a, b) => a + b, 0)
+    ? result.userFiles.reduce((a, b) => a + b.fileSize, 0)
     : 0;
 
-  const handleDeleteUserFile = async (userFileId: string) => {
+  const handleDeleteUserFile = async (userFileId: number) => {
     try {
       await deleteUserFileMutation.mutateAsync(userFileId);
       message.success('User file deleted');
@@ -105,7 +100,7 @@ export default function Cleanup() {
     }
   };
 
-  const handleDeletePhysicalFile = async (physicalFileId: string) => {
+  const handleDeletePhysicalFile = async (physicalFileId: number) => {
     try {
       await deletePhysicalFileMutation.mutateAsync(physicalFileId);
       message.success('Physical file deleted');
@@ -117,6 +112,7 @@ export default function Cleanup() {
 
   const userFileColumns: ColumnsType<CleanupQueryUserFile> = [
     { title: 'ID', dataIndex: 'id', key: 'id' },
+    { title: 'Slug', dataIndex: 'slug', key: 'slug', ellipsis: true },
     { title: 'Filename', dataIndex: 'fileName', key: 'fileName' },
     {
       title: 'User',
@@ -130,6 +126,12 @@ export default function Cleanup() {
       dataIndex: 'fileSize',
       key: 'fileSize',
       render: (size: number) => formatBytes(size),
+    },
+    {
+      title: 'Created',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (v: number) => formatDate(v),
     },
     {
       title: 'Actions',
@@ -222,18 +224,14 @@ export default function Cleanup() {
             </Col>
           </Row>
 
-          {result.physicalFiles.length > 0 && (
+          {result.physicalFile && (
             <Card
               title="Physical File"
               style={{ marginBottom: 24 }}
               extra={
                 <Popconfirm
-                  title="Delete this physical file and all associated user files?"
-                  onConfirm={async () => {
-                    for (const pf of result.physicalFiles) {
-                      await handleDeletePhysicalFile(pf.id);
-                    }
-                  }}
+                  title="Delete this physical file and ALL associated records?"
+                  onConfirm={() => handleDeletePhysicalFile(result.physicalFile!.id)}
                 >
                   <a style={{ color: 'red', cursor: 'pointer' }}>
                     <DeleteOutlined /> Delete All
@@ -241,23 +239,18 @@ export default function Cleanup() {
                 </Popconfirm>
               }
             >
-              {result.physicalFiles.map((pf) => (
-                <Descriptions key={pf.id} column={2} bordered size="small">
-                  <Descriptions.Item label="ID">{pf.id}</Descriptions.Item>
-                  <Descriptions.Item label="Hash">
-                    {pf.fileId}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Size">
-                    {formatBytes(pf.fileSize)}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="MIME Type">
-                    {pf.mimeType}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Uploaded">
-                    {formatDate(pf.uploadAt)}
-                  </Descriptions.Item>
-                </Descriptions>
-              ))}
+              <Descriptions column={2} bordered size="small">
+                <Descriptions.Item label="ID">{result.physicalFile.id}</Descriptions.Item>
+                <Descriptions.Item label="Hash">{result.physicalFile.fileHash}</Descriptions.Item>
+                <Descriptions.Item label="Size">{formatBytes(result.physicalFile.fileSize)}</Descriptions.Item>
+                <Descriptions.Item label="MIME Type">{result.physicalFile.mimeType}</Descriptions.Item>
+                <Descriptions.Item label="Storage Path">{result.physicalFile.storagePath}</Descriptions.Item>
+                <Descriptions.Item label="On Disk">
+                  <Tag color={result.physicalFile.fileExists ? 'green' : 'red'}>
+                    {result.physicalFile.fileExists ? 'Yes' : 'No'}
+                  </Tag>
+                </Descriptions.Item>
+              </Descriptions>
             </Card>
           )}
 

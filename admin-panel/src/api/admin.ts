@@ -245,42 +245,39 @@ export type AdminActionLabel = {
 // ─── Cleanup ───────────────────────────────────────────────────
 
 export type CleanupQueryPhysicalFile = {
-  id: string;
-  fileId: string;
-  fileName: string;
+  id: number;
+  fileHash: string;
   fileSize: number;
+  storagePath: string;
   mimeType: string;
-  uploadAt: number;
-  refCount: number;
+  fileExists: boolean;
 };
 
 export type CleanupQueryUserFile = {
-  id: string;
-  userId: string;
+  id: number;
+  slug: string;
+  userId: number;
   username: string;
   fileName: string;
   fileSize: number;
-  isTrashed: boolean;
-  physicalFileId: string;
+  createdAt: number;
 };
 
 export type CleanupQueryResult = {
+  physicalFile: CleanupQueryPhysicalFile | null;
   userFiles: CleanupQueryUserFile[];
-  physicalFiles: CleanupQueryPhysicalFile[];
-  totalUserFiles: number;
-  totalPhysicalFiles: number;
+  totalUploads: number;
+  uniqueUsers: number;
 };
 
 export type CleanupQueryInput = {
-  orphanDays?: number;
-  trashedDays?: number;
-  minFileSize?: number;
-  userId?: string;
+  slug?: string;
+  hash?: string;
 };
 
 export type DeleteActionResult = {
-  success: boolean;
-  message?: string;
+  deleted: boolean;
+  message: string;
 };
 
 // ════════════════════════════════════════════════════════════════
@@ -400,21 +397,21 @@ export async function fetchActivityLogActions(lang?: string): Promise<AdminActio
 //  API FUNCTIONS – Cleanup
 // ════════════════════════════════════════════════════════════════
 
-export async function queryCleanup(data: CleanupQueryInput): Promise<CleanupQueryResult> {
+export async function queryCleanup(data: { slug?: string; hash?: string }): Promise<CleanupQueryResult> {
   return request<CleanupQueryResult>(`${BASE}/cleanup/query`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteUserFile(userFileId: string): Promise<DeleteActionResult> {
+export async function deleteUserFile(userFileId: number): Promise<DeleteActionResult> {
   return request<DeleteActionResult>(`${BASE}/cleanup/delete-user-file`, {
     method: 'POST',
     body: JSON.stringify({ userFileId }),
   });
 }
 
-export async function deletePhysicalFile(physicalFileId: string): Promise<DeleteActionResult> {
+export async function deletePhysicalFile(physicalFileId: number): Promise<DeleteActionResult> {
   return request<DeleteActionResult>(`${BASE}/cleanup/delete-physical-file`, {
     method: 'POST',
     body: JSON.stringify({ physicalFileId }),
