@@ -19,11 +19,13 @@ export default function ActivityLogs() {
   const [detailLog, setDetailLog] = useState<AdminActivityLog | null>(null);
 
   const params: ActivityLogParams = { limit: pageSize, offset: (page - 1) * pageSize };
-  if (userId) params.userId = userId;
+  const uid = userId ? Number(userId) : undefined;
+  if (uid && !Number.isNaN(uid)) params.user_id = uid;
   if (action) params.action = action;
+  if (ip) params.ip = ip;
   if (dateRange && dateRange[0] && dateRange[1]) {
-    params.startTime = dateRange[0].valueOf();
-    params.endTime = dateRange[1].valueOf();
+    params.created_from = dateRange[0].format('YYYY-MM-DD');
+    params.created_to = dateRange[1].format('YYYY-MM-DD');
   }
 
   const { data, isLoading, error } = useActivityLogs(params);
@@ -39,17 +41,19 @@ export default function ActivityLogs() {
       dataIndex: 'username',
       render: (_, r) => <Link to={`/admin/users/${r.userId}`}>{r.username}</Link>,
     },
-    { title: 'Action', dataIndex: 'action' },
+    { title: 'Action', dataIndex: 'actionLabel' },
     {
       title: 'Resource',
-      render: (_, r) => `${r.targetType}: ${r.targetId}`,
+      render: (_, r) => `${r.resourceType}: ${r.resourceName}`,
     },
     { title: 'IP', dataIndex: 'ip' },
+    { title: 'OS', dataIndex: 'os' },
+    { title: 'Browser', dataIndex: 'browser' },
     {
       title: 'Time',
       dataIndex: 'createdAt',
       width: 180,
-      render: (v: number) => new Date(v * 1000).toLocaleString(),
+      render: (v: string) => new Date(v).toLocaleString(),
     },
     {
       title: '',
@@ -94,6 +98,7 @@ export default function ActivityLogs() {
           onChange={(e) => setIp(e.target.value)}
           style={{ width: 160 }}
           allowClear
+          onClear={() => { setIp(''); setPage(1); }}
         />
         <RangePicker
           onChange={(dates) => setDateRange(dates as [Dayjs | null, Dayjs | null] | null)}
@@ -141,14 +146,18 @@ export default function ActivityLogs() {
             <Descriptions.Item label="User">
               {detailLog.username} ({detailLog.userId})
             </Descriptions.Item>
-            <Descriptions.Item label="Action">{detailLog.action}</Descriptions.Item>
+            <Descriptions.Item label="Action">{detailLog.actionLabel}</Descriptions.Item>
             <Descriptions.Item label="Resource">
-              {detailLog.targetType}: {detailLog.targetId}
+              {detailLog.resourceType}: {detailLog.resourceName}
             </Descriptions.Item>
-            <Descriptions.Item label="Detail">{detailLog.detail || '-'}</Descriptions.Item>
             <Descriptions.Item label="IP">{detailLog.ip || '-'}</Descriptions.Item>
+            <Descriptions.Item label="IP Region">{detailLog.ipRegion || '-'}</Descriptions.Item>
+            <Descriptions.Item label="User Agent">{detailLog.userAgent || '-'}</Descriptions.Item>
+            <Descriptions.Item label="OS">{detailLog.os || '-'}</Descriptions.Item>
+            <Descriptions.Item label="Browser">{detailLog.browser || '-'}</Descriptions.Item>
+            <Descriptions.Item label="Extra">{detailLog.extra ? JSON.stringify(detailLog.extra, null, 2) : '-'}</Descriptions.Item>
             <Descriptions.Item label="Time">
-              {new Date(detailLog.createdAt * 1000).toLocaleString()}
+              {new Date(detailLog.createdAt).toLocaleString()}
             </Descriptions.Item>
           </Descriptions>
         )}

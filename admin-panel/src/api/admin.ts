@@ -203,15 +203,20 @@ export type UpdateSystemConfigInput = Record<string, string>;
 // ─── Activity Logs ─────────────────────────────────────────────
 
 export type AdminActivityLog = {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   username: string;
   action: string;
-  targetType: string;
-  targetId: string;
-  detail: string;
-  ip?: string;
-  createdAt: number;
+  actionLabel: string;
+  resourceType: string;
+  resourceName: string;
+  ip: string;
+  ipRegion: string;
+  userAgent: string;
+  os: string;
+  browser: string;
+  extra: unknown;
+  createdAt: string; // ISO string like "2024-01-01T00:00:00Z"
 };
 
 export type AdminActivityLogList = {
@@ -224,10 +229,12 @@ export type AdminActivityLogList = {
 export type ActivityLogParams = {
   limit?: number;
   offset?: number;
+  user_id?: number;
   action?: string;
-  userId?: string;
-  startTime?: number;
-  endTime?: number;
+  ip?: string;
+  created_from?: string;
+  created_to?: string;
+  lang?: string;
 };
 
 export type AdminActionLabel = {
