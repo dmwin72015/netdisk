@@ -1,0 +1,66 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider, theme } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import 'antd/dist/reset.css';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
+import AdminLayout from './components/AdminLayout';
+import LoginPage from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Users from './pages/Users';
+import UserDetail from './pages/UserDetail';
+import Files from './pages/Files';
+import Storage from './pages/Storage';
+import Settings from './pages/Settings';
+import { useAuthGuard } from './utils/auth';
+
+dayjs.locale('zh-cn');
+
+function ProtectedRoute() {
+  const { checking, authorized } = useAuthGuard();
+  if (checking) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+  return authorized ? <AdminLayout /> : null;
+}
+
+function App() {
+  return (
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        algorithm: theme.defaultAlgorithm,
+        token: {
+          colorPrimary: '#1890ff',
+        },
+      }}
+    >
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin" element={<ProtectedRoute />}>
+            <Route index element={<Navigate to="/" replace />} />
+            <Route path="" element={<Navigate to="/" replace />} />
+            <Route path="dashboard" element={<Navigate to="/" replace />} />
+            <Route path="" element={<AdminLayout />}>
+              <Route path="" element={<Navigate to="/" replace />} />
+              <Route path="" element={<Dashboard />} />
+              <Route path="users" element={<Users />} />
+              <Route path="users/:id" element={<UserDetail />} />
+              <Route path="files" element={<Files />} />
+              <Route path="storage" element={<Storage />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Route>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ConfigProvider>
+  );
+}
+
+export default App;
