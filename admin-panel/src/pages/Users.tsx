@@ -66,6 +66,8 @@ export default function Users() {
   };
 
   const columns: ProColumns<AdminUser>[] = [
+    { title: 'ID', dataIndex: 'id', width: 80, hideInSearch: true },
+    { title: t('users.registerMethod'), dataIndex: 'registerMethod', width: 110, hideInSearch: true },
     {
       title: t('users.username'),
       dataIndex: 'username',
