@@ -39,6 +39,7 @@
 	--color-surface: var(--theme-surface);
 	--color-surface-muted: var(--theme-surface-muted);
 	--color-surface-sunken: var(--theme-surface-sunken);
+	--color-surface-hover: var(--theme-surface-hover);
 	--color-line: var(--theme-line);
 	--color-line-soft: var(--theme-line-soft);
 	--color-overlay: var(--theme-overlay);
@@ -111,6 +112,7 @@
 	--theme-surface-muted: #ffffff;
 	--theme-surface: #ffffff;
 	--theme-surface-sunken: #f4f4f5;
+	--theme-surface-hover: #fafafa;
 	--theme-line: #e4e4e7;
 	--theme-line-soft: #f4f4f5;
 	--theme-overlay: rgba(24, 24, 27, 0.48);
@@ -151,6 +153,7 @@
 	--theme-surface-muted: #0b1120;
 	--theme-surface: #141c2b;
 	--theme-surface-sunken: #1d2738;
+	--theme-surface-hover: #1a2332;
 	--theme-line: #283449;
 	--theme-line-soft: rgba(148, 163, 184, 0.16);
 	--theme-overlay: rgba(2, 6, 23, 0.72);

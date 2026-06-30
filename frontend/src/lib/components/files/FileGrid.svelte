@@ -62,7 +62,7 @@
 >
   {#each files as f, i (f.id)}
     <div
-      class="group relative flex flex-col items-center rounded-xl border border-line-soft bg-surface p-4 transition-all hover:border-line hover:{f.isDir ||
+      class="group relative flex flex-col items-center rounded-xl border border-line-soft bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-line hover:bg-surface-hover hover:shadow-pop hover:{f.isDir ||
       canPreview(f)
         ? 'cursor-pointer'
         : ''}"
