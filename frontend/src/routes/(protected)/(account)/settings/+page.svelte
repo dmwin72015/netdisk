@@ -14,6 +14,7 @@
     importPreferences,
   } from "$lib/stores/file-preferences.svelte";
   import { UPLOAD_FILE_CONCURRENCY } from "$lib/upload-concurrency";
+  import { Switch } from "$lib/ui/switch";
   import { Eye, Upload, FileWarning, Lock, FileJson, Globe } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
   import * as m from "$lib/paraglide/messages";
@@ -130,12 +131,9 @@
             {m.show_system_dirs_desc()}
           </p>
         </div>
-        <input
-          type="checkbox"
+        <Switch
           checked={getShowSystemDirs()}
-          onchange={(e) =>
-            setShowSystemDirs((e.currentTarget as HTMLInputElement).checked)}
-          class="h-4 w-4 shrink-0 rounded border-line text-primary focus:ring-primary"
+          onCheckedChange={(v) => setShowSystemDirs(v)}
         />
       </div>
     </div>
