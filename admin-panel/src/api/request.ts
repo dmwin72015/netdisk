@@ -42,15 +42,24 @@ function buildUrl(
   path: string,
   params?: Record<string, string | number | boolean | undefined>,
 ): string {
-  const url = new URL(path, BASE_URL);
+  let url: string;
+  if (BASE_URL) {
+    url = new URL(path, BASE_URL).toString();
+  } else {
+    url = path;
+  }
   if (params) {
+    const parts: string[] = [];
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '' && value !== null) {
-        url.searchParams.set(key, String(value));
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
       }
     });
+    if (parts.length) {
+      url += (url.includes('?') ? '&' : '?') + parts.join('&');
+    }
   }
-  return url.toString();
+  return url;
 }
 
 function handleUnauthorized() {
