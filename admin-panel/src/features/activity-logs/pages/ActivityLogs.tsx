@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Button, Modal, Descriptions, Select, Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import PageContainer from '../../../components/PageContainer';
 import SearchForm from '../../../components/SearchForm';

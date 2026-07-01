@@ -9,7 +9,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { Input } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import PageContainer from '../../../components/PageContainer';
 import SearchForm from '../../../components/SearchForm';

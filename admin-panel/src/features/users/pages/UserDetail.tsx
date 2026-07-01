@@ -1,7 +1,7 @@
 import { Spin, Card, Row, Col, Tag, Avatar, Button, Result } from 'antd';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../../../api/admin.hooks';
 import PageContainer from '../../../components/PageContainer';

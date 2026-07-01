@@ -13,7 +13,7 @@ import {
   HomeOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 
