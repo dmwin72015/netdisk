@@ -2,15 +2,19 @@
  * Admin Panel TanStack Query Hooks
  *
  * One useQuery hook per read function, one useMutation hook
- * per write function. Mutations invalidate their related query
- * keys on success.
+ * per write function. List queries return ListQueryResult<T>
+ * so ProTable can render loading/empty/error uniformly.
+ * Mutations invalidate their related query keys and show
+ * success messages on success.
  * ============================================================ */
 
+import { message } from 'antd';
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import type { ListQueryResult } from '../types/query';
 
 import {
   createUser,
@@ -34,6 +38,9 @@ import {
   updateSystemConfig,
   updateUserRole,
   type ActivityLogParams,
+  type AdminActivityLog,
+  type AdminFile,
+  type AdminUser,
   type CleanupQueryInput,
   type CreateUserInput,
   type FileListParams,
@@ -52,11 +59,21 @@ export function useDashboardStats() {
 
 // ─── Users ─────────────────────────────────────────────────────
 
-export function useUsers(params: UserListParams) {
-  return useQuery({
+export function useUsers(params: UserListParams): ListQueryResult<AdminUser> {
+  const query = useQuery({
     queryKey: ['admin', 'users', params],
     queryFn: () => fetchUsers(params),
   });
+
+  return {
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error as Error | null,
+    refetch: () => query.refetch(),
+  };
 }
 
 export function useUser(id: string) {
@@ -72,6 +89,7 @@ export function useCreateUser() {
   return useMutation({
     mutationFn: (data: CreateUserInput) => createUser(data),
     onSuccess: () => {
+      message.success('创建成功');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
@@ -82,6 +100,7 @@ export function useUpdateUserRole() {
   return useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) => updateUserRole(id, role),
     onSuccess: () => {
+      message.success('角色已更新');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
@@ -93,6 +112,7 @@ export function useUpdateStorageBase() {
     mutationFn: ({ id, baseBytes }: { id: string; baseBytes: number }) =>
       updateStorageBase(id, baseBytes),
     onSuccess: () => {
+      message.success('存储配额已更新');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
@@ -103,6 +123,7 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: (id: string) => deleteUser(id),
     onSuccess: () => {
+      message.success('用户已删除');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
@@ -118,11 +139,21 @@ export function useSearchUsers(query: string) {
 
 // ─── Files ─────────────────────────────────────────────────────
 
-export function useFiles(params: FileListParams) {
-  return useQuery({
+export function useFiles(params: FileListParams): ListQueryResult<AdminFile> {
+  const query = useQuery({
     queryKey: ['admin', 'files', params],
     queryFn: () => fetchFiles(params),
   });
+
+  return {
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error as Error | null,
+    refetch: () => query.refetch(),
+  };
 }
 
 export function useDeleteFile() {
@@ -130,6 +161,7 @@ export function useDeleteFile() {
   return useMutation({
     mutationFn: (id: string) => deleteFile(id),
     onSuccess: () => {
+      message.success('文件已删除');
       qc.invalidateQueries({ queryKey: ['admin', 'files'] });
     },
   });
@@ -140,6 +172,7 @@ export function useRestoreFile() {
   return useMutation({
     mutationFn: (id: string) => restoreFile(id),
     onSuccess: () => {
+      message.success('文件已恢复');
       qc.invalidateQueries({ queryKey: ['admin', 'files'] });
     },
   });
@@ -168,6 +201,7 @@ export function useUpdateSystemConfig() {
   return useMutation({
     mutationFn: (updates: UpdateSystemConfigInput) => updateSystemConfig(updates),
     onSuccess: () => {
+      message.success('配置已更新');
       qc.invalidateQueries({ queryKey: ['admin', 'system', 'config'] });
     },
   });
@@ -178,6 +212,7 @@ export function useResetSystemConfig() {
   return useMutation({
     mutationFn: (key?: string) => resetSystemConfig(key),
     onSuccess: () => {
+      message.success('配置已重置');
       qc.invalidateQueries({ queryKey: ['admin', 'system', 'config'] });
     },
   });
@@ -185,11 +220,21 @@ export function useResetSystemConfig() {
 
 // ─── Activity Logs ─────────────────────────────────────────────
 
-export function useActivityLogs(params: ActivityLogParams) {
-  return useQuery({
+export function useActivityLogs(params: ActivityLogParams): ListQueryResult<AdminActivityLog> {
+  const query = useQuery({
     queryKey: ['admin', 'activity-logs', params],
     queryFn: () => fetchActivityLogs(params),
   });
+
+  return {
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error as Error | null,
+    refetch: () => query.refetch(),
+  };
 }
 
 export function useActivityLogActions(lang?: string) {

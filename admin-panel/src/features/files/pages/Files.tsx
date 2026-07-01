@@ -5,9 +5,9 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { UndoOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useDeleteFile, useRestoreFile } from '../api/admin.hooks';
-import { fetchFiles } from '../api/admin';
-import type { AdminFile } from '../api/admin';
+import { useDeleteFile, useRestoreFile } from '../../../api/admin.hooks';
+import { fetchFiles } from '../../../api/admin';
+import type { AdminFile } from '../../../api/admin';
 
 function formatBytes(b: number): string {
   if (b === 0) return '0 B';

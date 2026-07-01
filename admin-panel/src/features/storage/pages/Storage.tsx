@@ -1,5 +1,5 @@
 import { Card, Row, Col, Spin, Result, Progress } from 'antd';
-import { useStorageStats } from '../api/admin.hooks';
+import { useStorageStats } from '../../../api/admin.hooks';
 import { useTranslation } from 'react-i18next';
 
 function formatBytes(b: number): string {

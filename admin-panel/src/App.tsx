@@ -6,15 +6,14 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { useTranslation } from 'react-i18next';
 import AdminLayout from './components/AdminLayout';
-import LoginPage from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Users from './pages/Users';
-import UserDetail from './pages/UserDetail';
-import Files from './pages/Files';
-import Storage from './pages/Storage';
-import Settings from './pages/Settings';
-import ActivityLogs from './pages/ActivityLogs';
-import Cleanup from './pages/Cleanup';
+import { LoginPage } from './features/login';
+import { DashboardPage } from './features/dashboard';
+import { UsersPage, UserDetailPage } from './features/users';
+import { FilesPage } from './features/files';
+import { StoragePage } from './features/storage';
+import { SettingsPage } from './features/settings';
+import { ActivityLogsPage } from './features/activity-logs';
+import { CleanupPage } from './features/cleanup';
 import { useAuthGuard } from './utils/auth';
 
 dayjs.locale('zh-cn');
@@ -48,14 +47,14 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin" element={<ProtectedRoute />}>
             <Route element={<AdminLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="users" element={<Users />} />
-              <Route path="users/:id" element={<UserDetail />} />
-              <Route path="files" element={<Files />} />
-              <Route path="storage" element={<Storage />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="logs" element={<ActivityLogs />} />
-              <Route path="cleanup" element={<Cleanup />} />
+              <Route index element={<DashboardPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="users/:id" element={<UserDetailPage />} />
+              <Route path="files" element={<FilesPage />} />
+              <Route path="storage" element={<StoragePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="logs" element={<ActivityLogsPage />} />
+              <Route path="cleanup" element={<CleanupPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />

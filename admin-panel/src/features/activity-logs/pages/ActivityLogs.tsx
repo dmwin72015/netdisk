@@ -4,9 +4,9 @@ import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useActivityLogActions } from '../api/admin.hooks';
-import { fetchActivityLogs } from '../api/admin';
-import type { AdminActivityLog } from '../api/admin';
+import { useActivityLogActions } from '../../../api/admin.hooks';
+import { fetchActivityLogs } from '../../../api/admin';
+import type { AdminActivityLog } from '../../../api/admin';
 
 export default function ActivityLogs() {
   const { t, i18n } = useTranslation();

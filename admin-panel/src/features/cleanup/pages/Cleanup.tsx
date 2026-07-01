@@ -22,11 +22,11 @@ import {
   useCleanupQuery,
   useDeleteUserFile,
   useDeletePhysicalFile,
-} from '../api/admin.hooks';
+} from '../../../api/admin.hooks';
 import type {
   CleanupQueryPhysicalFile,
   CleanupQueryUserFile,
-} from '../api/admin';
+} from '../../../api/admin';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';

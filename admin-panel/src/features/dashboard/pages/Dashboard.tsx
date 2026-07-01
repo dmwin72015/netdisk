@@ -7,7 +7,7 @@ import {
   FileAddOutlined,
   HddOutlined,
 } from '@ant-design/icons';
-import { useDashboardStats } from '../api/admin.hooks';
+import { useDashboardStats } from '../../../api/admin.hooks';
 import { useTranslation } from 'react-i18next';
 
 function formatBytes(b: number): string {

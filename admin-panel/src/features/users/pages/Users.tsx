@@ -15,9 +15,9 @@ import {
   useUpdateUserRole,
   useUpdateStorageBase,
   useDeleteUser,
-} from '../api/admin.hooks';
-import { fetchUsers } from '../api/admin';
-import type { AdminUser, CreateUserInput } from '../api/admin';
+} from '../../../api/admin.hooks';
+import { fetchUsers } from '../../../api/admin';
+import type { AdminUser, CreateUserInput } from '../../../api/admin';
 
 const ROLES = ['admin', 'user'];
 

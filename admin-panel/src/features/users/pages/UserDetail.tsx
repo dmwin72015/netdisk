@@ -2,7 +2,7 @@ import { Spin, Card, Row, Col, Tag, Avatar, Button, Result } from 'antd';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useUser } from '../api/admin.hooks';
+import { useUser } from '../../../api/admin.hooks';
 import { useTranslation } from 'react-i18next';
 
 function formatBytes(b: number): string {

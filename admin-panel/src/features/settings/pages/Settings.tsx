@@ -14,9 +14,9 @@ import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useUpdateSystemConfig, useResetSystemConfig } from '../api/admin.hooks';
-import { fetchSystemConfig } from '../api/admin';
-import type { SystemConfigItem } from '../api/admin';
+import { useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
+import { fetchSystemConfig } from '../../../api/admin';
+import type { SystemConfigItem } from '../../../api/admin';
 
 const UNIT_OPTIONS = [
   { label: 'B', value: 'B' },
