@@ -10,6 +10,7 @@ import { LoginPage } from '@/features/login';
 import { DashboardPage } from '@/features/dashboard';
 import { UsersPage, UserDetailPage } from '@/features/users';
 import { FilesPage } from '@/features/files';
+import { PhysicalFilesPage, PhysicalFileDetailPage } from '@/features/physical-files';
 import { StoragePage } from '@/features/storage';
 import { SettingsPage } from '@/features/settings';
 import { ActivityLogsPage } from '@/features/activity-logs';
@@ -50,7 +51,10 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="users/:id" element={<UserDetailPage />} />
-              <Route path="files" element={<FilesPage />} />
+              <Route path="files" element={<Navigate to="/admin/files/user-files" replace />} />
+              <Route path="files/user-files" element={<FilesPage />} />
+              <Route path="files/physical" element={<PhysicalFilesPage />} />
+              <Route path="files/physical/:slug" element={<PhysicalFileDetailPage />} />
               <Route path="storage" element={<StoragePage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="logs" element={<ActivityLogsPage />} />

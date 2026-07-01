@@ -56,7 +56,7 @@ export default function StoragePage() {
     );
   }
 
-  const totalBytes = categories.reduce((sum, c) => sum + c.totalSize, 0);
+  const totalBytes = categories.reduce((sum, c) => sum + c.bytes, 0);
 
   const trashCategory = categories.find((c) => c.category === 'trash');
   const regularCategories = categories.filter((c) => c.category !== 'trash');
@@ -65,16 +65,16 @@ export default function StoragePage() {
     <PageContainer title={t('storage.title')}>
       <Row gutter={[16, 16]}>
         {regularCategories.map((stat) => {
-          const pct = totalBytes > 0 ? Math.round((stat.totalSize / totalBytes) * 100) : 0;
+          const pct = totalBytes > 0 ? Math.round((stat.bytes / totalBytes) * 100) : 0;
           return (
             <Col xs={24} sm={12} lg={8} key={stat.category}>
               <Card
                 title={CATEGORY_LABELS[stat.category] || stat.category.charAt(0).toUpperCase() + stat.category.slice(1)}
                 size="small"
               >
-                <div style={{ marginBottom: 8 }}>{t('storage.files_count', { count: stat.fileCount })}</div>
+                <div style={{ marginBottom: 8 }}>{t('storage.files_count', { count: stat.count })}</div>
                 <div style={{ marginBottom: 8, fontSize: 18, fontWeight: 600, color: CATEGORY_COLORS[stat.category] || '#1890ff' }}>
-                  {formatBytes(stat.totalSize)}
+                  {formatBytes(stat.bytes)}
                 </div>
                 <Progress
                   percent={pct}
@@ -100,15 +100,15 @@ export default function StoragePage() {
           <Row gutter={16} align="middle">
             <Col>
               <span style={{ color: CATEGORY_COLORS.trash, fontSize: 18, fontWeight: 600 }}>
-                {formatBytes(trashCategory.totalSize)}
+                {formatBytes(trashCategory.bytes)}
               </span>
             </Col>
             <Col>
-              <span style={{ color: '#999' }}>{t('storage.files_count', { count: trashCategory.fileCount })}</span>
+              <span style={{ color: '#999' }}>{t('storage.files_count', { count: trashCategory.count })}</span>
             </Col>
             <Col flex="auto">
               <Progress
-                percent={totalBytes > 0 ? Math.round((trashCategory.totalSize / totalBytes) * 100) : 0}
+                percent={totalBytes > 0 ? Math.round((trashCategory.bytes / totalBytes) * 100) : 0}
                 strokeColor={CATEGORY_COLORS.trash}
                 size="small"
               />

@@ -247,6 +247,57 @@ func (h *AdminHandler) ListFiles(c echo.Context) error {
 	})
 }
 
+func (h *AdminHandler) ListPhysicalFiles(c echo.Context) error {
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset, _ := strconv.Atoi(c.QueryParam("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+	minSize, _ := strconv.ParseInt(c.QueryParam("min_size"), 10, 64)
+	maxSize, _ := strconv.ParseInt(c.QueryParam("max_size"), 10, 64)
+
+	items, total, err := h.svc.ListPhysicalFiles(c.Request().Context(), service.AdminListPhysicalFilesParams{
+		Limit:       limit,
+		Offset:      offset,
+		Search:      c.QueryParam("search"),
+		Status:      c.QueryParam("status"),
+		HashFilter:  c.QueryParam("hash_filter"),
+		MimeFilter:  c.QueryParam("mime_filter"),
+		MinSize:     minSize,
+		MaxSize:     maxSize,
+		CreatedFrom: c.QueryParam("created_from"),
+		CreatedTo:   c.QueryParam("created_to"),
+	})
+	if err != nil {
+		return BizError(err)
+	}
+
+	return OK(c, map[string]any{
+		"items":  items,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+func (h *AdminHandler) PhysicalFileDetail(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return BizError(model.ErrInvalidInput)
+	}
+
+	result, err := h.svc.PhysicalFileDetail(c.Request().Context(), id)
+	if err != nil {
+		return BizError(err)
+	}
+
+	return OK(c, result)
+}
+
 func (h *AdminHandler) StorageStats(c echo.Context) error {
 	stats, err := h.svc.StorageStats(c.Request().Context())
 	if err != nil {

@@ -65,18 +65,16 @@ function getByteUnitFromBytes(b: number): { value: number; unit: string } {
   };
 }
 
-function formatDisplayValue(item: SystemConfigItem): string {
-  const type = inferType(item);
-  switch (type) {
-    case 'bool':
-      return item.value;
-    case 'bytes': {
-      const b = parseInt(item.value, 10);
-      return isNaN(b) ? item.value : formatBytes(b);
-    }
-    default:
-      return item.value;
+function formatDisplayValue(item: { value: any }): string {
+  const sv = String(item.value ?? '');
+  if (item.value === true || item.value === false) return String(item.value);
+  if (/^\d+$/.test(sv)) {
+    const b = parseInt(sv, 10);
+    // Show bytes as human-readable only if it looks like a byte value
+    if (/^\d{5,}$/.test(sv) || isNaN(b)) return isNaN(b) ? sv : formatBytes(b);
+    return sv;
   }
+  return sv;
 }
 
 export default function SettingsPage() {
@@ -149,7 +147,11 @@ export default function SettingsPage() {
       title: t('settings.defaultValue'),
       width: 150,
       hideInSearch: true,
-      render: () => <span style={{ color: '#999' }}>-</span>,
+      render: (_, record) => {
+        const dv = record.defaultValue;
+        const formatted = dv !== undefined && dv !== null ? formatDisplayValue({ value: dv }) : '-';
+        return <span style={{ color: dv !== undefined && dv !== null ? '#999' : '#ccc' }}>{formatted}</span>;
+      },
     },
     {
       title: t('settings.type'),

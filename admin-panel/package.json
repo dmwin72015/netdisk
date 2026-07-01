@@ -17,6 +17,7 @@
     "@ant-design/pro-form": "^2.32.0",
     "@ant-design/pro-layout": "^7.22.7",
     "@ant-design/pro-table": "^3.21.0",
+    "@tailwindcss/vite": "^4.3.2",
     "@tanstack/react-query": "^5.101.2",
     "antd": "^6.5.0",
     "dayjs": "^1.11.21",
@@ -26,7 +27,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",
-    "react-router": "^8.1.0"
+    "react-router": "^8.1.0",
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",

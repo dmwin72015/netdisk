@@ -1,5 +1,5 @@
+import { PageContainer as ProPageContainer } from '@ant-design/pro-layout';
 import type { ReactNode } from 'react';
-import { Space } from 'antd';
 
 interface PageContainerProps {
   title?: string;
@@ -7,24 +7,17 @@ interface PageContainerProps {
   children: ReactNode;
 }
 
+/**
+ * Wraps @ant-design/pro-layout's PageContainer with a white card content area.
+ * This matches Ant Design Pro's page layout pattern.
+ */
 function PageContainer({ title, extra, children }: PageContainerProps) {
   return (
-    <div>
-      {(title || extra) && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-        >
-          {title && <h2 style={{ margin: 0 }}>{title}</h2>}
-          {extra && <Space>{extra}</Space>}
-        </div>
-      )}
-      {children}
-    </div>
+    <ProPageContainer title={title} extra={extra}>
+      <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
+        {children}
+      </div>
+    </ProPageContainer>
   );
 }
 

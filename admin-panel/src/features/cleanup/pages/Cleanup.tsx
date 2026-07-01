@@ -21,6 +21,7 @@ import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { PageContainer } from '@/components/PageContainer';
+import CopyCell from '@/components/CopyCell';
 import {
   useCleanupQuery,
   useDeleteUserFile,
@@ -108,7 +109,7 @@ export default function CleanupPage() {
 
   const userFileColumns: ColumnsType<CleanupQueryUserFile> = [
     { title: t('cleanup.id'), dataIndex: 'id', width: 80 },
-    { title: t('cleanup.slug'), dataIndex: 'slug', ellipsis: true },
+    { title: t('cleanup.slug'), dataIndex: 'slug', ellipsis: true, render: (_, r) => <CopyCell value={r.slug} /> },
     { title: t('cleanup.filename'), dataIndex: 'fileName', ellipsis: true },
     {
       title: t('cleanup.user'),
@@ -235,7 +236,7 @@ export default function CleanupPage() {
             >
               <Descriptions column={2} bordered size="small">
                 <Descriptions.Item label={t('cleanup.id')}>{result.physicalFile.id}</Descriptions.Item>
-                <Descriptions.Item label={t('cleanup.hash')}>{result.physicalFile.fileHash}</Descriptions.Item>
+                <Descriptions.Item label={t('cleanup.hash')}><CopyCell value={result.physicalFile.fileHash}><code style={{fontSize:12}}>{result.physicalFile.fileHash}</code></CopyCell></Descriptions.Item>
                 <Descriptions.Item label={t('cleanup.size')}>{formatBytes(result.physicalFile.fileSize)}</Descriptions.Item>
                 <Descriptions.Item label={t('cleanup.mimeType')}>{result.physicalFile.mimeType}</Descriptions.Item>
                 <Descriptions.Item label={t('cleanup.storagePath')}>{result.physicalFile.storagePath}</Descriptions.Item>

@@ -26,6 +26,7 @@ import {
   fetchActivityLogs,
   fetchDashboardStats,
   fetchFiles,
+  fetchPhysicalFiles,
   fetchStorageStats,
   fetchSystemConfig,
   fetchUser,
@@ -40,10 +41,12 @@ import {
   type ActivityLogParams,
   type AdminActivityLog,
   type AdminFile,
+  type AdminPhysicalFile,
   type AdminUser,
   type CleanupQueryInput,
   type CreateUserInput,
   type FileListParams,
+  type PhysicalFileListParams,
   type UpdateSystemConfigInput,
   type UserListParams,
 } from './admin';
@@ -176,6 +179,25 @@ export function useRestoreFile() {
       qc.invalidateQueries({ queryKey: ['admin', 'files'] });
     },
   });
+}
+
+// ─── Physical Files ────────────────────────────────────────────
+
+export function usePhysicalFiles(params: PhysicalFileListParams): ListQueryResult<AdminPhysicalFile> {
+  const query = useQuery({
+    queryKey: ['admin', 'physical-files', params],
+    queryFn: () => fetchPhysicalFiles(params),
+  });
+
+  return {
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error as Error | null,
+    refetch: () => query.refetch(),
+  };
 }
 
 // ─── Storage ───────────────────────────────────────────────────

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, Space, theme } from 'antd';
+import { Avatar, Dropdown, Space } from 'antd';
+import { ProLayout } from '@ant-design/pro-layout';
+import type { MenuDataItem } from '@ant-design/pro-layout';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -8,35 +9,16 @@ import {
   SettingOutlined,
   AuditOutlined,
   ToolOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   HomeOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
-
-const { Header, Sider, Content } = Layout;
 
 export default function AdminLayout() {
   const { t } = useTranslation();
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem('nd.admin.sidebar') === 'true';
-    } catch {
-      return false;
-    }
-  });
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken();
-
-  useEffect(() => {
-    localStorage.setItem('nd.admin.sidebar', String(collapsed));
-  }, [collapsed]);
 
   const handleLogout = () => {
     localStorage.removeItem('nd.access');
@@ -44,114 +26,69 @@ export default function AdminLayout() {
     navigate('/login');
   };
 
-  const menuItems: MenuProps['items'] = [
-    { key: '/admin', icon: <HomeOutlined />, label: t('common.home') },
+  const menuItems: MenuDataItem[] = [
+    { path: '/admin', name: t('sidebar.dashboard'), icon: <DashboardOutlined /> },
+    { path: '/admin/users', name: t('sidebar.users'), icon: <UserOutlined /> },
     {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: t('common.logout'),
-      onClick: handleLogout,
+      path: '/admin/files',
+      name: t('sidebar.files'),
+      icon: <FileOutlined />,
+      children: [
+        { path: '/admin/files/user-files', name: t('sidebar.userFiles') },
+        { path: '/admin/files/physical', name: t('sidebar.physicalFiles') },
+      ],
     },
+    { path: '/admin/storage', name: t('sidebar.storage'), icon: <DatabaseOutlined /> },
+    { path: '/admin/logs', name: t('sidebar.activityLogs'), icon: <AuditOutlined /> },
+    { path: '/admin/cleanup', name: t('sidebar.cleanup'), icon: <ToolOutlined /> },
+    { path: '/admin/settings', name: t('sidebar.settings'), icon: <SettingOutlined /> },
   ];
-
-  const sideMenuItems: MenuProps['items'] = [
-    { key: '/admin', icon: <DashboardOutlined />, label: t('sidebar.dashboard') },
-    { key: '/admin/users', icon: <UserOutlined />, label: t('sidebar.users') },
-    { key: '/admin/files', icon: <FileOutlined />, label: t('sidebar.files') },
-    { key: '/admin/storage', icon: <DatabaseOutlined />, label: t('sidebar.storage') },
-    { key: '/admin/logs', icon: <AuditOutlined />, label: t('sidebar.activityLogs') },
-    { key: '/admin/cleanup', icon: <ToolOutlined />, label: t('sidebar.cleanup') },
-    { key: '/admin/settings', icon: <SettingOutlined />, label: t('sidebar.settings') },
-  ];
-
-  const handleMenuClick = (info: { key: string }) => {
-    navigate(info.key);
-  };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        style={{
-          background: '#1a1a2e',
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <div
-          style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-          }}
+    <ProLayout
+      layout="side"
+      fixedHeader
+      navTheme="realDark"
+      headerHeight={56}
+      fixSiderbar
+      logo={<span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>Admin</span>}
+      title="Admin"
+      disableMobile
+      location={location}
+      menuDataRender={() => menuItems}
+      menuItemRender={(item, dom) => (
+        <a
+          onClick={() => navigate(item.path || '/admin')}
+          style={{ textDecoration: 'none' }}
         >
-          <span
-            style={{
-              color: '#fff',
-              fontSize: 20,
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-            }}
-          >
-            {collapsed ? 'A' : 'Admin'}
-          </span>
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={sideMenuItems}
-          onClick={handleMenuClick}
-          style={{ background: 'transparent', borderRight: 0 }}
-        />
-      </Sider>
-      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'all 0.2s' }}>
-        <Header
-          style={{
-            padding: '0 24px',
-            background: colorBgContainer,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
+          {dom}
+        </a>
+      )}
+      onMenuHeaderClick={() => navigate('/admin')}
+      actionsRender={() => [
+        <Dropdown
+          key="user"
+          menu={{
+            items: [
+              { key: '/admin', icon: <HomeOutlined />, label: t('common.home') },
+              { type: 'divider' },
+              { key: 'logout', icon: <LogoutOutlined />, label: t('common.logout'), onClick: handleLogout },
+            ],
           }}
+          placement="bottomRight"
         >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ fontSize: 16, width: 48, height: 48 }}
-          />
-          <Dropdown menu={{ items: menuItems }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} />
-            </Space>
-          </Dropdown>
-        </Header>
-        <Content
-          style={{
-            margin: 12,
-            padding: 16,
-            minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: borderRadiusLG,
-          }}
-        >
-          <Outlet />
-        </Content>
-      </Layout>
-    </Layout>
+          <Space style={{ cursor: 'pointer', marginRight: 12 }}>
+            <Avatar size={28} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+          </Space>
+        </Dropdown>,
+      ]}
+      contentStyle={{
+        background: '#f0f2f5',
+        padding: 20,
+        minHeight: "calc(100vh - 56px)",
+      }}
+    >
+      <Outlet />
+    </ProLayout>
   );
 }

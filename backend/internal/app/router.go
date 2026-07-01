@@ -158,6 +158,8 @@ func registerRoutes(e *echo.Echo, rdb *redis.Client, jwtMgr *jwtutil.Manager, h 
 	admin.PATCH("/users/:id/storage-base", h.Admin.UpdateStorageBase)
 	admin.DELETE("/users/:id", h.Admin.DeleteUser)
 	admin.GET("/files", h.Admin.ListFiles)
+	admin.GET("/files/physical", h.Admin.ListPhysicalFiles)
+	admin.GET("/files/physical/:id", h.Admin.PhysicalFileDetail)
 	admin.DELETE("/files/:id", h.Admin.DeleteFile)
 	admin.PATCH("/files/:id/restore", h.Admin.RestoreFile)
 	admin.GET("/storage/stats", h.Admin.StorageStats)

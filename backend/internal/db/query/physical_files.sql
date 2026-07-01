@@ -28,3 +28,45 @@ SELECT
     (SELECT COUNT(*) FROM user_files uf WHERE uf.physical_file_id = $1)
     +
     (SELECT COUNT(*) FROM media_items mi WHERE mi.physical_file_id = $1);
+
+-- name: ListPhysicalFiles :many
+SELECT pf.*,
+    (SELECT COUNT(*) FROM user_files uf WHERE uf.physical_file_id = pf.id) AS user_file_count,
+    (SELECT COUNT(*) FROM media_items mi WHERE mi.physical_file_id = pf.id) AS media_item_count
+FROM physical_files pf
+WHERE (sqlc.narg('status')::text IS NULL OR pf.status = sqlc.narg('status'))
+  AND (sqlc.narg('search')::text IS NULL
+       OR pf.slug ILIKE '%' || sqlc.narg('search')::text || '%'
+       OR pf.file_hash ILIKE '%' || sqlc.narg('search')::text || '%'
+       OR pf.storage_path ILIKE '%' || sqlc.narg('search')::text || '%')
+  AND (sqlc.narg('hash_filter')::text IS NULL
+       OR pf.file_hash ILIKE '%' || sqlc.narg('hash_filter')::text || '%')
+  AND (sqlc.narg('mime_filter')::text IS NULL
+       OR pf.mime_type ILIKE '%' || sqlc.narg('mime_filter')::text || '%')
+  AND (sqlc.narg('min_size')::bigint IS NULL OR pf.file_size >= sqlc.narg('min_size')::bigint)
+  AND (sqlc.narg('max_size')::bigint IS NULL OR pf.file_size <= sqlc.narg('max_size')::bigint)
+  AND (sqlc.narg('created_from')::timestamptz IS NULL
+       OR pf.created_at >= sqlc.narg('created_from')::timestamptz)
+  AND (sqlc.narg('created_to')::timestamptz IS NULL
+       OR pf.created_at <= sqlc.narg('created_to')::timestamptz)
+ORDER BY pf.created_at DESC
+LIMIT sqlc.arg('lim')
+OFFSET sqlc.arg('off');
+
+-- name: CountPhysicalFiles :one
+SELECT COUNT(*) FROM physical_files pf
+WHERE (sqlc.narg('status')::text IS NULL OR pf.status = sqlc.narg('status'))
+  AND (sqlc.narg('search')::text IS NULL
+       OR pf.slug ILIKE '%' || sqlc.narg('search')::text || '%'
+       OR pf.file_hash ILIKE '%' || sqlc.narg('search')::text || '%'
+       OR pf.storage_path ILIKE '%' || sqlc.narg('search')::text || '%')
+  AND (sqlc.narg('hash_filter')::text IS NULL
+       OR pf.file_hash ILIKE '%' || sqlc.narg('hash_filter')::text || '%')
+  AND (sqlc.narg('mime_filter')::text IS NULL
+       OR pf.mime_type ILIKE '%' || sqlc.narg('mime_filter')::text || '%')
+  AND (sqlc.narg('min_size')::bigint IS NULL OR pf.file_size >= sqlc.narg('min_size')::bigint)
+  AND (sqlc.narg('max_size')::bigint IS NULL OR pf.file_size <= sqlc.narg('max_size')::bigint)
+  AND (sqlc.narg('created_from')::timestamptz IS NULL
+       OR pf.created_at >= sqlc.narg('created_from')::timestamptz)
+  AND (sqlc.narg('created_to')::timestamptz IS NULL
+       OR pf.created_at <= sqlc.narg('created_to')::timestamptz);

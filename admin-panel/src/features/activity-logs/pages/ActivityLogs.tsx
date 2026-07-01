@@ -65,6 +65,7 @@ export default function ActivityLogsPage() {
   return (
     <PageContainer title={t('activityLogs.title')}>
       <ProTable<AdminActivityLog>
+        headerTitle={t("activityLogs.title")}
         rowKey="id"
         columns={columns}
         request={async (params, sorter) => {

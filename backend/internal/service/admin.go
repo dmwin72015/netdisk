@@ -517,6 +517,182 @@ func (s *AdminService) ListFiles(ctx context.Context, params AdminListFilesParam
 	return items, total, nil
 }
 
+type AdminPhysicalFileItem struct {
+	ID             int64  `json:"id"`
+	Slug           string `json:"slug"`
+	HashAlgo       string `json:"hashAlgo"`
+	FileHash       string `json:"fileHash"`
+	PreHash        string `json:"preHash"`
+	FileSize       int64  `json:"fileSize"`
+	MimeType       string `json:"mimeType"`
+	StoragePath    string `json:"storagePath"`
+	Status         string `json:"status"`
+	CreatedAt      int64  `json:"createdAt"`
+	UserFileCount  int64  `json:"userFileCount"`
+	MediaItemCount int64  `json:"mediaItemCount"`
+}
+
+type AdminListPhysicalFilesParams struct {
+	Limit       int
+	Offset      int
+	Search      string
+	Status      string
+	HashFilter  string
+	MimeFilter  string
+	MinSize     int64
+	MaxSize     int64
+	CreatedFrom string
+	CreatedTo   string
+}
+
+func (s *AdminService) ListPhysicalFiles(ctx context.Context, p AdminListPhysicalFilesParams) ([]AdminPhysicalFileItem, int, error) {
+	makeText := func(s string) pgtype.Text {
+		if s == "" {
+			return pgtype.Text{}
+		}
+		return pgtype.Text{String: s, Valid: true}
+	}
+	makeInt8 := func(v int64) pgtype.Int8 {
+		if v == 0 {
+			return pgtype.Int8{}
+		}
+		return pgtype.Int8{Int64: v, Valid: true}
+	}
+	makeTime := func(s string) pgtype.Timestamptz {
+		if s == "" {
+			return pgtype.Timestamptz{}
+		}
+		t, err := time.Parse(time.RFC3339, s)
+		if err == nil {
+			return pgtype.Timestamptz{Time: t, Valid: true}
+		}
+		return pgtype.Timestamptz{}
+	}
+
+	params := sqlc.CountPhysicalFilesParams{
+		Status:      makeText(p.Status),
+		Search:      makeText(p.Search),
+		HashFilter:  makeText(p.HashFilter),
+		MimeFilter:  makeText(p.MimeFilter),
+		MinSize:     makeInt8(p.MinSize),
+		MaxSize:     makeInt8(p.MaxSize),
+		CreatedFrom: makeTime(p.CreatedFrom),
+		CreatedTo:   makeTime(p.CreatedTo),
+	}
+
+	total, err := s.queries.CountPhysicalFiles(ctx, params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count physical files: %w", err)
+	}
+
+	paramsList := sqlc.ListPhysicalFilesParams{
+		Status:      makeText(p.Status),
+		Search:      makeText(p.Search),
+		HashFilter:  makeText(p.HashFilter),
+		MimeFilter:  makeText(p.MimeFilter),
+		MinSize:     makeInt8(p.MinSize),
+		MaxSize:     makeInt8(p.MaxSize),
+		CreatedFrom: makeTime(p.CreatedFrom),
+		CreatedTo:   makeTime(p.CreatedTo),
+		Off:         int32(p.Offset),
+		Lim:         int32(p.Limit),
+	}
+
+	rows, err := s.queries.ListPhysicalFiles(ctx, paramsList)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list physical files: %w", err)
+	}
+
+	items := make([]AdminPhysicalFileItem, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, AdminPhysicalFileItem{
+			ID:             r.ID,
+			Slug:           r.Slug,
+			HashAlgo:       r.HashAlgo,
+			FileHash:       r.FileHash,
+			PreHash:        r.PreHash,
+			FileSize:       r.FileSize,
+			MimeType:       r.MimeType,
+			StoragePath:    r.StoragePath,
+			Status:         r.Status,
+			CreatedAt:      r.CreatedAt.Time.Unix(),
+			UserFileCount:  r.UserFileCount,
+			MediaItemCount: r.MediaItemCount,
+		})
+	}
+
+	return items, int(total), nil
+}
+
+type PhysicalFileDetailResult struct {
+	PhysicalFile AdminPhysicalFileItem   `json:"physicalFile"`
+	UserFiles    []CleanupQueryUserFile `json:"userFiles"`
+	TotalUploads int                    `json:"totalUploads"`
+	UniqueUsers  int                    `json:"uniqueUsers"`
+	FullPath     string                 `json:"fullPath"`
+}
+
+func (s *AdminService) PhysicalFileDetail(ctx context.Context, id int64) (*PhysicalFileDetailResult, error) {
+	pf, err := s.queries.GetPhysicalFileByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrNotFound
+		}
+		return nil, fmt.Errorf("get physical file: %w", err)
+	}
+
+	detail := &PhysicalFileDetailResult{
+		FullPath: storage.AbsPath(s.storageRoot, pf.FileHash, s.filesDir),
+		PhysicalFile: AdminPhysicalFileItem{
+			ID:          pf.ID,
+			Slug:        pf.Slug,
+			HashAlgo:    pf.HashAlgo,
+			FileHash:    pf.FileHash,
+			PreHash:     pf.PreHash,
+			FileSize:    pf.FileSize,
+			MimeType:    pf.MimeType,
+			StoragePath: pf.StoragePath,
+			Status:      pf.Status,
+			CreatedAt:   pf.CreatedAt.Time.Unix(),
+		},
+		UserFiles: []CleanupQueryUserFile{},
+	}
+
+	rows, err := s.pg.Query(ctx, `
+		SELECT uf.id, uf.slug, uf.user_id, u.username, uf.file_name, uf.file_size,
+		       EXTRACT(EPOCH FROM uf.created_at)::bigint
+		FROM user_files uf
+		JOIN users u ON u.id = uf.user_id
+		WHERE uf.physical_file_id = $1
+		ORDER BY uf.created_at DESC
+	`, pf.ID)
+	if err != nil {
+		return nil, fmt.Errorf("query user files: %w", err)
+	}
+	defer rows.Close()
+
+	seen := make(map[int64]bool)
+	for rows.Next() {
+		var uf CleanupQueryUserFile
+		var createdAt int64
+		if err := rows.Scan(&uf.ID, &uf.Slug, &uf.UserID, &uf.Username, &uf.FileName, &uf.FileSize, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan user file: %w", err)
+		}
+		uf.CreatedAt = createdAt
+		detail.UserFiles = append(detail.UserFiles, uf)
+		if !seen[uf.UserID] {
+			seen[uf.UserID] = true
+			detail.UniqueUsers++
+		}
+		detail.TotalUploads++
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return detail, nil
+}
+
 func (s *AdminService) StorageStats(ctx context.Context) ([]CategoryStat, error) {
 	rows, err := s.pg.Query(ctx,
 		`SELECT COALESCE(NULLIF(file_category, ''), 'other'), COALESCE(SUM(file_size), 0), COUNT(*)

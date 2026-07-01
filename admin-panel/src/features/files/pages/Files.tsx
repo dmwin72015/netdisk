@@ -6,6 +6,7 @@ import { UndoOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { PageContainer } from '@/components/PageContainer';
+import CopyCell from '@/components/CopyCell';
 import { useDeleteFile, useRestoreFile } from '@/api/admin.hooks';
 import { fetchFiles } from '@/api/admin';
 import type { AdminFile } from '@/api/admin';
@@ -33,12 +34,13 @@ export default function FilesPage() {
 
   const columns: ProColumns<AdminFile>[] = [
     { title: 'ID', dataIndex: 'id', width: 60, hideInSearch: true },
+    { title: t('files.slug'), dataIndex: 'slug', width: 220, hideInSearch: true, render: (_, r) => <CopyCell value={r.slug} /> },
     { title: t('files.filename'), dataIndex: 'fileName', ellipsis: true },
     {
       title: t('files.owner'),
       dataIndex: 'username',
       render: (_, r) => <Link to={`/admin/users/${r.userId}`}>{r.username}</Link>,
-      width: 150,
+      width: 200,
       hideInSearch: true,
     },
     {
@@ -52,8 +54,8 @@ export default function FilesPage() {
     {
       title: t('files.size'),
       dataIndex: 'fileSize',
-      render: (_, record) => formatBytes(record.fileSize),
-      width: 100,
+      render: (_, r) => r.isDir ? <span style={{ color: '#999' }}>-</span> : formatBytes(r.fileSize),
+      width: 160,
       hideInSearch: true,
       sorter: true,
     },
@@ -133,6 +135,7 @@ export default function FilesPage() {
   return (
     <PageContainer title={t('files.title')}>
       <ProTable<AdminFile>
+        headerTitle={t("files.title")}
         rowKey="id"
         actionRef={actionRef}
         columns={columns}
