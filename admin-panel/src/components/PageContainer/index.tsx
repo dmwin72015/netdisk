@@ -28,5 +28,6 @@ function PageContainer({ title, extra, children }: PageContainerProps) {
   );
 }
 
+export { PageContainer };
 export default PageContainer;
-export { type PageContainerProps };
+export type { PageContainerProps };

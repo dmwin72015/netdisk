@@ -176,6 +176,8 @@ export type ActivityLogParams = {
   created_from?: string;
   created_to?: string;
   lang?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type AdminActionLabel = {

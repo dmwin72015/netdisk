@@ -9,12 +9,13 @@ import {
   Popconfirm,
   Tag,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { ProTable } from '@ant-design/pro-components';
+import type { ProColumns } from '@ant-design/pro-components';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import PageContainer from '../../../components/PageContainer';
-import ProTable from '../../../components/ProTable';
-import { useSystemConfig, useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
+import { PageContainer } from '../../../components/PageContainer';
+import { useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
+import { fetchSystemConfig } from '../../../api/admin';
 import type { SystemConfigItem } from '../../../api/admin';
 import { formatBytes } from '../../../utils/format';
 
@@ -90,8 +91,6 @@ export default function SettingsPage() {
   const [editByteNum, setEditByteNum] = useState(0);
   const [editByteUnit, setEditByteUnit] = useState('MB');
 
-  const queryResult = useSystemConfig();
-
   const openEditModal = (item: SystemConfigItem) => {
     setEditItem(item);
     const type = inferType(item);
@@ -107,22 +106,28 @@ export default function SettingsPage() {
     setEditModalOpen(true);
   };
 
-  // Map useQuery result to ListQueryResult-compatible shape
-  const listQueryResult = {
-    data: (queryResult.data as SystemConfigItem[]) ?? [],
-    total: (queryResult.data as SystemConfigItem[])?.length ?? 0,
-    isLoading: queryResult.isLoading,
-    isFetching: queryResult.isFetching,
-    isError: queryResult.isError,
-    error: queryResult.error as Error | null,
-    refetch: () => queryResult.refetch(),
+  const handleEditSave = async () => {
+    if (!editItem) return;
+    try {
+      let newValue: string;
+      if (editType === 'bytes') {
+        newValue = parseBytesInput(editByteNum, editByteUnit);
+      } else {
+        newValue = editValue;
+      }
+      await updateConfigMut.mutateAsync({ [editItem.key]: newValue });
+      setEditModalOpen(false);
+    } catch {
+      // error handled by hook
+    }
   };
 
-  const columns: ColumnsType<SystemConfigItem> = [
+  const columns: ProColumns<SystemConfigItem>[] = [
     {
       title: t('settings.setting'),
       key: 'setting',
-      render: (_: unknown, record: SystemConfigItem) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <div>
           {record.description && (
             <div style={{ fontWeight: 500 }}>{record.description}</div>
@@ -135,19 +140,22 @@ export default function SettingsPage() {
       title: t('settings.currentValue'),
       dataIndex: 'value',
       width: 200,
-      render: (_: unknown, record: SystemConfigItem) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <code>{formatDisplayValue(record)}</code>
       ),
     },
     {
       title: t('settings.defaultValue'),
       width: 150,
+      hideInSearch: true,
       render: () => <span style={{ color: '#999' }}>-</span>,
     },
     {
       title: t('settings.type'),
       width: 100,
-      render: (_: unknown, record: SystemConfigItem) => {
+      hideInSearch: true,
+      render: (_, record) => {
         const type = inferType(record);
         const colorMap: Record<ConfigType, string> = {
           bytes: 'purple',
@@ -161,7 +169,8 @@ export default function SettingsPage() {
     {
       title: t('settings.actions'),
       width: 160,
-      render: (_: unknown, record: SystemConfigItem) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Space>
           <Button
             type="link"
@@ -208,29 +217,21 @@ export default function SettingsPage() {
       <ProTable<SystemConfigItem>
         rowKey="key"
         columns={columns}
-        queryResult={listQueryResult}
-        pagination={false as never}
+        request={async () => {
+          const data = await fetchSystemConfig();
+          return { data, success: true, total: data.length };
+        }}
+        pagination={false}
         size="small"
+        options={false}
+        search={false}
       />
 
-      {/* Edit Modal */}
       <Modal
         title={`${t('settings.edit')}: ${editItem?.key}`}
         open={editModalOpen}
         onCancel={() => setEditModalOpen(false)}
-        onOk={() => {
-          if (!editItem) return;
-          let newValue: string;
-          if (editType === 'bytes') {
-            newValue = parseBytesInput(editByteNum, editByteUnit);
-          } else {
-            newValue = editValue;
-          }
-          updateConfigMut.mutate(
-            { [editItem.key]: newValue },
-            { onSettled: () => setEditModalOpen(false) },
-          );
-        }}
+        onOk={handleEditSave}
         confirmLoading={updateConfigMut.isPending}
       >
         {editType === 'string' && (

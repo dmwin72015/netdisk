@@ -1,14 +1,12 @@
-import { useCallback, useState } from 'react';
-import { Button, Modal, Descriptions, Select, Input } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { useState } from 'react';
+import { Button, Modal, Descriptions } from 'antd';
+import { ProTable } from '@ant-design/pro-components';
+import type { ProColumns } from '@ant-design/pro-components';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import PageContainer from '../../../components/PageContainer';
-import SearchForm from '../../../components/SearchForm';
-import type { SearchField } from '../../../components/SearchForm';
-import ProTable from '../../../components/ProTable';
-import { useTableUrlState } from '../../../hooks/useTableUrlState';
-import { useActivityLogs, useActivityLogActions } from '../../../api/admin.hooks';
+import { PageContainer } from '../../../components/PageContainer';
+import { useActivityLogActions } from '../../../api/admin.hooks';
+import { fetchActivityLogs } from '../../../api/admin';
 import type { AdminActivityLog } from '../../../api/admin';
 import { formatISODate } from '../../../utils/format';
 
@@ -17,70 +15,44 @@ export default function ActivityLogsPage() {
   const [detailLog, setDetailLog] = useState<AdminActivityLog | null>(null);
   const { data: actions } = useActivityLogActions(i18n.language);
 
-  const { params, setParams, resetParams } = useTableUrlState({
-    page: 1,
-    pageSize: 20,
-    action: '',
-    ip: '',
-  });
-
-  const queryResult = useActivityLogs({
-    limit: params.pageSize,
-    offset: (params.page - 1) * params.pageSize,
-    action: params.action || undefined,
-    ip: params.ip || undefined,
-  });
-
-  const handleSearch = useCallback(
-    (values: Record<string, unknown>) => {
-      setParams({
-        page: 1,
-        action: (values.action as string) || '',
-        ip: (values.ip as string) || '',
-      });
-    },
-    [setParams],
-  );
-
-  const handlePageChange = useCallback(
-    (page: number, pageSize: number) => {
-      setParams({ page, pageSize });
-    },
-    [setParams],
-  );
-
-  const columns: ColumnsType<AdminActivityLog> = [
-    { title: t('activityLogs.id'), dataIndex: 'id', width: 60 },
+  const columns: ProColumns<AdminActivityLog>[] = [
+    { title: t('activityLogs.id'), dataIndex: 'id', width: 60, hideInSearch: true },
     {
       title: t('activityLogs.user'),
       dataIndex: 'username',
       render: (_, r) => <Link to={`/admin/users/${r.userId}`}>{r.username}</Link>,
+      hideInSearch: true,
     },
     {
       title: t('activityLogs.action'),
-      dataIndex: 'actionLabel',
-      width: 160,
+      dataIndex: 'action',
+      valueType: 'select',
+      fieldProps: { options: (actions ?? []).map((a) => ({ label: a.label, value: a.action })) },
+      render: (_, r) => r.actionLabel,
     },
     {
       title: t('activityLogs.resource'),
       render: (_, r) => `${r.resourceType}: ${r.resourceName}`,
+      hideInSearch: true,
     },
     {
       title: t('activityLogs.ip'),
       dataIndex: 'ip',
-      width: 140,
     },
-    { title: t('activityLogs.os'), dataIndex: 'os', width: 100 },
-    { title: t('activityLogs.browser'), dataIndex: 'browser', ellipsis: true },
+    { title: t('activityLogs.os'), dataIndex: 'os', hideInSearch: true },
+    { title: t('activityLogs.browser'), dataIndex: 'browser', hideInSearch: true, ellipsis: true },
     {
       title: t('activityLogs.time'),
       dataIndex: 'createdAt',
-      render: (v: string) => formatISODate(v),
-      width: 170,
+      render: (_, record) => formatISODate(record.createdAt),
+      hideInSearch: true,
+      sorter: true,
+      defaultSortOrder: 'descend',
     },
     {
       title: '',
       width: 80,
+      hideInSearch: true,
       render: (_, r) => (
         <Button size="small" onClick={() => setDetailLog(r)}>
           {t('activityLogs.detail')}
@@ -89,47 +61,40 @@ export default function ActivityLogsPage() {
     },
   ];
 
-  const searchFields: SearchField[] = [
-    {
-      name: 'action',
-      label: t('activityLogs.action'),
-      children: (
-        <Select
-          allowClear
-          placeholder={t('activityLogs.selectAction')}
-          options={(actions ?? []).map((a) => ({ label: a.label, value: a.action }))}
-          style={{ width: 200 }}
-        />
-      ),
-    },
-    {
-      name: 'ip',
-      label: t('activityLogs.ip'),
-      children: <Input placeholder={t('activityLogs.ipPlaceholder')} allowClear />,
-    },
-  ];
-
   return (
     <PageContainer title={t('activityLogs.title')}>
-      <SearchForm
-        fields={searchFields}
-        onSearch={handleSearch}
-        onReset={resetParams}
-        initialValues={{
-          action: params.action || undefined,
-          ip: params.ip || undefined,
-        }}
-      />
       <ProTable<AdminActivityLog>
         rowKey="id"
         columns={columns}
-        queryResult={queryResult}
-        pagination={{ current: params.page, pageSize: params.pageSize }}
-        onChange={(pag) => {
-          if (pag.current && pag.pageSize) {
-            handlePageChange(pag.current, pag.pageSize);
-          }
+        request={async (params, sorter) => {
+          const sortField = Object.keys(sorter)[0];
+          const sortOrder = sortField
+            ? (sorter as Record<string, string>)[sortField] === 'ascend'
+              ? 'asc'
+              : 'desc'
+            : undefined;
+          const uid = params.userId ? Number(params.userId) : undefined;
+          const res = await fetchActivityLogs({
+            limit: params.pageSize!,
+            offset: (params.current! - 1) * params.pageSize!,
+            user_id: uid && !Number.isNaN(uid) ? uid : undefined,
+            action: (params.action as string) || undefined,
+            ip: (params.ip as string) || undefined,
+            sortBy: sortField as string | undefined,
+            sortOrder,
+          });
+          return { data: res.items, success: true, total: res.total };
         }}
+        search={{
+          labelWidth: 'auto',
+          defaultCollapsed: false,
+        }}
+        pagination={{
+          showSizeChanger: true,
+          showTotal: (total) => t('activityLogs.total_0', { count: total }),
+        }}
+        size="small"
+        options={false}
       />
 
       <Modal

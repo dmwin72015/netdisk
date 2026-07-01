@@ -1,22 +1,23 @@
-import { useCallback, useState } from 'react';
-import { Space, Select, Button, Popconfirm, Tooltip } from 'antd';
-import { ModalForm, ProFormText, ProFormSelect, ProFormDigit } from '@ant-design/pro-components';
-import type { ColumnsType } from 'antd/es/table';
+import { useRef, useState } from 'react';
+import { Space, Select, Button, Popconfirm, Tooltip, message } from 'antd';
+import { ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDigit } from '@ant-design/pro-components';
+import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import {
   DeleteOutlined,
   EyeOutlined,
   EditOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { Input } from 'antd';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import PageContainer from '../../../components/PageContainer';
-import SearchForm from '../../../components/SearchForm';
-import type { SearchField } from '../../../components/SearchForm';
-import ProTable from '../../../components/ProTable';
-import { useTableUrlState } from '../../../hooks/useTableUrlState';
-import { useUsers, useCreateUser, useUpdateUserRole, useUpdateStorageBase, useDeleteUser } from '../../../api/admin.hooks';
+import { PageContainer } from '../../../components/PageContainer';
+import {
+  useCreateUser,
+  useUpdateUserRole,
+  useUpdateStorageBase,
+  useDeleteUser,
+} from '../../../api/admin.hooks';
+import { fetchUsers } from '../../../api/admin';
 import type { AdminUser, CreateUserInput } from '../../../api/admin';
 import { formatDateShort, formatBytes } from '../../../utils/format';
 
@@ -25,6 +26,7 @@ const ROLES = ['admin', 'user'];
 export default function UsersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const actionRef = useRef<ActionType>(null);
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [storageUser, setStorageUser] = useState<AdminUser | null>(null);
 
@@ -33,84 +35,64 @@ export default function UsersPage() {
   const updateStorageMut = useUpdateStorageBase();
   const deleteUserMut = useDeleteUser();
 
-  const { params, setParams, resetParams } = useTableUrlState({
-    page: 1,
-    pageSize: 20,
-    search: '',
-    role: '',
-  });
+  const handleRoleChange = async (userId: string, role: string) => {
+    try {
+      await updateRoleMut.mutateAsync({ id: userId, role });
+      actionRef.current?.reload();
+    } catch {
+      message.error(t('users.roleFailed'));
+    }
+  };
 
-  const queryResult = useUsers({
-    limit: params.pageSize,
-    offset: (params.page - 1) * params.pageSize,
-    search: params.search || undefined,
-    role: params.role || undefined,
-  });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteUserMut.mutateAsync(id);
+      actionRef.current?.reload();
+    } catch {
+      message.error(t('users.deleteFailed'));
+    }
+  };
 
-  const handleRoleChange = useCallback(
-    (userId: string, role: string) => {
-      updateRoleMut.mutate({ id: userId, role });
-    },
-    [updateRoleMut],
-  );
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      deleteUserMut.mutate(id);
-    },
-    [deleteUserMut],
-  );
-
-  const handleSearch = useCallback(
-    (values: Record<string, unknown>) => {
-      setParams({
-        page: 1,
-        search: (values.search as string) || '',
-        role: (values.role as string) || '',
-      });
-    },
-    [setParams],
-  );
-
-  const handlePageChange = useCallback(
-    (page: number, pageSize: number) => {
-      setParams({ page, pageSize });
-    },
-    [setParams],
-  );
-
-  const columns: ColumnsType<AdminUser> = [
-    { title: 'ID', dataIndex: 'id', width: 80 },
-    { title: t('users.registerMethod'), dataIndex: 'registerMethod', width: 110 },
+  const columns: ProColumns<AdminUser>[] = [
+    { title: 'ID', dataIndex: 'id', width: 80, hideInSearch: true },
     {
       title: t('users.username'),
       dataIndex: 'username',
-      render: (text: string, record: AdminUser) => (
+      render: (text, record) => (
         <a onClick={() => navigate(`/admin/users/${record.id}`)} style={{ cursor: 'pointer' }}>
           {text}
         </a>
       ),
     },
-    { title: t('users.email'), dataIndex: 'email' },
+    { title: t('users.email'), dataIndex: 'email', hideInSearch: true },
     {
       title: t('users.role'),
       dataIndex: 'role',
       width: 130,
-      render: (role: string, record: AdminUser) => (
+      valueType: 'select',
+      fieldProps: { options: ROLES.map((r) => ({ label: t(`users.${r}`), value: r })) },
+      render: (role, record) => (
         <Select
-          value={role}
+          value={role as string}
           size="small"
           style={{ width: 120 }}
-          onChange={(val) => handleRoleChange(record.id, val)}
+          onChange={(val) => handleRoleChange(record.id, val as string)}
           options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))}
         />
       ),
     },
     {
+      title: t('users.registerMethod'),
+      dataIndex: 'registerMethod',
+      width: 110,
+      hideInSearch: true,
+    },
+    {
       title: t('users.storageLimit'),
       key: 'storage',
       width: 130,
-      render: (_: unknown, record: AdminUser) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Tooltip title={`${t('users.total')}: ${formatBytes(record.totalBytes)}`}>
           {formatBytes(record.usedBytes)}
         </Tooltip>
@@ -120,12 +102,14 @@ export default function UsersPage() {
       title: t('users.registered'),
       dataIndex: 'createdAt',
       width: 120,
-      render: (v: number) => formatDateShort(v),
+      hideInSearch: true,
+      render: (v) => formatDateShort(v as number),
     },
     {
       title: t('users.actions'),
       width: 160,
-      render: (_: unknown, record: AdminUser) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Space>
           <Tooltip title={t('users.view')}>
             <EyeOutlined
@@ -156,91 +140,74 @@ export default function UsersPage() {
     },
   ];
 
-  const searchFields: SearchField[] = [
-    {
-      name: 'search',
-      label: t('users.username'),
-      children: <Input placeholder={t('users.search')} allowClear />,
-    },
-    {
-      name: 'role',
-      label: t('users.role'),
-      children: (
-        <Select
-          allowClear
-          placeholder={t('users.allRoles')}
-          options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))}
-          style={{ width: 160 }}
-        />
-      ),
-    },
-  ];
-
   return (
-    <PageContainer
-      title={t('users.title')}
-      extra={[
-        <ModalForm<CreateUserInput>
-          key="create"
-          title={t('users.createUser')}
-          trigger={
-            <Button type="primary" icon={<PlusOutlined />}>
-              {t('users.createButton')}
-            </Button>
-          }
-          submitter={{
-            searchConfig: { submitText: t('common.save'), resetText: t('common.cancel') },
-            render: (_props, defaultDoms) => [defaultDoms[1], defaultDoms[0]],
-          }}
-          onFinish={async (values) => {
-            try {
-              await createUserMut.mutateAsync(values);
-              return true;
-            } catch {
-              return false;
-            }
-          }}
-        >
-          <ProFormText
-            name="username"
-            label={t('users.username')}
-            rules={[{ required: true, message: t('users.usernameRequired') }]}
-          />
-          <ProFormText
-            name="email"
-            label={t('users.email')}
-            rules={[{ required: true, message: t('users.emailRequired') }]}
-          />
-          <ProFormText.Password
-            name="password"
-            label={t('login.password')}
-            rules={[{ required: true, message: t('users.passwordRequired') }]}
-          />
-          <ProFormSelect
-            name="role"
-            label={t('users.role')}
-            initialValue="user"
-            options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))}
-          />
-        </ModalForm>,
-      ]}
-    >
-      <SearchForm
-        fields={searchFields}
-        onSearch={handleSearch}
-        onReset={resetParams}
-        initialValues={{ search: params.search || undefined, role: params.role || undefined }}
-      />
+    <PageContainer title={t('users.title')}>
       <ProTable<AdminUser>
         rowKey="id"
-        columns={columns as never}
-        queryResult={queryResult}
-        pagination={{ current: params.page, pageSize: params.pageSize }}
-        onChange={(pag) => {
-          if (pag.current && pag.pageSize) {
-            handlePageChange(pag.current, pag.pageSize);
-          }
+        actionRef={actionRef}
+        columns={columns}
+        request={async (params) => {
+          const res = await fetchUsers({
+            limit: params.pageSize!,
+            offset: (params.current! - 1) * params.pageSize!,
+            search: (params.username as string) || undefined,
+            role: (params.role as string) || undefined,
+          });
+          return { data: res.items, success: true, total: res.total };
         }}
+        search={{ labelWidth: 'auto' }}
+        pagination={{
+          showSizeChanger: true,
+          showTotal: (total) => t('users.total_0', { count: total }),
+        }}
+        size="small"
+        options={false}
+        toolBarRender={() => [
+          <ModalForm<CreateUserInput>
+            key="create"
+            title={t('users.createUser')}
+            trigger={
+              <Button type="primary" icon={<PlusOutlined />}>
+                {t('users.createButton')}
+              </Button>
+            }
+            submitter={{
+              searchConfig: { submitText: t('common.save'), resetText: t('common.cancel') },
+              render: (_p, defaultDoms) => [defaultDoms[1], defaultDoms[0]],
+            }}
+            onFinish={async (values) => {
+              try {
+                await createUserMut.mutateAsync(values);
+                actionRef.current?.reload();
+                return true;
+              } catch {
+                return false;
+              }
+            }}
+          >
+            <ProFormText
+              name="username"
+              label={t('users.username')}
+              rules={[{ required: true, message: t('users.usernameRequired') }]}
+            />
+            <ProFormText
+              name="email"
+              label={t('users.email')}
+              rules={[{ required: true, message: t('users.emailRequired') }]}
+            />
+            <ProFormText.Password
+              name="password"
+              label={t('login.password')}
+              rules={[{ required: true, message: t('users.passwordRequired') }]}
+            />
+            <ProFormSelect
+              name="role"
+              label={t('users.role')}
+              initialValue="user"
+              options={ROLES.map((r) => ({ label: t(`users.${r}`), value: r }))}
+            />
+          </ModalForm>,
+        ]}
       />
 
       <ModalForm
@@ -260,6 +227,7 @@ export default function UsersPage() {
               id: storageUser.id,
               baseBytes: values.baseBytes as number,
             });
+            actionRef.current?.reload();
             return true;
           } catch {
             return false;
