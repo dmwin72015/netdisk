@@ -142,8 +142,8 @@ export default function AdminLayout() {
         </Header>
         <Content
           style={{
-            margin: 24,
-            padding: 24,
+            margin: 12,
+            padding: 16,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,

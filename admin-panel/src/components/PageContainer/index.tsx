@@ -16,7 +16,7 @@ function PageContainer({ title, extra, children }: PageContainerProps) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 24,
+            marginBottom: 16,
           }}
         >
           {title && <h2 style={{ margin: 0 }}>{title}</h2>}
