@@ -254,12 +254,12 @@ export function useCleanupQuery() {
 
 export function useDeleteUserFile() {
   return useMutation({
-    mutationFn: (userFileId: string) => deleteUserFile(userFileId),
+    mutationFn: (userFileId: number) => deleteUserFile(userFileId),
   });
 }
 
 export function useDeletePhysicalFile() {
   return useMutation({
-    mutationFn: (physicalFileId: string) => deletePhysicalFile(physicalFileId),
+    mutationFn: (physicalFileId: number) => deletePhysicalFile(physicalFileId),
   });
 }

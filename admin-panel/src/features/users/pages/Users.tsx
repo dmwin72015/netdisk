@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Space, Select, Button, Popconfirm, Tooltip } from 'antd';
 import { ModalForm, ProFormText, ProFormSelect, ProFormDigit } from '@ant-design/pro-components';
-import type { ProColumns } from '@ant-design/pro-components';
+import type { ColumnsType } from 'antd/es/table';
 import {
   DeleteOutlined,
   EyeOutlined,
@@ -11,10 +11,10 @@ import {
 import { Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
-import { SearchForm } from '../../../components/SearchForm';
+import PageContainer from '../../../components/PageContainer';
+import SearchForm from '../../../components/SearchForm';
 import type { SearchField } from '../../../components/SearchForm';
-import { ProTable } from '../../../components/ProTable';
+import ProTable from '../../../components/ProTable';
 import { useTableUrlState } from '../../../hooks/useTableUrlState';
 import { useUsers, useCreateUser, useUpdateUserRole, useUpdateStorageBase, useDeleteUser } from '../../../api/admin.hooks';
 import type { AdminUser, CreateUserInput } from '../../../api/admin';
@@ -79,7 +79,7 @@ export default function UsersPage() {
     [setParams],
   );
 
-  const columns: ProColumns<AdminUser>[] = [
+  const columns: ColumnsType<AdminUser> = [
     { title: 'ID', dataIndex: 'id', width: 80 },
     { title: t('users.registerMethod'), dataIndex: 'registerMethod', width: 110 },
     {
@@ -190,7 +190,7 @@ export default function UsersPage() {
           }
           submitter={{
             searchConfig: { submitText: t('common.save'), resetText: t('common.cancel') },
-            render: (props, defaultDoms) => [defaultDoms[1], defaultDoms[0]],
+            render: (_props, defaultDoms) => [defaultDoms[1], defaultDoms[0]],
           }}
           onFinish={async (values) => {
             try {

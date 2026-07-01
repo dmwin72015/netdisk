@@ -12,12 +12,11 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
-import { ProTable } from '../../../components/ProTable';
-import { useTableUrlState } from '../../../hooks/useTableUrlState';
+import PageContainer from '../../../components/PageContainer';
+import ProTable from '../../../components/ProTable';
 import { useSystemConfig, useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
 import type { SystemConfigItem } from '../../../api/admin';
-import { formatBytes, formatDate } from '../../../utils/format';
+import { formatBytes } from '../../../utils/format';
 
 const UNIT_OPTIONS = [
   { label: 'B', value: 'B' },
@@ -92,12 +91,6 @@ export default function SettingsPage() {
   const [editByteUnit, setEditByteUnit] = useState('MB');
 
   const queryResult = useSystemConfig();
-  const { refetch } = queryResult;
-
-  const { params, setParams } = useTableUrlState({
-    page: 1,
-    pageSize: 100,
-  });
 
   const openEditModal = (item: SystemConfigItem) => {
     setEditItem(item);
@@ -202,7 +195,7 @@ export default function SettingsPage() {
           key="resetAll"
           title={t('settings.resetAllConfirm')}
           description={t('settings.resetAllDescription')}
-          onConfirm={() => resetConfigMut.mutate()}
+          onConfirm={() => resetConfigMut.mutate(undefined)}
           okText={t('common.yes')}
           cancelText={t('common.no')}
         >

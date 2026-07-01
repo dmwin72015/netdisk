@@ -7,7 +7,7 @@ interface PageContainerProps {
   children: ReactNode;
 }
 
-export default function PageContainer({ title, extra, children }: PageContainerProps) {
+function PageContainer({ title, extra, children }: PageContainerProps) {
   return (
     <div>
       {(title || extra) && (
@@ -27,3 +27,6 @@ export default function PageContainer({ title, extra, children }: PageContainerP
     </div>
   );
 }
+
+export default PageContainer;
+export { type PageContainerProps };

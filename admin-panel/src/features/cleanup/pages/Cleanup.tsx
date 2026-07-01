@@ -18,7 +18,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
+import PageContainer from '../../../components/PageContainer';
 import {
   useCleanupQuery,
   useDeleteUserFile,

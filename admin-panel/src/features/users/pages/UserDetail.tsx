@@ -4,7 +4,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../../../api/admin.hooks';
-import { PageContainer } from '../../../components/PageContainer';
+import PageContainer from '../../../components/PageContainer';
 import { formatBytes, formatDate } from '../../../utils/format';
 
 const ROLE_COLORS: Record<string, string> = {
