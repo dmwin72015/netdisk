@@ -13,11 +13,11 @@ import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
-import { useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
-import { fetchSystemConfig } from '../../../api/admin';
-import type { SystemConfigItem } from '../../../api/admin';
-import { formatBytes } from '../../../utils/format';
+import { PageContainer } from '@/components/PageContainer';
+import { useUpdateSystemConfig, useResetSystemConfig } from '@/api/admin.hooks';
+import { fetchSystemConfig } from '@/api/admin';
+import type { SystemConfigItem } from '@/api/admin';
+import { formatBytes } from '@/utils/format';
 
 const UNIT_OPTIONS = [
   { label: 'B', value: 'B' },

@@ -1,8 +1,8 @@
 import { Card, Row, Col, Spin, Result, Progress } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useStorageStats } from '../../../api/admin.hooks';
-import PageContainer from '../../../components/PageContainer';
-import { formatBytes } from '../../../utils/format';
+import { useStorageStats } from '@/api/admin.hooks';
+import PageContainer from '@/components/PageContainer';
+import { formatBytes } from '@/utils/format';
 
 const CATEGORY_COLORS: Record<string, string> = {
   video: '#722ed1',

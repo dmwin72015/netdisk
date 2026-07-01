@@ -3,7 +3,7 @@ import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { request } from '../../../api/request';
+import { request } from '@/api/request';
 
 interface LoginResponse {
   user: {

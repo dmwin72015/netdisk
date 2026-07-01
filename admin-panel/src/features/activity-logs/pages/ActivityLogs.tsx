@@ -4,11 +4,11 @@ import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
-import { useActivityLogActions } from '../../../api/admin.hooks';
-import { fetchActivityLogs } from '../../../api/admin';
-import type { AdminActivityLog } from '../../../api/admin';
-import { formatISODate } from '../../../utils/format';
+import { PageContainer } from '@/components/PageContainer';
+import { useActivityLogActions } from '@/api/admin.hooks';
+import { fetchActivityLogs } from '@/api/admin';
+import type { AdminActivityLog } from '@/api/admin';
+import { formatISODate } from '@/utils/format';
 
 export default function ActivityLogsPage() {
   const { t, i18n } = useTranslation();
@@ -94,7 +94,6 @@ export default function ActivityLogsPage() {
           showTotal: (total) => t('activityLogs.total_0', { count: total }),
         }}
         size="small"
-        options={false}
       />
 
       <Modal

@@ -14,7 +14,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import type { ListQueryResult } from '../types/query';
+import type { ListQueryResult } from '@/types/query';
 
 import {
   createUser,

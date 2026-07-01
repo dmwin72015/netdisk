@@ -5,11 +5,11 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { UndoOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
-import { useDeleteFile, useRestoreFile } from '../../../api/admin.hooks';
-import { fetchFiles } from '../../../api/admin';
-import type { AdminFile } from '../../../api/admin';
-import { formatBytes, formatDate } from '../../../utils/format';
+import { PageContainer } from '@/components/PageContainer';
+import { useDeleteFile, useRestoreFile } from '@/api/admin.hooks';
+import { fetchFiles } from '@/api/admin';
+import type { AdminFile } from '@/api/admin';
+import { formatBytes, formatDate } from '@/utils/format';
 
 const CATEGORY_OPTIONS = [
   { label: '文档', value: 'document' },

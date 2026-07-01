@@ -8,9 +8,9 @@ import {
   HddOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useDashboardStats } from '../../../api/admin.hooks';
-import PageContainer from '../../../components/PageContainer';
-import { formatBytes } from '../../../utils/format';
+import { useDashboardStats } from '@/api/admin.hooks';
+import PageContainer from '@/components/PageContainer';
+import { formatBytes } from '@/utils/format';
 
 export default function DashboardPage() {
   const { t } = useTranslation();

@@ -5,16 +5,16 @@ import 'antd/dist/reset.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { useTranslation } from 'react-i18next';
-import AdminLayout from './components/AdminLayout';
-import { LoginPage } from './features/login';
-import { DashboardPage } from './features/dashboard';
-import { UsersPage, UserDetailPage } from './features/users';
-import { FilesPage } from './features/files';
-import { StoragePage } from './features/storage';
-import { SettingsPage } from './features/settings';
-import { ActivityLogsPage } from './features/activity-logs';
-import { CleanupPage } from './features/cleanup';
-import { useAuthGuard } from './utils/auth';
+import AdminLayout from '@/components/AdminLayout';
+import { LoginPage } from '@/features/login';
+import { DashboardPage } from '@/features/dashboard';
+import { UsersPage, UserDetailPage } from '@/features/users';
+import { FilesPage } from '@/features/files';
+import { StoragePage } from '@/features/storage';
+import { SettingsPage } from '@/features/settings';
+import { ActivityLogsPage } from '@/features/activity-logs';
+import { CleanupPage } from '@/features/cleanup';
+import { useAuthGuard } from '@/utils/auth';
 
 dayjs.locale('zh-cn');
 

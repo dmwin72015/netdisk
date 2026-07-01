@@ -18,16 +18,16 @@ import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import PageContainer from '../../../components/PageContainer';
+import PageContainer from '@/components/PageContainer';
 import {
   useCleanupQuery,
   useDeleteUserFile,
   useDeletePhysicalFile,
-} from '../../../api/admin.hooks';
+} from '@/api/admin.hooks';
 import type {
   CleanupQueryUserFile,
-} from '../../../api/admin';
-import { formatBytes, formatDate } from '../../../utils/format';
+} from '@/api/admin';
+import { formatBytes, formatDate } from '@/utils/format';
 
 const LS_PREFIX = 'nd.admin.search';
 

@@ -10,16 +10,16 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { PageContainer } from '../../../components/PageContainer';
+import { PageContainer } from '@/components/PageContainer';
 import {
   useCreateUser,
   useUpdateUserRole,
   useUpdateStorageBase,
   useDeleteUser,
-} from '../../../api/admin.hooks';
-import { fetchUsers } from '../../../api/admin';
-import type { AdminUser, CreateUserInput } from '../../../api/admin';
-import { formatDateShort, formatBytes } from '../../../utils/format';
+} from '@/api/admin.hooks';
+import { fetchUsers } from '@/api/admin';
+import type { AdminUser, CreateUserInput } from '@/api/admin';
+import { formatDateShort, formatBytes } from '@/utils/format';
 
 const ROLES = ['admin', 'user'];
 
