@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import {
+  Button,
   Card,
   Col,
   Descriptions,
@@ -7,6 +8,7 @@ import {
   Popconfirm,
   Result,
   Row,
+  Space,
   Spin,
   Statistic,
   Tabs,
@@ -18,7 +20,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import PageContainer from '@/components/PageContainer';
+import { PageContainer } from '@/components/PageContainer';
 import {
   useCleanupQuery,
   useDeleteUserFile,
@@ -118,25 +120,27 @@ export default function CleanupPage() {
     {
       title: t('cleanup.size'),
       dataIndex: 'fileSize',
-      render: (size: number) => formatBytes(size),
+      render: (_, record) => formatBytes(record.fileSize),
     },
     {
       title: t('cleanup.created'),
       dataIndex: 'createdAt',
-      render: (v: number) => formatDate(v),
+      render: (_, record) => formatDate(record.createdAt),
     },
     {
       title: t('cleanup.actions'),
       key: 'actions',
       render: (_, record) => (
-        <Popconfirm
-          title={t('cleanup.deleteConfirm')}
-          onConfirm={() => handleDeleteUserFile(record.id)}
-        >
-          <a style={{ color: 'red', cursor: 'pointer' }}>
-            <DeleteOutlined /> {t('cleanup.delete')}
-          </a>
-        </Popconfirm>
+        <Space>
+          <Popconfirm
+            title={t('cleanup.deleteConfirm')}
+            onConfirm={() => handleDeleteUserFile(record.id)}
+          >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              {t('cleanup.delete')}
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -223,9 +227,9 @@ export default function CleanupPage() {
                   title={t('cleanup.deleteAllConfirm')}
                   onConfirm={() => handleDeletePhysicalFile(result.physicalFile!.id)}
                 >
-                  <a style={{ color: 'red', cursor: 'pointer' }}>
-                    <DeleteOutlined /> {t('cleanup.deleteAll')}
-                  </a>
+                  <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+                    {t('cleanup.deleteAll')}
+                  </Button>
                 </Popconfirm>
               }
             >

@@ -32,6 +32,7 @@ export default function FilesPage() {
   const restoreFileMut = useRestoreFile();
 
   const columns: ProColumns<AdminFile>[] = [
+    { title: 'ID', dataIndex: 'id', width: 60, hideInSearch: true },
     { title: t('files.filename'), dataIndex: 'fileName', ellipsis: true },
     {
       title: t('files.owner'),

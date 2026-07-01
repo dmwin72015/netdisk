@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+
 export function formatBytes(b: number): string {
   if (b === 0) return '0 B';
   const k = 1024;
@@ -6,14 +8,17 @@ export function formatBytes(b: number): string {
   return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+/** epoch seconds → YYYY-MM-DD HH:mm:ss */
 export function formatDate(epoch: number): string {
-  return new Date(epoch * 1000).toLocaleString();
+  return dayjs(epoch * 1000).format('YYYY-MM-DD HH:mm:ss');
 }
 
+/** epoch seconds → YYYY-MM-DD */
 export function formatDateShort(epoch: number): string {
-  return new Date(epoch * 1000).toLocaleDateString();
+  return dayjs(epoch * 1000).format('YYYY-MM-DD');
 }
 
+/** ISO string → YYYY-MM-DD HH:mm:ss */
 export function formatISODate(iso: string): string {
-  return new Date(iso).toLocaleString();
+  return dayjs(iso).format('YYYY-MM-DD HH:mm:ss');
 }

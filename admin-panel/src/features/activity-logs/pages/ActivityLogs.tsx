@@ -9,6 +9,7 @@ import { useActivityLogActions } from '@/api/admin.hooks';
 import { fetchActivityLogs } from '@/api/admin';
 import type { AdminActivityLog } from '@/api/admin';
 import { formatISODate } from '@/utils/format';
+import { EyeOutlined } from '@ant-design/icons';
 
 export default function ActivityLogsPage() {
   const { t, i18n } = useTranslation();
@@ -54,7 +55,7 @@ export default function ActivityLogsPage() {
       width: 80,
       hideInSearch: true,
       render: (_, r) => (
-        <Button size="small" onClick={() => setDetailLog(r)}>
+        <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setDetailLog(r)}>
           {t('activityLogs.detail')}
         </Button>
       ),

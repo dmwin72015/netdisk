@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Space, Select, Button, Popconfirm, Tooltip, message } from 'antd';
+import { Space, Select, Button, Popconfirm, message } from 'antd';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDigit } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import {
@@ -58,9 +58,9 @@ export default function UsersPage() {
     {
       title: t('users.username'),
       dataIndex: 'username',
-      render: (text, record) => (
+      render: (_, record) => (
         <a onClick={() => navigate(`/admin/users/${record.id}`)} style={{ cursor: 'pointer' }}>
-          {text}
+          {record.username}
         </a>
       ),
     },
@@ -103,7 +103,7 @@ export default function UsersPage() {
       dataIndex: 'createdAt',
       width: 120,
       hideInSearch: true,
-      render: (v) => formatDateShort(v as number),
+      render: (_, record) => formatDateShort(record.createdAt),
     },
     {
       title: t('users.actions'),
@@ -111,21 +111,12 @@ export default function UsersPage() {
       hideInSearch: true,
       render: (_, record) => (
         <Space>
-          <Tooltip title={t('users.view')}>
-            <EyeOutlined
-              style={{ cursor: 'pointer', color: '#1890ff' }}
-              onClick={() => navigate(`/admin/users/${record.id}`)}
-            />
-          </Tooltip>
-          <Tooltip title={t('users.editStorageBase')}>
-            <EditOutlined
-              style={{ cursor: 'pointer', color: '#52c41a' }}
-              onClick={() => {
-                setStorageUser(record);
-                setStorageModalOpen(true);
-              }}
-            />
-          </Tooltip>
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/admin/users/${record.id}`)}>
+            {t('users.view')}
+          </Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => { setStorageUser(record); setStorageModalOpen(true); }}>
+            {t('users.editStorageBase')}
+          </Button>
           <Popconfirm
             title={t('users.deleteUser')}
             description={t('users.deleteConfirm')}
@@ -133,7 +124,9 @@ export default function UsersPage() {
             okText={t('common.yes')}
             cancelText={t('common.no')}
           >
-            <DeleteOutlined style={{ cursor: 'pointer', color: '#ff4d4f' }} />
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              {t('common.delete')}
+            </Button>
           </Popconfirm>
         </Space>
       ),
