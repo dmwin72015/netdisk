@@ -1,61 +1,86 @@
-import { useRef } from 'react';
-import { Button, Space, Tag, Popconfirm, message } from 'antd';
-import { ProTable } from '@ant-design/pro-components';
-import type { ProColumns, ActionType } from '@ant-design/pro-components';
+import { useCallback } from 'react';
+import { Space, Tag, Button, Popconfirm } from 'antd';
 import { UndoOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import type { ColumnsType } from 'antd/es/table';
+import { Input, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useDeleteFile, useRestoreFile } from '../../../api/admin.hooks';
-import { fetchFiles } from '../../../api/admin';
+import { PageContainer } from '../../../components/PageContainer';
+import { SearchForm } from '../../../components/SearchForm';
+import type { SearchField } from '../../../components/SearchForm';
+import { ProTable } from '../../../components/ProTable';
+import { useTableUrlState } from '../../../hooks/useTableUrlState';
+import { useFiles, useDeleteFile, useRestoreFile } from '../../../api/admin.hooks';
 import type { AdminFile } from '../../../api/admin';
-
-function formatBytes(b: number): string {
-  if (b === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(k));
-  return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function formatDate(epoch: number): string {
-  return new Date(epoch * 1000).toLocaleString();
-}
+import { formatBytes, formatDate } from '../../../utils/format';
 
 const CATEGORY_OPTIONS = [
-  { label: 'document', value: 'document' },
-  { label: 'image', value: 'image' },
-  { label: 'video', value: 'video' },
-  { label: 'audio', value: 'audio' },
-  { label: 'archive', value: 'archive' },
-  { label: 'other', value: 'other' },
+  { label: '文档', value: 'document' },
+  { label: '图片', value: 'image' },
+  { label: '视频', value: 'video' },
+  { label: '音频', value: 'audio' },
+  { label: '压缩包', value: 'archive' },
+  { label: '其他', value: 'other' },
 ];
 
 const STATUS_OPTIONS = [
-  { label: 'active', value: 'active' },
-  { label: 'trashed', value: 'trashed' },
+  { label: '正常', value: 'active' },
+  { label: '已删除', value: 'trashed' },
 ];
 
-export default function Files() {
+export default function FilesPage() {
   const { t } = useTranslation();
-  const actionRef = useRef<ActionType>();
   const deleteFileMut = useDeleteFile();
   const restoreFileMut = useRestoreFile();
 
-  const columns: ProColumns<AdminFile>[] = [
+  const { params, setParams, resetParams } = useTableUrlState({
+    page: 1,
+    pageSize: 20,
+    search: '',
+    fileCategory: '',
+    isTrashed: '',
+  });
+
+  const queryResult = useFiles({
+    limit: params.pageSize,
+    offset: (params.page - 1) * params.pageSize,
+    search: params.search || undefined,
+    fileCategory: params.fileCategory || undefined,
+    isTrashed:
+      params.isTrashed === 'trashed' ? true : params.isTrashed === 'active' ? false : undefined,
+  });
+
+  const handleSearch = useCallback(
+    (values: Record<string, unknown>) => {
+      setParams({
+        page: 1,
+        search: (values.search as string) || '',
+        fileCategory: (values.fileCategory as string) || '',
+        isTrashed: (values.isTrashed as string) || '',
+      });
+    },
+    [setParams],
+  );
+
+  const handlePageChange = useCallback(
+    (page: number, pageSize: number) => {
+      setParams({ page, pageSize });
+    },
+    [setParams],
+  );
+
+  const columns: ColumnsType<AdminFile> = [
     { title: t('files.filename'), dataIndex: 'fileName', ellipsis: true },
     {
       title: t('files.owner'),
       dataIndex: 'username',
       render: (_, r) => <Link to={`/admin/users/${r.userId}`}>{r.username}</Link>,
       width: 150,
-      hideInSearch: true,
     },
     {
       title: t('files.type'),
       dataIndex: 'fileCategory',
-      valueType: 'select',
-      fieldProps: { options: CATEGORY_OPTIONS },
-      render: (v) => <Tag color="blue">{v || t('files.other')}</Tag>,
+      render: (v: string) => <Tag color="blue">{v || t('files.other')}</Tag>,
       width: 100,
     },
     {
@@ -63,14 +88,10 @@ export default function Files() {
       dataIndex: 'fileSize',
       render: (v: number) => formatBytes(v),
       width: 100,
-      hideInSearch: true,
-      sorter: true,
     },
     {
       title: t('files.status'),
-      dataIndex: 'isTrashed',
-      valueType: 'select',
-      fieldProps: { options: STATUS_OPTIONS },
+      key: 'status',
       render: (_, r) => (
         <Space>
           {r.isTrashed && <Tag color="red">{t('files.deleted')}</Tag>}
@@ -85,28 +106,17 @@ export default function Files() {
       dataIndex: 'createdAt',
       render: (v: number) => formatDate(v),
       width: 160,
-      hideInSearch: true,
-      sorter: true,
     },
     {
       title: t('files.actions'),
       width: 180,
-      hideInSearch: true,
       render: (_, r) => (
         <Space>
           {r.isTrashed && (
             <Popconfirm
               title={t('files.restore')}
               description={t('files.restoreConfirm')}
-              onConfirm={() =>
-                restoreFileMut.mutate(r.id, {
-                  onSuccess: () => {
-                    message.success(t('files.restoreSuccess'));
-                    actionRef.current?.reload();
-                  },
-                  onError: () => message.error(t('files.restoreFailed')),
-                })
-              }
+              onConfirm={() => restoreFileMut.mutate(r.id)}
               okText={t('common.yes')}
               cancelText={t('common.no')}
             >
@@ -118,15 +128,7 @@ export default function Files() {
           <Popconfirm
             title={t('files.permanentDelete')}
             description={t('files.noUndo')}
-            onConfirm={() =>
-              deleteFileMut.mutate(r.id, {
-                onSuccess: () => {
-                  message.success(t('files.deleteSuccess'));
-                  actionRef.current?.reload();
-                },
-                onError: () => message.error(t('files.deleteFailed')),
-              })
-            }
+            onConfirm={() => deleteFileMut.mutate(r.id)}
             okText={t('common.yes')}
             cancelText={t('common.no')}
           >
@@ -139,41 +141,61 @@ export default function Files() {
     },
   ];
 
+  const searchFields: SearchField[] = [
+    {
+      name: 'search',
+      label: t('files.filename'),
+      children: <Input placeholder={t('files.search')} allowClear />,
+    },
+    {
+      name: 'fileCategory',
+      label: t('files.category'),
+      children: (
+        <Select
+          allowClear
+          placeholder={t('files.allCategories')}
+          options={CATEGORY_OPTIONS}
+          style={{ width: 160 }}
+        />
+      ),
+    },
+    {
+      name: 'isTrashed',
+      label: t('files.statusFilter'),
+      children: (
+        <Select
+          allowClear
+          placeholder={t('files.allStatus')}
+          options={STATUS_OPTIONS}
+          style={{ width: 160 }}
+        />
+      ),
+    },
+  ];
+
   return (
-    <ProTable<AdminFile>
-      rowKey="id"
-      actionRef={actionRef}
-      columns={columns}
-      request={async (params, sorter) => {
-        const sortField = Object.keys(sorter)[0];
-        const sortOrder = sortField
-          ? (sorter as Record<string, string>)[sortField] === 'ascend'
-            ? 'asc'
-            : 'desc'
-          : undefined;
-        const res = await fetchFiles({
-          limit: params.pageSize!,
-          offset: (params.current! - 1) * params.pageSize!,
-          search: (params.fileName as string) || undefined,
-          fileCategory: (params.fileCategory as string) || undefined,
-          isTrashed:
-            params.isTrashed === 'trashed'
-              ? true
-              : params.isTrashed === 'active'
-                ? false
-                : undefined,
-          sortBy: sortField as string | undefined,
-          sortOrder,
-        });
-        return { data: res.items, success: true, total: res.total };
-      }}
-      search={{ labelWidth: 'auto' }}
-      pagination={{
-        showSizeChanger: true,
-        showTotal: (total) => t('files.total_0', { count: total }),
-      }}
-      size="small"
-      options={false}
-    />
+    <PageContainer title={t('files.title')}>
+      <SearchForm
+        fields={searchFields}
+        onSearch={handleSearch}
+        onReset={resetParams}
+        initialValues={{
+          search: params.search || undefined,
+          fileCategory: params.fileCategory || undefined,
+          isTrashed: params.isTrashed || undefined,
+        }}
+      />
+      <ProTable<AdminFile>
+        rowKey="id"
+        columns={columns}
+        queryResult={queryResult}
+        pagination={{ current: params.page, pageSize: params.pageSize }}
+        onChange={(pag) => {
+          if (pag.current && pag.pageSize) {
+            handlePageChange(pag.current, pag.pageSize);
+          }
+        }}
+      />
+    </PageContainer>
   );
 }

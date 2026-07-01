@@ -7,18 +7,12 @@ import {
   FileAddOutlined,
   HddOutlined,
 } from '@ant-design/icons';
-import { useDashboardStats } from '../../../api/admin.hooks';
 import { useTranslation } from 'react-i18next';
+import { useDashboardStats } from '../../../api/admin.hooks';
+import { PageContainer } from '../../../components/PageContainer';
+import { formatBytes } from '../../../utils/format';
 
-function formatBytes(b: number): string {
-  if (b === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(k));
-  return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-export default function Dashboard() {
+export default function DashboardPage() {
   const { t } = useTranslation();
   const { data: stats, isLoading, error } = useDashboardStats();
 
@@ -32,27 +26,26 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
+      <PageContainer>
         <Result
           status="error"
           title={t('dashboard.failed')}
           subTitle={error.message}
         />
-      </div>
+      </PageContainer>
     );
   }
 
   if (!stats) {
     return (
-      <div style={{ padding: 24 }}>
+      <PageContainer>
         <Result status="warning" title={t('dashboard.noData')} />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div>
-      <h2 style={{ marginBottom: 24 }}>{t('dashboard.title')}</h2>
+    <PageContainer title={t('dashboard.title')}>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
           <Card>
@@ -146,6 +139,6 @@ export default function Dashboard() {
           </Col>
         )}
       </Row>
-    </div>
+    </PageContainer>
   );
 }

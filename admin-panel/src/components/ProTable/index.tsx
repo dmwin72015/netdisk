@@ -1,5 +1,6 @@
 import { Table, Result, Empty } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { SorterResult } from 'antd/es/table/interface';
 import type { ListQueryResult } from '../../types/query';
 import { useTranslation } from 'react-i18next';
 
@@ -8,9 +9,15 @@ interface ProTableProps<T extends object> {
   columns: ColumnsType<T>;
   rowKey: string | ((record: T) => string);
   headerTitle?: string;
-  defaultPageSize?: number;
   showSizeChanger?: boolean;
-  pagination?: boolean | TablePaginationConfig;
+  size?: 'small' | 'middle' | 'large';
+  /** Controlled pagination from useTableUrlState */
+  pagination?: TablePaginationConfig;
+  onChange?: (
+    pagination: TablePaginationConfig,
+    _filters: Record<string, unknown>,
+    _sorter: SorterResult<T> | SorterResult<T>[],
+  ) => void;
 }
 
 export default function ProTable<T extends object>({
@@ -18,9 +25,10 @@ export default function ProTable<T extends object>({
   columns,
   rowKey,
   headerTitle,
-  defaultPageSize = 20,
   showSizeChanger = true,
+  size = 'small',
   pagination: paginationProp,
+  onChange,
 }: ProTableProps<T>) {
   const { t } = useTranslation();
 
@@ -46,17 +54,12 @@ export default function ProTable<T extends object>({
     return <Empty description={t('common.noData')} style={{ padding: 40 }} />;
   }
 
-  const pagination: TablePaginationConfig | false =
-    paginationProp === false
-      ? false
-      : {
-          ...paginationProp,
-          current: (paginationProp as TablePaginationConfig)?.current ?? 1,
-          pageSize: (paginationProp as TablePaginationConfig)?.pageSize ?? defaultPageSize,
-          total,
-          showSizeChanger,
-          showTotal: (tot: number) => t('common.total', { count: tot }),
-        };
+  const pagination: TablePaginationConfig = {
+    ...paginationProp,
+    total,
+    showSizeChanger,
+    showTotal: (tot: number) => t('common.total', { count: tot }),
+  };
 
   return (
     <Table<T>
@@ -65,12 +68,9 @@ export default function ProTable<T extends object>({
       dataSource={data}
       loading={isLoading || isFetching}
       pagination={pagination}
-      size="small"
-      title={
-        headerTitle
-          ? () => headerTitle
-          : undefined
-      }
+      size={size}
+      title={headerTitle ? () => headerTitle : undefined}
+      onChange={onChange as never}
     />
   );
 }

@@ -8,15 +8,16 @@ import {
   Space,
   Popconfirm,
   Tag,
-  message,
 } from 'antd';
-import { ProTable } from '@ant-design/pro-components';
-import type { ProColumns, ActionType } from '@ant-design/pro-components';
+import type { ColumnsType } from 'antd/es/table';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
-import { fetchSystemConfig } from '../../../api/admin';
+import { PageContainer } from '../../../components/PageContainer';
+import { ProTable } from '../../../components/ProTable';
+import { useTableUrlState } from '../../../hooks/useTableUrlState';
+import { useSystemConfig, useUpdateSystemConfig, useResetSystemConfig } from '../../../api/admin.hooks';
 import type { SystemConfigItem } from '../../../api/admin';
+import { formatBytes, formatDate } from '../../../utils/format';
 
 const UNIT_OPTIONS = [
   { label: 'B', value: 'B' },
@@ -25,14 +26,6 @@ const UNIT_OPTIONS = [
   { label: 'GB', value: 'GB' },
   { label: 'TB', value: 'TB' },
 ];
-
-function formatBytes(b: number): string {
-  if (b === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(k));
-  return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
 
 function parseBytesInput(val: number, unit: string): string {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -86,7 +79,7 @@ function formatDisplayValue(item: SystemConfigItem): string {
   }
 }
 
-export default function Settings() {
+export default function SettingsPage() {
   const { t } = useTranslation();
   const updateConfigMut = useUpdateSystemConfig();
   const resetConfigMut = useResetSystemConfig();
@@ -97,6 +90,14 @@ export default function Settings() {
   const [editValue, setEditValue] = useState('');
   const [editByteNum, setEditByteNum] = useState(0);
   const [editByteUnit, setEditByteUnit] = useState('MB');
+
+  const queryResult = useSystemConfig();
+  const { refetch } = queryResult;
+
+  const { params, setParams } = useTableUrlState({
+    page: 1,
+    pageSize: 100,
+  });
 
   const openEditModal = (item: SystemConfigItem) => {
     setEditItem(item);
@@ -113,37 +114,21 @@ export default function Settings() {
     setEditModalOpen(true);
   };
 
-  const handleEditSave = async () => {
-    if (!editItem) return;
-    try {
-      let newValue: string;
-      if (editType === 'bytes') {
-        newValue = parseBytesInput(editByteNum, editByteUnit);
-      } else {
-        newValue = editValue;
-      }
-      await updateConfigMut.mutateAsync({ [editItem.key]: newValue });
-      message.success(t('settings.updated'));
-      setEditModalOpen(false);
-    } catch {
-      message.error(t('settings.updateFailed'));
-    }
+  // Map useQuery result to ListQueryResult-compatible shape
+  const listQueryResult = {
+    data: (queryResult.data as SystemConfigItem[]) ?? [],
+    total: (queryResult.data as SystemConfigItem[])?.length ?? 0,
+    isLoading: queryResult.isLoading,
+    isFetching: queryResult.isFetching,
+    isError: queryResult.isError,
+    error: queryResult.error as Error | null,
+    refetch: () => queryResult.refetch(),
   };
 
-  const handleReset = async (key?: string) => {
-    try {
-      await resetConfigMut.mutateAsync(key);
-      message.success(key ? `${t('settings.resetSuccess')}: "${key}"` : t('settings.resetSuccess'));
-    } catch {
-      message.error(t('settings.resetFailed'));
-    }
-  };
-
-  const columns: ProColumns<SystemConfigItem>[] = [
+  const columns: ColumnsType<SystemConfigItem> = [
     {
       title: t('settings.setting'),
       key: 'setting',
-      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => (
         <div>
           {record.description && (
@@ -157,7 +142,6 @@ export default function Settings() {
       title: t('settings.currentValue'),
       dataIndex: 'value',
       width: 200,
-      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => (
         <code>{formatDisplayValue(record)}</code>
       ),
@@ -165,13 +149,11 @@ export default function Settings() {
     {
       title: t('settings.defaultValue'),
       width: 150,
-      hideInSearch: true,
       render: () => <span style={{ color: '#999' }}>-</span>,
     },
     {
       title: t('settings.type'),
       width: 100,
-      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => {
         const type = inferType(record);
         const colorMap: Record<ConfigType, string> = {
@@ -186,7 +168,6 @@ export default function Settings() {
     {
       title: t('settings.actions'),
       width: 160,
-      hideInSearch: true,
       render: (_: unknown, record: SystemConfigItem) => (
         <Space>
           <Button
@@ -200,7 +181,7 @@ export default function Settings() {
           <Popconfirm
             title={t('settings.resetConfirm')}
             description={t('settings.resetDescription')}
-            onConfirm={() => handleReset(record.key)}
+            onConfirm={() => resetConfigMut.mutate(record.key)}
             okText={t('common.yes')}
             cancelText={t('common.no')}
           >
@@ -214,33 +195,29 @@ export default function Settings() {
   ];
 
   return (
-    <>
+    <PageContainer
+      title={t('settings.title')}
+      extra={[
+        <Popconfirm
+          key="resetAll"
+          title={t('settings.resetAllConfirm')}
+          description={t('settings.resetAllDescription')}
+          onConfirm={() => resetConfigMut.mutate()}
+          okText={t('common.yes')}
+          cancelText={t('common.no')}
+        >
+          <Button icon={<ReloadOutlined />} loading={resetConfigMut.isPending}>
+            {t('settings.resetAll')}
+          </Button>
+        </Popconfirm>,
+      ]}
+    >
       <ProTable<SystemConfigItem>
         rowKey="key"
         columns={columns}
-        request={async () => {
-          const data = await fetchSystemConfig();
-          return { data, success: true, total: data.length };
-        }}
-        pagination={false}
+        queryResult={listQueryResult}
+        pagination={false as never}
         size="small"
-        options={false}
-        search={false}
-        headerTitle={t('settings.title')}
-        toolBarRender={() => [
-          <Popconfirm
-            key="resetAll"
-            title={t('settings.resetAllConfirm')}
-            description={t('settings.resetAllDescription')}
-            onConfirm={() => handleReset()}
-            okText={t('common.yes')}
-            cancelText={t('common.no')}
-          >
-            <Button icon={<ReloadOutlined />} loading={resetConfigMut.isPending}>
-              {t('settings.resetAll')}
-            </Button>
-          </Popconfirm>,
-        ]}
       />
 
       {/* Edit Modal */}
@@ -248,7 +225,19 @@ export default function Settings() {
         title={`${t('settings.edit')}: ${editItem?.key}`}
         open={editModalOpen}
         onCancel={() => setEditModalOpen(false)}
-        onOk={handleEditSave}
+        onOk={() => {
+          if (!editItem) return;
+          let newValue: string;
+          if (editType === 'bytes') {
+            newValue = parseBytesInput(editByteNum, editByteUnit);
+          } else {
+            newValue = editValue;
+          }
+          updateConfigMut.mutate(
+            { [editItem.key]: newValue },
+            { onSettled: () => setEditModalOpen(false) },
+          );
+        }}
         confirmLoading={updateConfigMut.isPending}
       >
         {editType === 'string' && (
@@ -300,6 +289,6 @@ export default function Settings() {
           </div>
         )}
       </Modal>
-    </>
+    </PageContainer>
   );
 }

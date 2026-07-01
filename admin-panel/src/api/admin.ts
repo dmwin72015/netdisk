@@ -127,8 +127,8 @@ export type AdminDashboardStats = {
 
 export type CategoryStat = {
   category: string;
-  bytes: number;
-  count: number;
+  totalSize: number;
+  fileCount: number;
 };
 
 // ─── System Config ─────────────────────────────────────────────

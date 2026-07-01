@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { request } from '../../../api/request';
 
 interface LoginResponse {
   user: {
@@ -22,22 +23,11 @@ export default function LoginPage() {
   const onFinish = async (values: { email: string; password: string }) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
+      const data = await request.post<LoginResponse>('/api/v1/auth/login', values);
+      localStorage.setItem('nd.access', data.tokens.accessToken);
+      localStorage.setItem('nd.user', JSON.stringify(data.user));
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || t('login.failed'));
-      }
-
-      const data = (await res.json()) as { data: LoginResponse };
-      localStorage.setItem('nd.access', data.data.tokens.accessToken);
-      localStorage.setItem('nd.user', JSON.stringify(data.data.user));
-
-      if (data.data.user.role === 'admin') {
+      if (data.user.role === 'admin') {
         navigate('/admin');
       } else {
         message.error(t('login.adminRequired'));

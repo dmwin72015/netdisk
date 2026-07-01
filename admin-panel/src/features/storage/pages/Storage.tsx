@@ -1,14 +1,8 @@
 import { Card, Row, Col, Spin, Result, Progress } from 'antd';
-import { useStorageStats } from '../../../api/admin.hooks';
 import { useTranslation } from 'react-i18next';
-
-function formatBytes(b: number): string {
-  if (b === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(k));
-  return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+import { useStorageStats } from '../../../api/admin.hooks';
+import { PageContainer } from '../../../components/PageContainer';
+import { formatBytes } from '../../../utils/format';
 
 const CATEGORY_COLORS: Record<string, string> = {
   video: '#722ed1',
@@ -20,7 +14,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   trash: '#ff4d4f',
 };
 
-export default function Storage() {
+export default function StoragePage() {
   const { t } = useTranslation();
   const { data: categories, isLoading, error } = useStorageStats();
 
@@ -44,21 +38,21 @@ export default function Storage() {
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
+      <PageContainer>
         <Result
           status="error"
           title={t('storage.failed')}
           subTitle={error.message}
         />
-      </div>
+      </PageContainer>
     );
   }
 
   if (!categories || categories.length === 0) {
     return (
-      <div style={{ padding: 24 }}>
+      <PageContainer>
         <Result status="warning" title={t('storage.noData')} />
-      </div>
+      </PageContainer>
     );
   }
 
@@ -68,8 +62,7 @@ export default function Storage() {
   const regularCategories = categories.filter((c) => c.category !== 'trash');
 
   return (
-    <div>
-      <h2 style={{ marginBottom: 24 }}>{t('storage.title')}</h2>
+    <PageContainer title={t('storage.title')}>
       <Row gutter={[16, 16]}>
         {regularCategories.map((stat) => {
           const pct = totalBytes > 0 ? Math.round((stat.totalSize / totalBytes) * 100) : 0;
@@ -123,6 +116,6 @@ export default function Storage() {
           </Row>
         </Card>
       )}
-    </div>
+    </PageContainer>
   );
 }

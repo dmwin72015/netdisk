@@ -2,20 +2,10 @@ import { Spin, Card, Row, Col, Tag, Avatar, Button, Result } from 'antd';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useUser } from '../../../api/admin.hooks';
 import { useTranslation } from 'react-i18next';
-
-function formatBytes(b: number): string {
-  if (b === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(k));
-  return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function formatDate(epoch: number): string {
-  return new Date(epoch * 1000).toLocaleString();
-}
+import { useUser } from '../../../api/admin.hooks';
+import { PageContainer } from '../../../components/PageContainer';
+import { formatBytes, formatDate } from '../../../utils/format';
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'red',
@@ -23,7 +13,7 @@ const ROLE_COLORS: Record<string, string> = {
   moderator: 'orange',
 };
 
-export default function UserDetail() {
+export default function UserDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -39,7 +29,7 @@ export default function UserDetail() {
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
+      <PageContainer>
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate('/admin/users')}
@@ -52,13 +42,13 @@ export default function UserDetail() {
           title={t('userDetail.failed')}
           subTitle={error.message}
         />
-      </div>
+      </PageContainer>
     );
   }
 
   if (!user) {
     return (
-      <div style={{ padding: 24 }}>
+      <PageContainer>
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate('/admin/users')}
@@ -67,22 +57,25 @@ export default function UserDetail() {
           {t('common.back')}
         </Button>
         <div style={{ color: '#999', textAlign: 'center', padding: 40 }}>{t('userDetail.notFound')}</div>
-      </div>
+      </PageContainer>
     );
   }
 
   const usagePct = user.totalBytes > 0 ? Math.round((user.usedBytes / user.totalBytes) * 100) : 0;
 
   return (
-    <div style={{ padding: 24 }}>
-      <Button
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/admin/users')}
-        style={{ marginBottom: 16 }}
-      >
-        {t('userDetail.back')}
-      </Button>
-      <h2 style={{ marginBottom: 24 }}>{t('userDetail.title')}: {user.username}</h2>
+    <PageContainer
+      title={`${t('userDetail.title')}: ${user.username}`}
+      extra={[
+        <Button
+          key="back"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/admin/users')}
+        >
+          {t('userDetail.back')}
+        </Button>,
+      ]}
+    >
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={8}>
           <Card title={t('userDetail.basicInfo')}>
@@ -160,6 +153,6 @@ export default function UserDetail() {
           </Card>
         </Col>
       </Row>
-    </div>
+    </PageContainer>
   );
 }

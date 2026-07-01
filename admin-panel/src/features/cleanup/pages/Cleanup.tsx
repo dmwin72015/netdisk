@@ -4,7 +4,6 @@ import {
   Col,
   Descriptions,
   Input,
-  message,
   Popconfirm,
   Result,
   Row,
@@ -12,32 +11,23 @@ import {
   Statistic,
   Tabs,
   Tag,
+  Table,
+  message,
 } from 'antd';
-import { ProTable } from '@ant-design/pro-components';
-import type { ProColumns } from '@ant-design/pro-components';
+import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { PageContainer } from '../../../components/PageContainer';
 import {
   useCleanupQuery,
   useDeleteUserFile,
   useDeletePhysicalFile,
 } from '../../../api/admin.hooks';
 import type {
-  CleanupQueryPhysicalFile,
   CleanupQueryUserFile,
 } from '../../../api/admin';
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
-}
-
-function formatDate(epoch: number): string {
-  return new Date(epoch * 1000).toLocaleString();
-}
+import { formatBytes, formatDate } from '../../../utils/format';
 
 const LS_PREFIX = 'nd.admin.search';
 
@@ -57,7 +47,7 @@ function saveHistory(mode: string, value: string) {
   localStorage.setItem(key, JSON.stringify(updated));
 }
 
-export default function Cleanup() {
+export default function CleanupPage() {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'slug' | 'hash'>('slug');
   const [input, setInput] = useState('');
@@ -96,9 +86,10 @@ export default function Cleanup() {
     try {
       await deleteUserFileMutation.mutateAsync(userFileId);
       message.success(t('cleanup.deleteSuccess'));
-      queryMutation.mutate({});
-    } catch (err: any) {
-      message.error(err?.message || t('cleanup.deleteFailed'));
+      queryMutation.mutate({} as never);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '';
+      message.error(errMsg || t('cleanup.deleteFailed'));
     }
   };
 
@@ -106,20 +97,20 @@ export default function Cleanup() {
     try {
       await deletePhysicalFileMutation.mutateAsync(physicalFileId);
       message.success(t('cleanup.deleteAllSuccess'));
-      queryMutation.mutate({});
-    } catch (err: any) {
-      message.error(err?.message || t('cleanup.deleteFailed'));
+      queryMutation.mutate({} as never);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '';
+      message.error(errMsg || t('cleanup.deleteFailed'));
     }
   };
 
-  const userFileColumns: ProColumns<CleanupQueryUserFile>[] = [
-    { title: t('cleanup.id'), dataIndex: 'id', hideInSearch: true },
-    { title: t('cleanup.slug'), dataIndex: 'slug', ellipsis: true, hideInSearch: true },
-    { title: t('cleanup.filename'), dataIndex: 'fileName', hideInSearch: true },
+  const userFileColumns: ColumnsType<CleanupQueryUserFile> = [
+    { title: t('cleanup.id'), dataIndex: 'id', width: 80 },
+    { title: t('cleanup.slug'), dataIndex: 'slug', ellipsis: true },
+    { title: t('cleanup.filename'), dataIndex: 'fileName', ellipsis: true },
     {
       title: t('cleanup.user'),
       key: 'user',
-      hideInSearch: true,
       render: (_, record) => (
         <Link to={`/admin/users/${record.userId}`}>{record.username}</Link>
       ),
@@ -127,19 +118,16 @@ export default function Cleanup() {
     {
       title: t('cleanup.size'),
       dataIndex: 'fileSize',
-      hideInSearch: true,
       render: (size: number) => formatBytes(size),
     },
     {
       title: t('cleanup.created'),
       dataIndex: 'createdAt',
-      hideInSearch: true,
       render: (v: number) => formatDate(v),
     },
     {
       title: t('cleanup.actions'),
       key: 'actions',
-      hideInSearch: true,
       render: (_, record) => (
         <Popconfirm
           title={t('cleanup.deleteConfirm')}
@@ -154,9 +142,7 @@ export default function Cleanup() {
   ];
 
   return (
-    <div>
-      <h2>{t('cleanup.title')}</h2>
-
+    <PageContainer title={t('cleanup.title')}>
       <Tabs
         activeKey={mode}
         onChange={handleModeChange}
@@ -259,18 +245,16 @@ export default function Cleanup() {
           )}
 
           {result.userFiles.length > 0 && (
-            <ProTable
+            <Table<CleanupQueryUserFile>
               rowKey="id"
               columns={userFileColumns}
               dataSource={result.userFiles}
               pagination={false}
-              search={false}
-              options={false}
               size="small"
             />
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
