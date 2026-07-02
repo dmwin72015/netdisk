@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { ProTable } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { get } from '@/utils/request';
 
 interface FileRecord {
@@ -13,6 +14,7 @@ interface FileRecord {
 }
 
 const FilesManagement = () => {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['files'],
     queryFn: async () => {
@@ -40,16 +42,17 @@ const FilesManagement = () => {
   ];
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <ProTable<FileRecord>
-        headerTitle="Files Management"
+        headerTitle={t('pages.files.title', 'Files Management')}
         rowKey="id"
-        search={{ labelWidth: 'auto' }}
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => []}
         columns={columns}
         dataSource={data || []}
         loading={isLoading}
       />
-    </div>
+    </PageContainer>
   );
 };
 

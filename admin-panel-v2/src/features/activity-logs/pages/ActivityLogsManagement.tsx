@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { ProTable } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { get } from '@/utils/request';
 
 interface ActivityLogRecord {
@@ -13,6 +14,7 @@ interface ActivityLogRecord {
 }
 
 const ActivityLogsManagement = () => {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['activityLogs'],
     queryFn: async () => {
@@ -35,16 +37,17 @@ const ActivityLogsManagement = () => {
   ];
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <ProTable<ActivityLogRecord>
-        headerTitle="Activity Logs"
+        headerTitle={t('pages.activityLogs.title', 'Activity Logs')}
         rowKey="id"
-        search={{ labelWidth: 'auto' }}
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => []}
         columns={columns}
         dataSource={data || []}
         loading={isLoading}
       />
-    </div>
+    </PageContainer>
   );
 };
 

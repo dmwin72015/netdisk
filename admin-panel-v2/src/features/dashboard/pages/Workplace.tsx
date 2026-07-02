@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, Col, Row, Statistic } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { PageContainer } from '@ant-design/pro-components';
+import { useTranslation } from 'react-i18next';
 import { get } from '@/utils/request';
 
 interface DashboardStats {
@@ -11,6 +13,7 @@ interface DashboardStats {
 }
 
 const Workplace = () => {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
@@ -22,7 +25,7 @@ const Workplace = () => {
   const stats = data || ({} as DashboardStats);
 
   return (
-    <div className="p-6">
+    <PageContainer title={t('pages.dashboard.title', 'Dashboard')}>
       <Row gutter={16}>
         <Col span={6}>
           <Card loading={isLoading}>
@@ -67,7 +70,7 @@ const Workplace = () => {
           </Card>
         </Col>
       </Row>
-    </div>
+    </PageContainer>
   );
 };
 

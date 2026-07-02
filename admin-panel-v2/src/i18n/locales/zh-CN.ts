@@ -8,7 +8,7 @@ const zhCN = {
   'pages.login.phoneLogin.tab': '手机号登录',
   'pages.login.accountLogin.errorMessage': '账户或密码错误',
   'pages.login.otherLoginMethods': '其他登录方式',
-  'pages.login.username.placeholder': '请输入用户名',
+  'pages.login.username.placeholder': '请输入邮箱/用户名',
   'pages.login.username.required': '用户名是必填项！',
   'pages.login.password.placeholder': '请输入密码',
   'pages.login.password.required': '密码是必填项！',
@@ -24,6 +24,21 @@ const zhCN = {
   'app.error.reload': '刷新页面',
   'app.error.home': '返回首页',
   'app.request.offline': '网络不可用，请检查网络连接后重试。',
+  sidebar: {
+    dashboard: '仪表盘',
+    users: '用户管理',
+    files: '文件管理',
+    userFiles: '用户文件',
+    physicalFiles: '物理文件',
+    storage: '存储统计',
+    settings: '系统设置',
+    activityLogs: '操作日志',
+    cleanup: '文件清理',
+  },
+  common: {
+    home: '首页',
+    logout: '退出登录',
+  },
 };
 
 export default zhCN;

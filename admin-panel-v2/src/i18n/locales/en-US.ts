@@ -8,11 +8,11 @@ const enUS = {
   'pages.login.phoneLogin.tab': 'Phone Login',
   'pages.login.accountLogin.errorMessage': 'Invalid username or password',
   'pages.login.otherLoginMethods': 'Other login methods',
-  'pages.login.username.placeholder': 'Username: admin or user',
+  'pages.login.username.placeholder': 'Email or username',
   'pages.login.username.required': 'Please input your username!',
-  'pages.login.password.placeholder': 'Password: ant.design',
+  'pages.login.password.placeholder': 'Password',
   'pages.login.password.required': 'Please input your password!',
-  'pages.login.captcha.placeholder': 'Please enter captcha',
+  'pages.login.captcha.placeholder': 'Captcha',
   'pages.layouts.userLayout.title': 'NetDisk Admin',
   'app.network.offline': 'You are currently offline. Some features may be unavailable.',
   'app.error.chunk.title': 'Failed to load page',
@@ -27,6 +27,21 @@ const enUS = {
   'app.error.reload': 'Reload Page',
   'app.error.home': 'Back Home',
   'app.request.offline': 'Network unavailable. Please check your connection and try again.',
+  sidebar: {
+    dashboard: 'Dashboard',
+    users: 'User Management',
+    files: 'Files',
+    userFiles: 'User Files',
+    physicalFiles: 'Physical Files',
+    storage: 'Storage',
+    settings: 'System Settings',
+    activityLogs: 'Activity Logs',
+    cleanup: 'Cleanup',
+  },
+  common: {
+    home: 'Home',
+    logout: 'Logout',
+  },
 };
 
 export default enUS;

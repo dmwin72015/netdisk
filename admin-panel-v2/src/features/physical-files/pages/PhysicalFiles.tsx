@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { ProTable } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Tag } from 'antd';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { get } from '@/utils/request';
 
 interface PhysicalFileRecord {
@@ -14,6 +15,7 @@ interface PhysicalFileRecord {
 }
 
 const PhysicalFiles = () => {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['physicalFiles'],
     queryFn: async () => {
@@ -49,16 +51,17 @@ const PhysicalFiles = () => {
   ];
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <ProTable<PhysicalFileRecord>
-        headerTitle="Physical Files"
+        headerTitle={t('pages.physicalFiles.title', 'Physical Files')}
         rowKey="id"
-        search={{ labelWidth: 'auto' }}
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => []}
         columns={columns}
         dataSource={data || []}
         loading={isLoading}
       />
-    </div>
+    </PageContainer>
   );
 };
 

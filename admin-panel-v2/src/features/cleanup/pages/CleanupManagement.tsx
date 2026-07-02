@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Form, Input, message, Modal } from 'antd';
-import { ProTable } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useState } from 'react';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { get, post } from '@/utils/request';
 
 interface CleanupRecord {
@@ -13,6 +14,7 @@ interface CleanupRecord {
 }
 
 const CleanupManagement = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
@@ -49,11 +51,11 @@ const CleanupManagement = () => {
   ];
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <ProTable<CleanupRecord>
-        headerTitle="Cleanup Management"
+        headerTitle={t('pages.cleanup.title', 'Cleanup Management')}
         rowKey="id"
-        search={{ labelWidth: 'auto' }}
+        search={{ labelWidth: 120 }}
         toolBarRender={() => [
           <Button key="create" type="primary" onClick={() => setOpen(true)}>
             Create
@@ -84,7 +86,7 @@ const CleanupManagement = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageContainer>
   );
 };
 

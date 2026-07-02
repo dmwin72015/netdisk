@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { ProTable } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Tag } from 'antd';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { get } from '@/utils/request';
 
 interface UserRecord {
@@ -15,6 +16,7 @@ interface UserRecord {
 }
 
 const UserManagement = () => {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
@@ -47,19 +49,17 @@ const UserManagement = () => {
   ];
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <ProTable<UserRecord>
-        headerTitle="User Management"
+        headerTitle={t('pages.users.title', 'User Management')}
         rowKey="id"
-        search={{
-          labelWidth: 'auto',
-        }}
-        toolBarRender={() => ['Create', 'Edit', 'Delete']}
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => []}
         columns={columns}
         dataSource={data || []}
         loading={isLoading}
       />
-    </div>
+    </PageContainer>
   );
 };
 

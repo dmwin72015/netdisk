@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, Col, Row, Statistic } from 'antd';
 import { DatabaseOutlined } from '@ant-design/icons';
+import { PageContainer } from '@ant-design/pro-components';
+import { useTranslation } from 'react-i18next';
 import { get } from '@/utils/request';
 
 interface StorageStats {
@@ -11,6 +13,7 @@ interface StorageStats {
 }
 
 const StorageAnalysis = () => {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['storageStats'],
     queryFn: async () => {
@@ -22,7 +25,7 @@ const StorageAnalysis = () => {
   const stats = data || ({} as StorageStats);
 
   return (
-    <div className="p-6">
+    <PageContainer title={t('pages.storage.title', 'Storage Analysis')}>
       <Row gutter={16}>
         <Col span={8}>
           <Card loading={isLoading}>
@@ -58,7 +61,7 @@ const StorageAnalysis = () => {
           </Card>
         </Col>
       </Row>
-    </div>
+    </PageContainer>
   );
 };
 

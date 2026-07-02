@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, Form, Input, Switch, Button, message, Space } from 'antd';
+import { PageContainer } from '@ant-design/pro-components';
 import { SaveOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { get, post } from '@/utils/request';
 
 interface SystemConfig {
@@ -11,6 +13,7 @@ interface SystemConfig {
 }
 
 const SystemSettings = () => {
+  const { t } = useTranslation();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['systemConfig'],
     queryFn: async () => {
@@ -32,12 +35,12 @@ const SystemSettings = () => {
   };
 
   if (isLoading || !data) {
-    return <div className="p-6">Loading...</div>;
+    return <PageContainer loading>{t('common.loading', 'Loading...')}</PageContainer>;
   }
 
   return (
-    <div className="p-6">
-      <Card title="System Settings">
+    <PageContainer title={t('pages.settings.title', 'System Settings')}>
+      <Card>
         <Form
           form={form}
           layout="vertical"
@@ -65,7 +68,7 @@ const SystemSettings = () => {
           </Form.Item>
         </Form>
       </Card>
-    </div>
+    </PageContainer>
   );
 };
 

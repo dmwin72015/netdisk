@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
-import { Alert, App, Tabs } from 'antd';
+import { Alert, message, Tabs } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Footer } from '@/components';
@@ -10,9 +10,8 @@ const Login = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [loginState, setLoginState] = useState<{ status?: string; type?: string }>({});
-  const { message } = App.useApp();
 
-  const handleSubmit = async (values: { username: string; password: string; autoLogin?: boolean }) => {
+  const handleSubmit = async (values: { email: string; password: string; autoLogin?: boolean }) => {
     try {
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
@@ -38,7 +37,7 @@ const Login = () => {
       message.success(t('pages.login.success'));
 
       if (role === 'admin') {
-        navigate('/admin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
       } else {
         message.error(t('pages.login.adminRequired'));
       }
@@ -97,7 +96,7 @@ const Login = () => {
           )}
 
           <ProFormText
-            name="username"
+            name="email"
             fieldProps={{
               size: 'large',
               prefix: <UserOutlined />,
@@ -123,6 +122,14 @@ const Login = () => {
                 message: t('pages.login.password.required'),
               },
             ]}
+          />
+          <ProFormText
+            name="captcha"
+            fieldProps={{
+              size: 'large',
+              addonAfter: <a style={{ fontSize: 14 }}>获取验证码</a>,
+            }}
+            placeholder={t('pages.login.captcha.placeholder')}
           />
 
           <div style={{ marginBottom: 24 }}>
