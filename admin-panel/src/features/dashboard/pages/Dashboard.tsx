@@ -48,7 +48,7 @@ export default function DashboardPage() {
     <PageContainer title={t('dashboard.title')}>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title={t('dashboard.totalUsers')}
               value={stats.totalUsers}
@@ -57,7 +57,7 @@ export default function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title={t('dashboard.totalFiles')}
               value={stats.totalFiles}
@@ -66,7 +66,7 @@ export default function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title={t('dashboard.storageUsed')}
               value={stats.storageUsed}
@@ -76,7 +76,7 @@ export default function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title={t('dashboard.totalQuota')}
               value={stats.totalStorage}
@@ -86,7 +86,7 @@ export default function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title={t('dashboard.newUsersToday')}
               value={stats.newTodayUsers}
@@ -96,7 +96,7 @@ export default function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
+          <Card hoverable>
             <Statistic
               title={t('dashboard.newFilesToday')}
               value={stats.newTodayFiles}
@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} lg={12}>
-          <Card title={t('dashboard.storageUsage')}>
+          <Card title={t('dashboard.storageUsage')} hoverable>
             <Progress
               percent={Math.round((stats.storageUsed / stats.totalStorage) * 100)}
               status={stats.storageUsed >= stats.totalStorage ? 'exception' : 'active'}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         </Col>
         {stats.diskTotal > 0 && (
           <Col xs={24} lg={12}>
-            <Card title={t('dashboard.systemDisk')}>
+            <Card title={t('dashboard.systemDisk')} hoverable>
               <Progress
                 percent={Math.round((stats.diskUsed / stats.diskTotal) * 100)}
                 strokeColor={

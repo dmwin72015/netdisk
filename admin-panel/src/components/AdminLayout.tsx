@@ -46,11 +46,10 @@ export default function AdminLayout() {
 
   return (
     <ProLayout
-      layout="side"
-      fixedHeader
-      navTheme="realDark"
-      headerHeight={56}
+      layout="mix"
+      navTheme="light"
       fixSiderbar
+      fixedHeader
       logo={<span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>Admin</span>}
       title="Admin"
       disableMobile
@@ -85,7 +84,7 @@ export default function AdminLayout() {
       contentStyle={{
         background: '#f0f2f5',
         padding: 20,
-        minHeight: "calc(100vh - 56px)",
+        minHeight: 'calc(100vh - 56px)',
       }}
     >
       <Outlet />

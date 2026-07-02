@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Modal, Descriptions } from 'antd';
+import { Button, Modal } from 'antd';
+import { ProDescriptions } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
 import { Link } from 'react-router';
@@ -106,27 +107,27 @@ export default function ActivityLogsPage() {
         width={600}
       >
         {detailLog && (
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label={t('activityLogs.id')}>{detailLog.id}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.user')}>
+          <ProDescriptions column={1} size="small">
+            <ProDescriptions.Item label={t('activityLogs.id')}>{detailLog.id}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.user')}>
               {detailLog.username} ({detailLog.userId})
-            </Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.action')}>{detailLog.actionLabel}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.resource')}>
+            </ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.action')}>{detailLog.actionLabel}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.resource')}>
               {detailLog.resourceType}: {detailLog.resourceName}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.ip')}>{detailLog.ip || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.region')}>{detailLog.ipRegion || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.userAgent')}>{detailLog.userAgent || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.os')}>{detailLog.os || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.browser')}>{detailLog.browser || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.extra')}>
+            </ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.ip')}>{detailLog.ip || '-'}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.region')}>{detailLog.ipRegion || '-'}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.userAgent')}>{detailLog.userAgent || '-'}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.os')}>{detailLog.os || '-'}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.browser')}>{detailLog.browser || '-'}</ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.extra')}>
               {detailLog.extra ? JSON.stringify(detailLog.extra, null, 2) : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('activityLogs.time')}>
+            </ProDescriptions.Item>
+            <ProDescriptions.Item label={t('activityLogs.time')}>
               {formatISODate(detailLog.createdAt)}
-            </Descriptions.Item>
-          </Descriptions>
+            </ProDescriptions.Item>
+          </ProDescriptions>
         )}
       </Modal>
     </PageContainer>

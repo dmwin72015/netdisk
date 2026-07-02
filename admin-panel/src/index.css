@@ -1,3 +1,7 @@
+/* Import Tailwind theme (design tokens) + utilities only — no preflight to avoid breaking Ant Design */
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +10,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;
+    'Not Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -43,3 +43,7 @@ skills-lock.json
 .pnpm-store/
 .claude/worktrees/
 .claude/agent-memory
+
+# AI config files
+CLAUDE.md
+AGENTS.md

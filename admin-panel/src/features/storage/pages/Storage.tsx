@@ -68,9 +68,8 @@ export default function StoragePage() {
           const pct = totalBytes > 0 ? Math.round((stat.bytes / totalBytes) * 100) : 0;
           return (
             <Col xs={24} sm={12} lg={8} key={stat.category}>
-              <Card
+              <Card hoverable
                 title={CATEGORY_LABELS[stat.category] || stat.category.charAt(0).toUpperCase() + stat.category.slice(1)}
-                size="small"
               >
                 <div style={{ marginBottom: 8 }}>{t('storage.files_count', { count: stat.count })}</div>
                 <div style={{ marginBottom: 8, fontSize: 18, fontWeight: 600, color: CATEGORY_COLORS[stat.category] || '#1890ff' }}>
@@ -94,7 +93,6 @@ export default function StoragePage() {
       {trashCategory && (
         <Card
           title={t('storage.trash')}
-          size="small"
           style={{ marginTop: 24 }}
         >
           <Row gutter={16} align="middle">

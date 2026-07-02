@@ -203,24 +203,24 @@ export default function CleanupPage() {
         <>
           <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col span={8}>
-              <Card>
+              <Card hoverable>
                 <Statistic title={t('cleanup.totalUploads')} value={totalUploads} />
               </Card>
             </Col>
             <Col span={8}>
-              <Card>
+              <Card hoverable>
                 <Statistic title={t('cleanup.uniqueUsers')} value={uniqueUsers} />
               </Card>
             </Col>
             <Col span={8}>
-              <Card>
+              <Card hoverable>
                 <Statistic title={t('cleanup.totalSize')} value={formatBytes(totalSize)} />
               </Card>
             </Col>
           </Row>
 
           {result.physicalFile && (
-            <Card
+            <Card hoverable
               title={t('cleanup.physicalFile')}
               style={{ marginBottom: 24 }}
               extra={

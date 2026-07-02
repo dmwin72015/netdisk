@@ -143,13 +143,17 @@ func (s *AdminService) DashboardStats(ctx context.Context) (*AdminDashboardStats
 }
 
 type AdminListUsersParams struct {
-	Limit        int
-	Offset       int
-	Search       string
-	Role         string
-	Sort         string
-	CreatedAfter *time.Time
-	CreatedBefore *time.Time
+	Limit          int
+	Offset         int
+	Search         string
+	Role           string
+	Sort           string
+	Slug           string
+	Email          string
+	RegisterMethod string
+	Status         int16
+	CreatedAfter   *time.Time
+	CreatedBefore  *time.Time
 }
 
 func (s *AdminService) ListUsers(ctx context.Context, params AdminListUsersParams) ([]AdminUserItem, int, error) {
@@ -175,6 +179,26 @@ func (s *AdminService) ListUsers(ctx context.Context, params AdminListUsersParam
 	if params.CreatedBefore != nil {
 		where += fmt.Sprintf(" AND u.created_at <= $%d", argIdx)
 		args = append(args, params.CreatedBefore)
+		argIdx++
+	}
+	if params.Slug != "" {
+		where += fmt.Sprintf(" AND u.slug ILIKE '%%' || $%d || '%%'", argIdx)
+		args = append(args, params.Slug)
+		argIdx++
+	}
+	if params.Email != "" {
+		where += fmt.Sprintf(" AND u.email ILIKE '%%' || $%d || '%%'", argIdx)
+		args = append(args, params.Email)
+		argIdx++
+	}
+	if params.RegisterMethod != "" {
+		where += fmt.Sprintf(" AND u.register_method = $%d", argIdx)
+		args = append(args, params.RegisterMethod)
+		argIdx++
+	}
+	if params.Status != 0 {
+		where += fmt.Sprintf(" AND u.status = $%d", argIdx)
+		args = append(args, params.Status)
 		argIdx++
 	}
 

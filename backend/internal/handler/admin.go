@@ -53,11 +53,20 @@ func (h *AdminHandler) ListUsers(c echo.Context) error {
 	}
 
 	params := service.AdminListUsersParams{
-		Limit:  limit,
-		Offset: offset,
-		Search: c.QueryParam("search"),
-		Role:   c.QueryParam("role"),
-		Sort:   c.QueryParam("sort"),
+		Limit:          limit,
+		Offset:         offset,
+		Search:         c.QueryParam("search"),
+		Role:           c.QueryParam("role"),
+		Sort:           c.QueryParam("sort"),
+		Slug:           c.QueryParam("slug"),
+		Email:          c.QueryParam("email"),
+		RegisterMethod: c.QueryParam("register_method"),
+	}
+
+	if statusStr := c.QueryParam("status"); statusStr != "" {
+		if s, err := strconv.ParseInt(statusStr, 10, 16); err == nil {
+			params.Status = int16(s)
+		}
 	}
 
 	if after := c.QueryParam("created_after"); after != "" {
