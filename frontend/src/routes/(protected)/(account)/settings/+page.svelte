@@ -15,7 +15,8 @@
   } from "$lib/stores/file-preferences.svelte";
   import { UPLOAD_FILE_CONCURRENCY } from "$lib/upload-concurrency";
   import { Switch } from "$lib/ui/switch";
-  import { Eye, Upload, FileWarning, Lock, FileJson, Globe } from "@lucide/svelte";
+  import { Dropdown, DropdownBase } from "$lib/ui/dropdown";
+  import { Eye, Upload, FileWarning, Lock, FileJson, Globe, ChevronDown, Check } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
   import * as m from "$lib/paraglide/messages";
   import { lockManager } from "$lib/services/lockManager.svelte";
@@ -108,21 +109,29 @@
             {m.theme_settings_desc()}
           </p>
         </div>
-        <select
-          value={getThemePreference()}
-          onchange={(e) =>
-            setThemePreference(
-              (e.currentTarget as HTMLSelectElement).value as
-                | "system"
-                | "light"
-                | "dark",
-            )}
-          class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="system">{m.theme_system()}</option>
-          <option value="light">{m.theme_light()}</option>
-          <option value="dark">{m.theme_dark()}</option>
-        </select>
+        <Dropdown triggerClass="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken data-[state=open]:bg-surface-sunken" contentClass="min-w-[140px]" align="end">
+            {#snippet trigger()}
+              {#if getThemePreference() === 'system'}{m.theme_system()}{:else if getThemePreference() === 'light'}{m.theme_light()}{:else}{m.theme_dark()}{/if}
+            {/snippet}
+            <DropdownBase.Item class={getThemePreference() === 'system' ? 'bg-primary-soft text-primary font-medium' : ''} onSelect={() => setThemePreference('system')}>
+              <span class="flex items-center gap-2">
+                {#if getThemePreference() === 'system'}<Check size={14} />{/if}
+                {m.theme_system()}
+              </span>
+            </DropdownBase.Item>
+            <DropdownBase.Item class={getThemePreference() === 'light' ? 'bg-primary-soft text-primary font-medium' : ''} onSelect={() => setThemePreference('light')}>
+              <span class="flex items-center gap-2">
+                {#if getThemePreference() === 'light'}<Check size={14} />{/if}
+                {m.theme_light()}
+              </span>
+            </DropdownBase.Item>
+            <DropdownBase.Item class={getThemePreference() === 'dark' ? 'bg-primary-soft text-primary font-medium' : ''} onSelect={() => setThemePreference('dark')}>
+              <span class="flex items-center gap-2">
+                {#if getThemePreference() === 'dark'}<Check size={14} />{/if}
+                {m.theme_dark()}
+              </span>
+            </DropdownBase.Item>
+          </Dropdown>
       </div>
       <div class="flex items-center justify-between gap-4 px-5 py-4">
         <div class="min-w-0">
@@ -155,18 +164,23 @@
              {m.settings_password_ttl_desc()}
            </p>
         </div>
-        <select
-          value={getDirectoryUnlockTtlHours()}
-          onchange={(e) =>
-            setDirectoryUnlockTtlHours(
-              parseInt((e.currentTarget as HTMLSelectElement).value, 10),
-            )}
-          class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {#each ttlOptions as option}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </select>
+        <Dropdown triggerClass="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken data-[state=open]:bg-surface-sunken" contentClass="min-w-[140px]" align="end">
+            {#snippet trigger()}
+              {ttlOptions.find(o => o.value === getDirectoryUnlockTtlHours())?.label ?? getDirectoryUnlockTtlHours()}
+              <ChevronDown size={14} class="text-ink-4 shrink-0" />
+            {/snippet}
+            {#each ttlOptions as option}
+              <DropdownBase.Item
+                class={getDirectoryUnlockTtlHours() === option.value ? 'bg-primary-soft text-primary font-medium' : ''}
+                onSelect={() => setDirectoryUnlockTtlHours(option.value)}
+              >
+                <span class="flex items-center gap-2">
+                  {#if getDirectoryUnlockTtlHours() === option.value}<Check size={14} />{/if}
+                  {option.label}
+                </span>
+              </DropdownBase.Item>
+            {/each}
+          </Dropdown>
       </div>
     </div>
   </section>

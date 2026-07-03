@@ -28,7 +28,6 @@
   let applyToAll = $state(false);
   let currentIndex = $state(0);
   let resolved = $state<Map<string, ConflictDialogResult>>(new Map());
-  let globalStrategy = $state<ConflictDialogResult['strategy'] | null>(null);
 
   let current = $derived(conflicts[currentIndex]);
   let isLast = $derived(currentIndex >= conflicts.length - 1);
@@ -38,35 +37,29 @@
       currentIndex = 0;
       resolved = new Map();
       applyToAll = false;
-      globalStrategy = null;
     }
   });
 
   function handleStrategy(strategy: ConflictDialogResult['strategy']) {
-    if (applyToAll && globalStrategy) {
+    if (applyToAll) {
       for (const c of conflicts) {
-        resolved.set(c.uid, { strategy: globalStrategy, applyToAll: true });
+        resolved.set(c.uid, { strategy, applyToAll: true });
       }
+      finish();
     } else {
       if (current) {
         resolved.set(current.uid, { strategy, applyToAll });
       }
-    }
-
-    if (applyToAll && globalStrategy) {
-      finish();
-    } else if (isLast) {
-      finish();
-    } else {
-      currentIndex++;
+      if (isLast) {
+        finish();
+      } else {
+        currentIndex++;
+      }
     }
   }
 
   function handleApplyAllChange(checked: boolean) {
     applyToAll = checked;
-    if (checked && !globalStrategy) {
-      globalStrategy = 'overwrite';
-    }
   }
 
   function finish() {
@@ -147,6 +140,7 @@
       </div>
 
       <!-- Apply to all -->
+      {#if conflicts.length > 1}
       <label class="flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"
@@ -156,6 +150,7 @@
         />
         <span class="text-xs text-ink-3">{m.upload_conflict_apply_all()}</span>
       </label>
+      {/if}
 
       <!-- Progress indicator -->
       {#if conflicts.length > 1 && !applyToAll}

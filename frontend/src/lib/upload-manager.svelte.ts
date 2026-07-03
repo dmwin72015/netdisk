@@ -344,9 +344,6 @@ export function createUploadManager(opts: {
 		]);
 		const result = results.get(item.uid);
 		if (!result) return false;
-		if (result.applyToAll) {
-			setDuplicateStrategy(result.strategy);
-		}
 		switch (result.strategy) {
 			case 'skip':
 				removeItemSilently(item.uid, `skipped due to name conflict: ${item.fileName}`);
@@ -478,9 +475,7 @@ export function createUploadManager(opts: {
 					strategy: result.strategy,
 					existingSlug: conflict.existingSlug,
 				});
-				if (result.applyToAll) {
-					setDuplicateStrategy(result.strategy);
-				}
+
 			}
 		}
 	}

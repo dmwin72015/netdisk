@@ -11,6 +11,8 @@
 	} from '$lib/api/admin';
 	import { fmtSize } from '$lib/utils/format';
 	import Dialog from '$lib/ui/dialog/Dialog.svelte';
+		import { Dropdown, DropdownBase } from '$lib/ui/dropdown';
+		import { ChevronDown, Check } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let items = $state<SystemConfigItem[]>([]);
@@ -245,13 +247,24 @@
 			</div>
 
 			{#if editingItem.type === 'bool'}
-				<select
-					class="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-					bind:value={editValue}
-				>
-					<option value="true">true</option>
-					<option value="false">false</option>
-				</select>
+				<Dropdown triggerClass="flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors hover:bg-surface-sunken data-[state=open]:bg-surface-sunken" contentClass="w-full" align="end">
+					{#snippet trigger()}
+						{editValue}
+						<ChevronDown size={14} class="text-ink-4 shrink-0" />
+					{/snippet}
+					<DropdownBase.Item class={editValue === "true" ? "bg-primary-soft text-primary font-medium" : ""} onSelect={() => editValue = "true"}>
+						<span class="flex items-center gap-2">
+							{#if editValue === "true"}<Check size={14} />{/if}
+							true
+						</span>
+					</DropdownBase.Item>
+					<DropdownBase.Item class={editValue === "false" ? "bg-primary-soft text-primary font-medium" : ""} onSelect={() => editValue = "false"}>
+						<span class="flex items-center gap-2">
+							{#if editValue === "false"}<Check size={14} />{/if}
+							false
+						</span>
+					</DropdownBase.Item>
+				</Dropdown>
 			{:else if editingItem.type === 'bytes'}
 				<div>
 					<div class="flex gap-2">
@@ -263,14 +276,23 @@
 							min="0"
 							step="any"
 						/>
-						<select
-							class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-							bind:value={editUnit}
-						>
+						<Dropdown triggerClass="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors hover:bg-surface-sunken data-[state=open]:bg-surface-sunken" contentClass="min-w-[80px]" align="end">
+							{#snippet trigger()}
+								{BYTE_UNITS.find(u => u.value === editUnit)?.label}
+								<ChevronDown size={14} class="text-ink-4 shrink-0" />
+							{/snippet}
 							{#each BYTE_UNITS as u}
-								<option value={u.value}>{u.label}</option>
+								<DropdownBase.Item
+									class={editUnit === u.value ? "bg-primary-soft text-primary font-medium" : ""}
+									onSelect={() => editUnit = u.value}
+								>
+									<span class="flex items-center gap-2">
+										{#if editUnit === u.value}<Check size={14} />{/if}
+										{u.label}
+									</span>
+								</DropdownBase.Item>
 							{/each}
-						</select>
+						</Dropdown>
 					</div>
 					<p class="mt-1.5 font-mono text-xs text-ink-4">
 						= {bytesPreview.toLocaleString()} bytes
