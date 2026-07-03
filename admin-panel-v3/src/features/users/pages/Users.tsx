@@ -88,11 +88,10 @@ export default function UsersPage() {
           });
           return { data: res.items, success: true, total: res.total };
         }}
-        search={{ labelWidth: 'auto' }}
+        search={{ labelWidth: 'auto', defaultCollapsed: false }}
         scroll={{ x: 'max-content' }}
         pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         size="small"
-        options={false}
         toolBarRender={() => [
           <ModalForm<CreateUserInput>
             key="create"

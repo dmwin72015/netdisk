@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Button, Card, Col, Descriptions, Input, Popconfirm, Result, Row, Space, Spin, Statistic, Tabs, Tag, Table, message } from 'antd';
+import { Button, Card, Col, Descriptions, Input, Popconfirm, Result, Row, Space, Spin, Statistic, Tag, Table, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, SearchOutlined, HistoryOutlined, ClearOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { PageContainer } from '@/components/PageContainer';
 import CopyCell from '@/components/CopyCell';
@@ -20,11 +20,20 @@ function saveHistory(mode: string, value: string) {
   const updated = [value, ...history.filter(h => h !== value)].slice(0, 10);
   localStorage.setItem(key, JSON.stringify(updated));
 }
+function clearHistory(mode: string) {
+  localStorage.removeItem(`${LS_PREFIX}.${mode}`);
+}
+
+const MODE_CONFIG = {
+  slug: { label: '按 Slug 搜索', placeholder: '输入文件 Slug', key: 'slug' as const },
+  hash: { label: '按 Hash 搜索', placeholder: '输入文件 Hash（支持前缀匹配）', key: 'hash' as const },
+};
 
 export default function CleanupPage() {
   const [mode, setMode] = useState<'slug' | 'hash'>('slug');
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>(() => loadHistory(mode));
+  const [showHistory, setShowHistory] = useState(false);
   const queryMutation = useCleanupQuery();
   const deleteUserFileMutation = useDeleteUserFile();
   const deletePhysicalFileMutation = useDeletePhysicalFile();
@@ -34,8 +43,17 @@ export default function CleanupPage() {
     if (!trimmed) return;
     saveHistory(mode, trimmed);
     setHistory(loadHistory(mode));
+    setShowHistory(false);
     await queryMutation.mutateAsync(mode === 'slug' ? { slug: trimmed } : { hash: trimmed });
   }, [mode, queryMutation]);
+
+  const switchMode = (key: string) => {
+    const newMode = key as 'slug' | 'hash';
+    setMode(newMode);
+    setInput('');
+    setShowHistory(false);
+    setHistory(loadHistory(newMode));
+  };
 
   const result = queryMutation.data;
   const totalUploads = result?.totalUploads ?? 0;
@@ -71,45 +89,94 @@ export default function CleanupPage() {
     },
   ];
 
+  const currentCfg = MODE_CONFIG[mode];
+
   return (
     <PageContainer title="清理工具">
-      <Tabs activeKey={mode} onChange={(key) => { setMode(key as 'slug' | 'hash'); setInput(''); }}
-        items={[{ key: 'slug', label: '按 Slug 搜索' }, { key: 'hash', label: '按 Hash 搜索' }]}
-      />
-
-      <Input.Search
-        placeholder={mode === 'slug' ? '输入文件 Slug' : '输入文件 Hash'}
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onSearch={handleSearch}
-        enterButton="搜索"
-        className="mb-4"
-      />
-
-      {history.length > 0 && (
-        <div className="mb-4">
-          {history.map(item => (
-            <Tag key={item} className="cursor-pointer mb-1" onClick={() => { setInput(item); handleSearch(item); }}>{item}</Tag>
+      {/* Search Section */}
+      <Card hoverable className="mb-6!">
+        <div className="flex items-center gap-2 mb-4">
+          {(Object.entries(MODE_CONFIG) as [string, typeof MODE_CONFIG.slug][]).map(([key, cfg]) => (
+            <Button
+              key={key}
+              type={mode === key ? 'primary' : 'default'}
+              onClick={() => switchMode(key)}
+              size="small"
+            >
+              {cfg.label}
+            </Button>
           ))}
         </div>
+
+        <div className="relative">
+          <Input.Search
+            placeholder={currentCfg.placeholder}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onSearch={handleSearch}
+            onFocus={() => setShowHistory(true)}
+            onBlur={() => setTimeout(() => setShowHistory(false), 200)}
+            enterButton="搜索"
+            size="large"
+          />
+
+          {showHistory && history.length > 0 && (
+            <Card
+              className="absolute left-0 right-0 top-full z-10 mt-1!"
+              styles={{ body: { padding: '8px 12px' } }}
+              hoverable
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-[#999]"><HistoryOutlined className="mr-1" />搜索历史</span>
+                <Button type="link" size="small" icon={<ClearOutlined />} onClick={() => { clearHistory(mode); setHistory([]); }}>
+                  清空
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {history.map(item => (
+                  <Tag
+                    key={item}
+                    className="cursor-pointer mb-1!"
+                    onClick={() => { setInput(item); handleSearch(item); }}
+                    closable
+                    onClose={() => {
+                      const updated = history.filter(h => h !== item);
+                      setHistory(updated);
+                      const key = `${LS_PREFIX}.${mode}`;
+                      localStorage.setItem(key, JSON.stringify(updated));
+                    }}
+                  >
+                    {item}
+                  </Tag>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </Card>
+
+      {/* Loading & Error */}
+      {queryMutation.isPending && <div className="text-center p-15"><Spin size="large" /></div>}
+      {queryMutation.isError && (
+        <Card hoverable>
+          <Result status="error" title="查询失败" subTitle={queryMutation.error?.message} />
+        </Card>
       )}
 
-      {queryMutation.isPending && <div className="text-center p-15"><Spin size="large" /></div>}
-      {queryMutation.isError && <Result status="error" title="查询失败" subTitle={queryMutation.error?.message} />}
-
+      {/* Results */}
       {result && (
         <>
-          <Row gutter={16} className="mb-6">
+          <Row gutter={16} className="mb-6!">
             <Col span={8}><Card hoverable><Statistic title="总上传数" value={totalUploads} /></Card></Col>
             <Col span={8}><Card hoverable><Statistic title="独立用户数" value={uniqueUsers} /></Card></Col>
             <Col span={8}><Card hoverable><Statistic title="总大小" value={formatBytes(totalSize)} /></Card></Col>
           </Row>
 
           {result.physicalFile && (
-            <Card hoverable title="物理文件信息" className="mb-6"
+            <Card hoverable title="物理文件信息" className="mb-6!"
               extra={
                 <Popconfirm title="确定删除整个物理文件及所有关联用户文件？" onConfirm={() => handleDeletePhysicalFile(result.physicalFile!.id)}>
-                  <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除全部</Button>
+                  <Button type="primary" size="small" danger icon={<DeleteOutlined />}>删除全部</Button>
                 </Popconfirm>
               }
             >
@@ -118,7 +185,7 @@ export default function CleanupPage() {
                 <Descriptions.Item label="哈希"><CopyCell value={result.physicalFile.fileHash}><code className="text-xs">{result.physicalFile.fileHash}</code></CopyCell></Descriptions.Item>
                 <Descriptions.Item label="大小">{formatBytes(result.physicalFile.fileSize)}</Descriptions.Item>
                 <Descriptions.Item label="MIME 类型">{result.physicalFile.mimeType}</Descriptions.Item>
-                <Descriptions.Item label="存储路径">{result.physicalFile.storagePath}</Descriptions.Item>
+                <Descriptions.Item label="存储路径" span={2}><code className="text-xs">{result.physicalFile.storagePath}</code></Descriptions.Item>
                 <Descriptions.Item label="磁盘存在">
                   <Tag color={result.physicalFile.fileExists ? 'green' : 'red'}>{result.physicalFile.fileExists ? '是' : '否'}</Tag>
                 </Descriptions.Item>
@@ -127,7 +194,16 @@ export default function CleanupPage() {
           )}
 
           {result.userFiles.length > 0 && (
-            <Table<CleanupQueryUserFile> rowKey="id" columns={userFileColumns} dataSource={result.userFiles} pagination={false} size="small" scroll={{ x: 'max-content' }} />
+            <Card hoverable title="用户上传记录">
+              <Table<CleanupQueryUserFile>
+                rowKey="id"
+                columns={userFileColumns}
+                dataSource={result.userFiles}
+                pagination={false}
+                size="small"
+                scroll={{ x: 'max-content' }}
+              />
+            </Card>
           )}
         </>
       )}

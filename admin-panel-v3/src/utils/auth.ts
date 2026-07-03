@@ -1,12 +1,7 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { message } from 'antd';
-
-interface StoredUser {
-  role: string;
-  username: string;
-  [key: string]: unknown;
-}
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { message } from "antd";
+import type { LoginUser } from "@/api/types";
 
 export function useAuthGuard() {
   const navigate = useNavigate();
@@ -15,20 +10,20 @@ export function useAuthGuard() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('admin.user');
+      const raw = localStorage.getItem("admin.user");
       if (!raw) {
-        navigate('/login');
+        navigate("/login");
         return;
       }
-      const user = JSON.parse(raw) as StoredUser;
-      if (!user.role || user.role !== 'admin') {
-        message.error('仅管理员可访问');
-        navigate('/login');
+      const user = JSON.parse(raw) as LoginUser;
+      if (!user.role || user.role !== "admin") {
+        message.error("仅管理员可访问");
+        navigate("/login");
         return;
       }
       setAuthorized(true);
     } catch {
-      navigate('/login');
+      navigate("/login");
     } finally {
       setChecking(false);
     }
@@ -37,9 +32,9 @@ export function useAuthGuard() {
   return { checking, authorized };
 }
 
-export function getStoredUser(): StoredUser | null {
+export function getStoredUser(): LoginUser | null {
   try {
-    const raw = localStorage.getItem('admin.user');
+    const raw = localStorage.getItem("admin.user");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -47,6 +42,6 @@ export function getStoredUser(): StoredUser | null {
 }
 
 export function logout() {
-  localStorage.removeItem('admin.user');
-  localStorage.removeItem('admin.token');
+  localStorage.removeItem("admin.user");
+  localStorage.removeItem("admin.token");
 }

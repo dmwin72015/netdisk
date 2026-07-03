@@ -243,11 +243,40 @@ export type DeleteActionResult = {
 };
 
 // --- Auth ---
+
+export type UserProfile = {
+  displayName: string;
+  avatarUrl: string;
+  bio: string;
+};
+
+export type UserStorage = {
+  storageUsed: number;
+  storageQuota: number;
+};
+
+export type UserLevel = {
+  levelCode: string;
+  levelName: string;
+  expiresAt: string | null;
+};
+
+export type LoginUser = {
+  id: number;
+  slug: string;
+  username: string;
+  email: string;
+  status: number;
+  role: string;
+  registerMethod: string;
+  profile: UserProfile;
+  storage: UserStorage;
+  level: UserLevel;
+  createdAt: string;
+};
+
 export type LoginResponse = {
-  user: {
-    role: string;
-    [key: string]: unknown;
-  };
+  user: LoginUser;
   tokens: {
     accessToken: string;
   };

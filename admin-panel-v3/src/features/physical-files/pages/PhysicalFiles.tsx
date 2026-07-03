@@ -128,14 +128,13 @@ export default function PhysicalFilesPage() {
           });
           return { data: res.items, success: true, total: res.total };
         }}
-        search={{ labelWidth: "auto" }}
+        search={{ labelWidth: "auto", defaultCollapsed: false }}
         scroll={{ x: 1300 }}
         pagination={{
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 条`,
         }}
         size="small"
-        options={false}
       />
     </PageContainer>
   );

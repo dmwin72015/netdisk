@@ -105,10 +105,9 @@ export default function FilesPage() {
           });
           return { data: res.items, success: true, total: res.total };
         }}
-        search={{ labelWidth: 'auto' }}
+        search={{ labelWidth: 'auto', defaultCollapsed: false }}
         pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         size="small"
-        options={false}
         scroll={{ x: 'max-content' }}
       />
     </PageContainer>
