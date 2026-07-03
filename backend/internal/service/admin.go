@@ -713,6 +713,11 @@ func (s *AdminService) PhysicalFileDetail(ctx context.Context, id int64) (*Physi
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	// Populate reference counts that the base GetPhysicalFileByID query does not include
+	detail.PhysicalFile.UserFileCount = int64(detail.TotalUploads)
+	var mediaCount int64
+	_ = s.pg.QueryRow(ctx, `SELECT COUNT(*) FROM media_items WHERE physical_file_id = $1`, pf.ID).Scan(&mediaCount)
+	detail.PhysicalFile.MediaItemCount = mediaCount
 
 	return detail, nil
 }

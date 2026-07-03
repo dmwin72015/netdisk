@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Not Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ProLayout 侧边栏菜单选中高亮 */
+.ant-pro-layout .ant-menu-item-selected,
+.ant-pro-layout .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  background-color: var(--ant-color-primary-bg, #e6f4ff) !important;
+  color: var(--ant-color-primary, #1890ff) !important;
+}
+
+.ant-pro-layout .ant-menu-item-selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--ant-color-primary, #1890ff);
+  border-radius: 0 2px 2px 0;
+}
+
+/* LoginForm 容器及子元素透明，不遮挡背景渐变 */
+.ant-pro-form-login-container,
+.ant-pro-form-login-container .ant-pro-form-login-top,
+.ant-pro-form-login-container .ant-pro-form-login-main {
+  background: transparent !important;
+}
