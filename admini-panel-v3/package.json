@@ -1,0 +1,36 @@
+{
+  "name": "admini-panel-v3",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.3.2",
+    "@ant-design/pro-components": "^2.8.10",
+    "@ant-design/pro-descriptions": "^2.6.10",
+    "@ant-design/pro-form": "^2.32.0",
+    "@ant-design/pro-layout": "^7.22.7",
+    "@ant-design/pro-table": "^3.21.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "@tanstack/react-query": "^5.101.2",
+    "antd": "^6.5.0",
+    "dayjs": "^1.11.21",
+    "rc-field-form": "^2.7.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router": "^8.1.0",
+    "tailwindcss": "^4.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.0"
+  }
+}
