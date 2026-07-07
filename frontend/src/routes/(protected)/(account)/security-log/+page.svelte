@@ -94,6 +94,49 @@
 
   let totalPages = $derived(Math.ceil(logsTotal / PAGE_SIZE));
 
+  type PageItem =
+    | { key: string; kind: "page"; page: number }
+    | { key: string; kind: "gap" };
+
+  // Sliding window of page numbers around the current page.
+  // `kind: "gap"` represents an ellipsis. The `kind` discriminator lets TS
+  // narrow `item` in the template so `item.page` is `number` on page buttons,
+  // and each item carries a stable unique key for the keyed each block.
+  let pageItems = $derived.by<PageItem[]>(() => {
+    const total = totalPages;
+    const current = logsPage;
+    const items: PageItem[] = [];
+    const addPage = (n: number) => items.push({ key: `p${n}`, kind: "page", page: n });
+    const addGap = (id: string) => items.push({ key: `gap-${id}`, kind: "gap" });
+
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) addPage(i);
+      return items;
+    }
+
+    if (current <= 4) {
+      // Near the start: 1 2 3 4 5 … N
+      for (let i = 1; i <= 5; i++) addPage(i);
+      addGap("right");
+      addPage(total);
+    } else if (current >= total - 3) {
+      // Near the end: 1 … N-4 N-3 N-2 N-1 N
+      addPage(1);
+      addGap("left");
+      for (let i = total - 4; i <= total; i++) addPage(i);
+    } else {
+      // Middle: 1 … curr-1 curr curr+1 … N
+      addPage(1);
+      addGap("left");
+      addPage(current - 1);
+      addPage(current);
+      addPage(current + 1);
+      addGap("right");
+      addPage(total);
+    }
+    return items;
+  });
+
   onMount(() => {
     void fetchDevices();
     void fetchLogs();
@@ -194,27 +237,21 @@
             >
               {m.prev()}
             </button>
-            {#each Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1) as p}
-              <button
-                type="button"
-                onclick={() => fetchLogs(p)}
-                class="h-7 min-w-7 rounded-md px-1.5 text-xs transition-colors {p === logsPage
-                  ? 'bg-primary-soft font-medium text-primary'
-                  : 'text-ink-3 hover:bg-surface-sunken'}"
-              >
-                {p}
-              </button>
+            {#each pageItems as item (item.key)}
+              {#if item.kind === "gap"}
+                <span class="px-1 text-xs text-ink-4">…</span>
+              {:else}
+                <button
+                  type="button"
+                  onclick={() => fetchLogs(item.page)}
+                  class="h-7 min-w-7 rounded-md px-1.5 text-xs transition-colors {item.page === logsPage
+                    ? 'bg-primary-soft font-medium text-primary'
+                    : 'text-ink-3 hover:bg-surface-sunken'}"
+                >
+                  {item.page}
+                </button>
+              {/if}
             {/each}
-            {#if totalPages > 7}
-              <span class="px-1 text-xs text-ink-4">...</span>
-              <button
-                type="button"
-                onclick={() => fetchLogs(totalPages)}
-                class="h-7 min-w-7 rounded-md px-1.5 text-xs text-ink-3 transition-colors hover:bg-surface-sunken"
-              >
-                {totalPages}
-              </button>
-            {/if}
             <button
               type="button"
               disabled={logsPage >= totalPages}
