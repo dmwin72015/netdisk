@@ -159,6 +159,7 @@ type UserActivityLog struct {
 	UserAgent    pgtype.Text        `json:"userAgent"`
 	Os           pgtype.Text        `json:"os"`
 	Browser      pgtype.Text        `json:"browser"`
+	DeviceID     pgtype.Text        `json:"deviceId"`
 	Extra        []byte             `json:"extra"`
 	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
 }

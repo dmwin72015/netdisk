@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -56,6 +59,7 @@ type AuditLogInput struct {
 	ResourceName string
 	IP           string
 	UserAgent    string
+	DeviceID     string
 	Extra        map[string]any
 }
 
@@ -81,6 +85,13 @@ func (s *AuditService) write(input AuditLogInput) {
 		extra, _ = json.Marshal(input.Extra)
 	}
 
+	// Use the client-supplied device id, or derive a stable fallback from the
+	// request IP and User-Agent when none was provided (e.g. OAuth logins).
+	deviceID := input.DeviceID
+	if deviceID == "" {
+		deviceID = fallbackDeviceID(input.IP, input.UserAgent)
+	}
+
 	queries := sqlc.New(s.pg)
 	err := queries.CreateActivityLog(context.Background(), sqlc.CreateActivityLogParams{
 		UserID:       input.UserID,
@@ -92,6 +103,7 @@ func (s *AuditService) write(input AuditLogInput) {
 		UserAgent:    toText(input.UserAgent),
 		Os:           toText(uaInfo.OS),
 		Browser:      toText(uaInfo.Browser),
+		DeviceID:     toText(deviceID),
 		Extra:        extra,
 	})
 	if err != nil {
@@ -104,4 +116,14 @@ func toText(s string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: s, Valid: true}
+}
+
+// fallbackDeviceID derives a stable device identifier from the request IP and a
+// normalized User-Agent when the client did not supply one (e.g. OAuth logins,
+// where a device id cannot be forwarded through the redirect flow). The "fb-"
+// prefix avoids collisions with real client-supplied device ids.
+func fallbackDeviceID(ip, ua string) string {
+	normalized := strings.ToLower(strings.TrimSpace(ua))
+	sum := sha256.Sum256([]byte(ip + "|" + normalized))
+	return "fb-" + hex.EncodeToString(sum[:])
 }

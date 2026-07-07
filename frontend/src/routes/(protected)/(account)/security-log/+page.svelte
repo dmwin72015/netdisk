@@ -5,6 +5,7 @@
   import * as m from "$lib/paraglide/messages";
   import { toast } from "svelte-sonner";
   import { api } from "$lib/api/client";
+  import { getDeviceId } from "$lib/utils/deviceId";
 
   interface SecurityLogItem {
     id: number;
@@ -67,7 +68,8 @@
   async function fetchDevices() {
     loadingDevices = true;
     try {
-      const data = await api<LoginDevice[]>("/api/v1/user/login-devices");
+      const deviceId = await getDeviceId();
+      const data = await api<LoginDevice[]>(`/api/v1/user/login-devices?deviceId=${encodeURIComponent(deviceId)}`);
       devices = data;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : m.load_failed());

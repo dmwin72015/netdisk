@@ -5,20 +5,24 @@ export type LoginResponse = {
 	tokens: Tokens;
 };
 
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string, deviceId?: string): Promise<LoginResponse> {
+	const body: Record<string, string> = { email, password };
+	if (deviceId) body.deviceId = deviceId;
 	const data = await api<LoginResponse>('/api/v1/auth/login', {
 		method: 'POST',
-		body: JSON.stringify({ email, password }),
+		body: JSON.stringify(body),
 		auth: false
 	});
 	setSession(data.user, data.tokens);
 	return data;
 }
 
-export async function register(username: string, email: string, password: string): Promise<UserInfo> {
+export async function register(username: string, email: string, password: string, deviceId?: string): Promise<UserInfo> {
+	const body: Record<string, string> = { username, email, password };
+	if (deviceId) body.deviceId = deviceId;
 	return api<UserInfo>('/api/v1/auth/register', {
 		method: 'POST',
-		body: JSON.stringify({ username, email, password }),
+		body: JSON.stringify(body),
 		auth: false
 	});
 }

@@ -61,11 +61,13 @@ type RegisterInput struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	DeviceID string `json:"deviceId"`
 }
 
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	DeviceID string `json:"deviceId"`
 }
 
 type RefreshInput struct {

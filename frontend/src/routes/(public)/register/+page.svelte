@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { login, register } from '$lib/api/auth';
+	import { getDeviceId } from '$lib/utils/deviceId';
 	import { setUser } from '$lib/stores/auth';
 	import { ApiError } from '$lib/api/client';
 	import AuthShell from '$lib/components/AuthShell.svelte';
@@ -18,8 +19,9 @@
 		error = null;
 		busy = true;
 		try {
-			await register(username, email, password);
-			const res = await login(email, password);
+		const deviceId = await getDeviceId();
+		await register(username, email, password, deviceId);
+		const res = await login(email, password, deviceId);
 			setUser(res.user);
 			await goto('/');
 		} catch (err) {

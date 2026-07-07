@@ -101,12 +101,15 @@ func (h *ActivityLogHandler) ListLoginDevices(c echo.Context) error {
 		return err
 	}
 
-	// Current session IP
+	// Current session IP and the device id reported by the client (if any).
 	currentIP := c.RealIP()
+	currentDeviceID := c.QueryParam("deviceId")
 
-	// Deduce unique devices by IP
+	// Deduce unique devices by device id. Rows written without a device id
+	// (older logs, or OAuth logins that fall back on the server) are grouped
+	// by IP instead.
 	type deviceKey struct {
-		IP string
+		DeviceID string
 	}
 	seen := make(map[deviceKey]bool)
 	var devices []LoginDevice
@@ -119,11 +122,18 @@ func (h *ActivityLogHandler) ListLoginDevices(c echo.Context) error {
 		if ip == "" {
 			continue
 		}
-		key := deviceKey{IP: ip}
+		key := deviceKey{DeviceID: deviceKeyForRow(r, ip)}
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
+
+		isCurrent := false
+		if currentDeviceID != "" && r.DeviceID.Valid {
+			isCurrent = r.DeviceID.String == currentDeviceID
+		} else {
+			isCurrent = ip == currentIP
+		}
 
 		dev := LoginDevice{
 			IP:        ip,
@@ -132,7 +142,7 @@ func (h *ActivityLogHandler) ListLoginDevices(c echo.Context) error {
 			Browser:   r.Browser.String,
 			UserAgent: r.UserAgent.String,
 			LastLogin: r.CreatedAt.Time.Format("2006-01-02 15:04:05"),
-			IsCurrent: ip == currentIP,
+			IsCurrent: isCurrent,
 		}
 		devices = append(devices, dev)
 	}
@@ -142,4 +152,14 @@ func (h *ActivityLogHandler) ListLoginDevices(c echo.Context) error {
 	}
 
 	return OK(c, devices)
+}
+
+// deviceKeyForRow returns the grouping key for a login log row: the stored
+// device id when present, otherwise the IP (prefixed to avoid collisions with
+// real device ids).
+func deviceKeyForRow(r sqlc.UserActivityLog, ip string) string {
+	if r.DeviceID.Valid && r.DeviceID.String != "" {
+		return r.DeviceID.String
+	}
+	return "ip:" + ip
 }

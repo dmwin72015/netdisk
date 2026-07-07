@@ -34,6 +34,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	h.audit.Log(c.Request().Context(), service.AuditLogInput{
 		UserID: user.ID, Action: service.ActionRegister,
 		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		DeviceID: input.DeviceID,
 	})
 	return Created(c, user)
 }
@@ -50,6 +51,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	h.audit.Log(c.Request().Context(), service.AuditLogInput{
 		UserID: user.ID, Action: service.ActionLogin,
 		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		DeviceID: input.DeviceID,
 	})
 	return OK(c, map[string]any{
 		"user":   user,
