@@ -51,6 +51,15 @@
       submitting = false;
     }
   }
+
+  function handleEnterKey(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (url.trim() && !submitting) {
+        handleSubmit();
+      }
+    }
+  }
 </script>
 
 <Dialog
@@ -98,6 +107,7 @@
         type="url"
         bind:value={url}
         bind:this={urlInput}
+        onkeydown={handleEnterKey}
         placeholder={m.remote_upload_url_placeholder()}
         class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
       />
@@ -111,6 +121,7 @@
         id="filename-input"
         type="text"
         bind:value={fileName}
+        onkeydown={handleEnterKey}
         class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
       />
     </div>

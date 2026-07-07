@@ -49,6 +49,13 @@
 		open = false;
 	}
 
+	function handleFileNameKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			handleConfirm();
+		}
+	}
+
 	function togglePreview() {
 		expanded = !expanded;
 	}
@@ -97,11 +104,12 @@
 		<!-- Filename input -->
 		<div class="border-b border-line-soft px-5 py-3">
 <label for="filename" class="text-sm font-medium text-ink-3">{m.paste_filename()}</label>
-			<input
-				id="filename"
-				type="text"
-				bind:value={fileName}
-				placeholder={m.paste_filename_placeholder()}
+		<input
+			id="filename"
+			type="text"
+			bind:value={fileName}
+			onkeydown={handleFileNameKeydown}
+			placeholder={m.paste_filename_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>

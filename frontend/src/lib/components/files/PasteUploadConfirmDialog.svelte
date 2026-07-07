@@ -45,6 +45,15 @@
 		filenameModified = true;
 	}
 
+	function handleFileNameKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			if (acceptedFiles.length > 0) {
+				onConfirm(buildRenamedFiles());
+			}
+		}
+	}
+
 	function buildRenamedFiles(): File[] {
 		if (acceptedFiles.length === 0) return acceptedFiles;
 
@@ -102,12 +111,13 @@
 		<!-- Filename input -->
 		<div class="border-b border-line-soft px-5 py-3">
 			<label for="paste-filename" class="text-sm font-medium text-ink-3">{m.paste_filename()}</label>
-			<input
-				id="paste-filename"
-				type="text"
-				bind:value={fileName}
-				oninput={handleFileNameInput}
-				placeholder={m.paste_filename_placeholder()}
+		<input
+			id="paste-filename"
+			type="text"
+			bind:value={fileName}
+			oninput={handleFileNameInput}
+			onkeydown={handleFileNameKeydown}
+			placeholder={m.paste_filename_placeholder()}
 				class="mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
 			/>
 		</div>
