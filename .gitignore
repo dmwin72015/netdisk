@@ -35,6 +35,7 @@ frontend/.env
 .claude
 .kiro
 .codex
+.workbuddy
 docs
 .superpowers
 .impeccable
