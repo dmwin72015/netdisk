@@ -30,6 +30,46 @@
 	let currentPage = $derived(Math.floor(offset / limit) + 1);
 	let allSelected = $derived(tasks.length > 0 && tasks.every(t => selected.has(t.slug)));
 
+	type PageItem =
+		| { key: string; kind: "page"; page: number }
+		| { key: string; kind: "gap" };
+
+	// Sliding window of page numbers around the current page; `kind: "gap"`
+	// renders an ellipsis. Each item carries a stable unique key for the each block.
+	let pageItems = $derived.by<PageItem[]>(() => {
+		const total = totalPages;
+		const current = currentPage;
+		const items: PageItem[] = [];
+		const addPage = (n: number) => items.push({ key: `p${n}`, kind: "page", page: n });
+		const addGap = (id: string) => items.push({ key: `gap-${id}`, kind: "gap" });
+
+		if (total <= 7) {
+			for (let i = 1; i <= total; i++) addPage(i);
+			return items;
+		}
+		if (current <= 4) {
+			for (let i = 1; i <= 5; i++) addPage(i);
+			addGap("right");
+			addPage(total);
+		} else if (current >= total - 3) {
+			addPage(1);
+			addGap("left");
+			for (let i = total - 4; i <= total; i++) addPage(i);
+		} else {
+			addPage(1);
+			addGap("left");
+			addPage(current - 1);
+			addPage(current);
+			addPage(current + 1);
+			addGap("right");
+			addPage(total);
+		}
+		return items;
+	});
+
+	let rangeStart = $derived(total === 0 ? 0 : offset + 1);
+	let rangeEnd = $derived(Math.min(offset + limit, total));
+
 	async function refresh() {
 		if (!$user) return;
 		loading = true;
@@ -124,6 +164,14 @@
 
 	function goToPage(page: number) {
 		offset = (page - 1) * limit;
+		refresh();
+	}
+
+	const limitOptions = [20, 50, 100];
+
+	function changeLimit(newLimit: number) {
+		limit = newLimit;
+		offset = 0;
 		refresh();
 	}
 
@@ -378,35 +426,59 @@
 			</div>
 
 			<!-- Pagination -->
-			{#if totalPages > 1}
-				<div class="flex items-center justify-center gap-1 text-sm">
-					<button
-						type="button"
-						onclick={() => goToPage(currentPage - 1)}
-						disabled={currentPage <= 1}
-						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-30"
-					>
-						<ArrowLeft size={14} />
-					</button>
-					{#each Array(totalPages) as _, i}
+			<div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+				<p class="text-xs text-ink-4">{m.showing_range({ start: String(rangeStart), end: String(rangeEnd), total: String(total) })}</p>
+
+				{#if totalPages > 1}
+					<div class="flex items-center gap-1 text-sm">
 						<button
 							type="button"
-							onclick={() => goToPage(i + 1)}
-							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors {i + 1 === currentPage ? 'bg-primary font-medium text-primary-on' : 'text-ink-3 hover:bg-surface-sunken'}"
+							onclick={() => goToPage(currentPage - 1)}
+							disabled={currentPage <= 1}
+							aria-label={m.prev()}
+							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-30"
 						>
-							{i + 1}
+							<ArrowLeft size={14} />
 						</button>
-					{/each}
-					<button
-						type="button"
-						onclick={() => goToPage(currentPage + 1)}
-						disabled={currentPage >= totalPages}
-						class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-30"
+						{#each pageItems as item (item.key)}
+							{#if item.kind === "gap"}
+								<span class="px-1 text-ink-4">…</span>
+							{:else}
+								<button
+									type="button"
+									onclick={() => goToPage(item.page)}
+									aria-label={String(item.page)}
+									class="inline-flex h-8 min-w-8 items-center justify-center rounded-lg text-sm transition-colors {item.page === currentPage ? 'bg-primary font-medium text-primary-on' : 'text-ink-3 hover:bg-surface-sunken'}"
+								>
+									{item.page}
+								</button>
+							{/if}
+						{/each}
+						<button
+							type="button"
+							onclick={() => goToPage(currentPage + 1)}
+							disabled={currentPage >= totalPages}
+							aria-label={m.next()}
+							class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-surface-sunken disabled:opacity-30"
+						>
+							<ArrowRight size={14} />
+						</button>
+					</div>
+				{/if}
+
+				<label class="flex items-center gap-1.5 text-xs text-ink-4">
+					{m.page_size()}
+					<select
+						value={limit}
+						onchange={(e) => changeLimit(Number((e.currentTarget as HTMLSelectElement).value))}
+						class="h-8 rounded-lg border border-line bg-surface px-2 text-sm text-ink-2 transition-colors hover:bg-surface-sunken focus:border-primary focus:outline-none"
 					>
-						<ArrowRight size={14} />
-					</button>
-				</div>
-			{/if}
+						{#each limitOptions as opt (opt)}
+							<option value={opt}>{opt}</option>
+						{/each}
+					</select>
+				</label>
+			</div>
 		{/if}
 	</div>
 {/if}

@@ -380,6 +380,8 @@
   "upload_started": "Upload started",
   "prev": "Prev",
   "next": "Next",
+  "page_size": "Page size",
+  "showing_range": "Showing {start}–{end} of {total}",
   "upload_folder": "Upload Folder",
   "select_files_to_upload": "Select files to upload",
   "files_selected": "{count} files selected",
