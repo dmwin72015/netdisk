@@ -52,6 +52,32 @@
     }
   }
 
+  // Derive a download filename from a URL. Returns "" when it cannot be
+  // reliably identified (no path segment with an extension, a directory URL,
+  // or an unparseable URL) so the filename field stays empty.
+  function deriveFilenameFromUrl(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      try {
+        parsed = new URL("https://" + trimmed);
+      } catch {
+        return "";
+      }
+    }
+    const pathname = parsed.pathname.replace(/\/+$/, "");
+    const last = pathname.split("/").pop() ?? "";
+    if (!last || last === "." || last === ".." || !last.includes(".")) return "";
+    try {
+      return decodeURIComponent(last);
+    } catch {
+      return last;
+    }
+  }
+
   function handleEnterKey(e: KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -107,6 +133,10 @@
         type="url"
         bind:value={url}
         bind:this={urlInput}
+        oninput={(e) => {
+          const v = (e.currentTarget as HTMLInputElement).value;
+          if (!fileName.trim()) fileName = deriveFilenameFromUrl(v);
+        }}
         onkeydown={handleEnterKey}
         placeholder={m.remote_upload_url_placeholder()}
         class="rounded-lg border border-line px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
